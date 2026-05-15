@@ -13,3 +13,4 @@ Goal: build a small and highly capable model for segmenting this data that could
 - look at literature from previous challenge - what worked well? What didn't work?
 - build the evaluation pipeline first
 - download winner models from last challenge and run - then evaluate if their performance matches what was published last time
+- try out to use Shakes SAM base model as a starting point
