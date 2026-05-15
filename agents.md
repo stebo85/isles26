@@ -1,8 +1,9 @@
-general guidelines
+## general guidelines
 - no credentials in the repo
 - commit and push after new features are implemented
 - when learning new insights make sure to update agents.md with a short description and longer documentation goes in docs (linked from agents.md)
-- write slurm job files
+- literature review for ISLES'26 preparation lives in [docs/README.md](docs/README.md); key current lessons are to start with nnU-Net/MAPPING-style baselines, build metrics first, stratify validation by center/chronicity/lesion size, and treat small-lesion detection as the main risk, and compare any attention/transformer/SAM branch against nnU-Net under identical splits
+- don't run large analyses directly - write and sumbit slurm job files! Make sure to make them robust to interruption
 
 ```bash
 #!/bin/bash
@@ -27,4 +28,3 @@ and submit them to the owners que:
 ```bash
 sbatch -p owners submit.sbatch
 ```
-
