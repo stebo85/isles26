@@ -21,5 +21,5 @@ source .venv-eval/bin/activate
 PYTHONPATH="$REPO" python -m eval.run_eval \
   --data-root "$REPO/data/soop_bench" \
   --pred-dir "$REPO/work/predictions_deepisles" \
-  --out-dir  "$REPO/work/reports/deepisles" \
+  --out-dir  "$REPO/baselines/reports/deepisles" \
   --title    "DeepISLES (SEALS+NVAUTO+SWAN) on soop_bench"

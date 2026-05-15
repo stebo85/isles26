@@ -1,3 +1,34 @@
+## project layout
+```
+isles26challenge/
+├── agents.md                          # this file — agent guidelines + repo map
+├── scripts/                           # repo-wide utility scripts (not tied to a specific baseline)
+│   └── download_data.sh               # datalad pull of soop_bench
+├── eval/                              # evaluation framework (loader, metrics, qc_viz, report, run_eval)
+│   └── tests/                         # unit tests (`PYTHONPATH=. python eval/tests/test_metrics.py`)
+├── docs/                              # literature review, evaluation framework, challenge notes
+├── baselines/                         # KEPT artifacts (committed)
+│   ├── DeepIsles/                     # upstream DeepISLES repo clone (gitignored)
+│   ├── analyses/                      # SLURM-ready baseline pipelines
+│   │   ├── analysis_01_pull_deepisles.sh  # apptainer pull → sandbox under work/containers/
+│   │   ├── analysis_02_run_deepisles.sh   # SLURM array over subjects → work/predictions_deepisles/
+│   │   └── analysis_03_evaluate.sh        # eval framework → baselines/reports/deepisles/
+│   └── reports/                       # benchmark reports per method
+│       ├── deepisles/                 # report.md/.json, per_case.json, qc/*.png, benchmark_summary.md, adversarial_review.md
+│       ├── empty/                     # null-prediction baseline
+│       └── oracle/                    # GT-as-prediction sanity check
+├── work/                              # TEMPORARY outputs (gitignored, regenerable)
+│   ├── containers/                    # apptainer sandbox + cache (~44 GB)
+│   ├── deepisles_runs/                # per-subject DeepISLES intermediate run dirs
+│   ├── predictions_deepisles/         # NIfTI predictions consumed by analysis_03
+│   └── predictions_oracle/            # GT copied as predictions for oracle baseline
+├── data/                              # soop_bench BIDS data (gitignored, datalad-managed)
+├── logs/                              # SLURM stdout/stderr (gitignored)
+└── .venv-eval/                        # python venv for eval (gitignored)
+```
+
+Rule of thumb: anything reviewable (markdown reports, summary JSONs, QC snapshots) belongs in `baselines/`; anything regenerable from a script belongs in `work/`.
+
 ## general guidelines
 - no credentials in the repo
 - commit and push after new features are implemented
@@ -5,7 +36,7 @@
 - literature review for ISLES'26 preparation lives in [docs/Literature_review_summary.md](docs/Literature_review_summary.md); key current lessons are to start with nnU-Net/MAPPING-style baselines, build metrics first, stratify validation by center/chronicity/lesion size, and treat small-lesion detection as the main risk, and compare any attention/transformer/SAM branch against nnU-Net under identical splits
 - evaluation framework lives in [eval/](eval/) with docs in [docs/evaluation_framework.md](docs/evaluation_framework.md); sensitive metrics include lesion-wise F1, HD95/ASSD, surface Dice @ 3 mm, and size-binned recall (pooled across cases) plus per-chronicity/per-center stratification; runner is `eval/run_eval.py`, unit tests with `PYTHONPATH=. python eval/tests/test_metrics.py` (19/19)
 - python venv for eval is at `.venv-eval/` (built with `python/3.12.1` module); scipy/numpy/etc. need `--only-binary=:all:` and `numpy<2.1 scipy<1.14` on this cluster (no OpenBLAS dev headers available for source builds)
-- soop_bench reference benchmark uses DeepISLES (`isleschallenge/deepisles`, SEALS+NVAUTO+SWAN ensemble) because GT masks are in DWI/TRACE space; pipeline is `analysis_01_pull_deepisles.sh` → `analysis_02_run_deepisles.sh` (SLURM array) → `analysis_03_evaluate.sh`
+- soop_bench reference benchmark uses DeepISLES (`isleschallenge/deepisles`, SEALS+NVAUTO+SWAN ensemble) because GT masks are in DWI/TRACE space; pipeline is `baselines/analyses/analysis_01_pull_deepisles.sh` → `baselines/analyses/analysis_02_run_deepisles.sh` (SLURM array) → `baselines/analyses/analysis_03_evaluate.sh`; benchmark artifacts (md + json + QC PNGs) committed under [baselines/reports/](baselines/reports/), regenerable per-case outputs (containers, predictions, run dirs) stay under `work/` (gitignored)
 - don't run large analyses directly - write and sumbit slurm job files! Make sure to make them robust to interruption
 
 ```bash
