@@ -219,6 +219,89 @@ def test_lesionwise_empty_gt_only():
     assert lm.lesion_precision == 0.0
 
 
+def test_lesionwise_one_pred_overlaps_two_gt():
+    """Many-to-many caveat (Codex review #2): one predicted CC that overlaps
+    two GT CCs gets recall credit on both. Both GT lesions count as detected;
+    the single prediction counts as one TP."""
+    gt = _empty((30, 30, 30))
+    gt[2:5, 2:5, 2:5] = 1            # GT 1
+    gt[6:9, 2:5, 2:5] = 1            # GT 2 (separated by 1 voxel gap on x axis)
+    # Confirm GT is two components
+    pred = _empty((30, 30, 30))
+    pred[2:9, 2:5, 2:5] = 1          # one big pred bridging GT 1 and GT 2
+    lm = lesion_wise_metrics(pred, gt)
+    assert lm.gt_lesion_count == 2
+    assert lm.pred_lesion_count == 1
+    # Both GTs detected with any-overlap rule:
+    assert lm.tp_lesions == 2
+    assert lm.fn_lesions == 0
+    # Pred is 1 TP (no FPs):
+    assert lm.fp_lesions == 0
+    assert math.isclose(lm.lesion_recall, 1.0)
+    assert math.isclose(lm.lesion_precision, 1.0)
+    # |count diff| surfaces the merge:
+    assert lm.signed_lesion_count_diff == -1  # pred missed one component
+    assert lm.abs_lesion_count_diff == 1
+
+
+def test_lesionwise_two_pred_overlap_one_gt():
+    """Inverse: one big GT lesion split into two predictions. Recall on the
+    single GT is 1; both predictions count as TPs (precision = 1). |count
+    diff| surfaces the split."""
+    gt = _empty((30, 30, 30))
+    gt[2:9, 2:5, 2:5] = 1            # one big GT
+    pred = _empty((30, 30, 30))
+    pred[2:5, 2:5, 2:5] = 1          # pred 1
+    pred[6:9, 2:5, 2:5] = 1          # pred 2
+    lm = lesion_wise_metrics(pred, gt)
+    assert lm.gt_lesion_count == 1
+    assert lm.pred_lesion_count == 2
+    assert lm.tp_lesions == 1
+    assert lm.fp_lesions == 0        # both predictions overlap the GT
+    assert math.isclose(lm.lesion_recall, 1.0)
+    assert math.isclose(lm.lesion_precision, 1.0)
+    assert lm.signed_lesion_count_diff == 1
+    assert lm.abs_lesion_count_diff == 1
+
+
+def test_lesionwise_rejects_zero_min_overlap():
+    """Codex review #1: min_overlap_voxels < 1 silently credits disjoint
+    components and must be rejected at the API."""
+    raised = False
+    try:
+        lesion_wise_metrics(_cube(), _cube(), min_overlap_voxels=0)
+    except ValueError:
+        raised = True
+    assert raised, "expected ValueError for min_overlap_voxels=0"
+
+
+def test_validates_shape_mismatch():
+    a = np.zeros((10, 10, 10), dtype=np.uint8)
+    b = np.zeros((10, 10, 11), dtype=np.uint8)
+    for fn in (overlap_metrics, volume_metrics):
+        raised = False
+        try:
+            if fn is volume_metrics:
+                fn(a, b, VOXEL)
+            else:
+                fn(a, b)
+        except ValueError:
+            raised = True
+        assert raised, f"{fn.__name__} did not raise on shape mismatch"
+
+
+def test_rejects_nan_in_float_mask():
+    a = np.zeros((10, 10, 10), dtype=np.float32)
+    a[0, 0, 0] = np.nan
+    b = np.zeros((10, 10, 10), dtype=np.uint8)
+    raised = False
+    try:
+        overlap_metrics(a, b)
+    except ValueError:
+        raised = True
+    assert raised, "expected ValueError on NaN-bearing float mask"
+
+
 # --- size-binned recall ---
 
 def test_size_binned_recall_small_missed():

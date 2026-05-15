@@ -38,11 +38,27 @@ _CONNECTIVITY_26 = np.ones((3, 3, 3), dtype=np.uint8)
 
 
 def _as_bool(arr: np.ndarray) -> np.ndarray:
-    return np.asarray(arr).astype(bool)
+    a = np.asarray(arr)
+    # Reject non-finite values: a NaN that silently becomes background is a
+    # very expensive failure mode. Integer arrays cannot contain NaNs, so the
+    # check is only meaningful on floating-point inputs.
+    if a.dtype.kind == "f" and not np.isfinite(a).all():
+        raise ValueError(
+            "mask array contains non-finite values (NaN/Inf); binarise to "
+            "uint8 before passing in or filter the NaNs explicitly"
+        )
+    return a.astype(bool)
 
 
 def _voxel_volume_ml(voxel_size_mm: tuple[float, float, float]) -> float:
     return float(np.prod(voxel_size_mm)) / 1000.0  # mm^3 -> mL
+
+
+def _validate_same_shape_3d(a: np.ndarray, b: np.ndarray) -> None:
+    if a.shape != b.shape:
+        raise ValueError(f"shape mismatch: pred {a.shape} vs gt {b.shape}")
+    if a.ndim != 3:
+        raise ValueError(f"expected 3-D mask arrays, got {a.ndim}-D shape {a.shape}")
 
 
 def connected_components(mask: np.ndarray) -> tuple[np.ndarray, int]:
@@ -80,8 +96,7 @@ def overlap_metrics(pred: np.ndarray, gt: np.ndarray) -> OverlapMetrics:
     one is empty."""
     p = _as_bool(pred)
     g = _as_bool(gt)
-    if p.shape != g.shape:
-        raise ValueError(f"shape mismatch: pred {p.shape} vs gt {g.shape}")
+    _validate_same_shape_3d(p, g)
     tp = int(np.logical_and(p, g).sum())
     fp = int(np.logical_and(p, ~g).sum())
     fn = int(np.logical_and(~p, g).sum())
@@ -131,9 +146,12 @@ class VolumeMetrics:
 
 
 def volume_metrics(pred: np.ndarray, gt: np.ndarray, voxel_size_mm: tuple[float, float, float]) -> VolumeMetrics:
+    p = _as_bool(pred)
+    g = _as_bool(gt)
+    _validate_same_shape_3d(p, g)
     vox_ml = _voxel_volume_ml(voxel_size_mm)
-    p_vox = int(_as_bool(pred).sum())
-    g_vox = int(_as_bool(gt).sum())
+    p_vox = int(p.sum())
+    g_vox = int(g.sum())
     p_ml = p_vox * vox_ml
     g_ml = g_vox * vox_ml
     avd = abs(p_ml - g_ml)
@@ -159,8 +177,7 @@ def _surface_distances(mask_a: np.ndarray, mask_b: np.ndarray, voxel_size_mm: tu
     """
     a = _as_bool(mask_a)
     b = _as_bool(mask_b)
-    if a.shape != b.shape:
-        raise ValueError("shape mismatch in _surface_distances")
+    _validate_same_shape_3d(a, b)
     if not a.any() or not b.any():
         return np.array([]), np.array([])
 
@@ -246,7 +263,24 @@ def lesion_wise_metrics(pred: np.ndarray, gt: np.ndarray, min_overlap_voxels: in
     When only one side is empty:
         the metrics that divide by zero are returned as 0.0 (consistent with
         Dice/IoU empty-mismatch convention).
+
+    Many-to-many caveat (per Codex adversarial review #2):
+        This is "any-overlap" detection, not a one-to-one matching. A single
+        predicted component that bridges two GT lesions counts as detecting
+        both (recall credit on both), and is itself counted as one TP
+        prediction (precision = 1). A single GT lesion split across two
+        predicted components is detected once (recall = 1) and both
+        predictions count as TPs (precision = 1). This matches the ATLAS /
+        ISLES'22 reference, but it can flatter merging and splitting
+        failures — interpret alongside |Δ lesion count|, which surfaces them.
+        See tests `test_lesionwise_one_pred_overlaps_two_gt` and
+        `test_lesionwise_two_pred_overlap_one_gt`.
     """
+    if min_overlap_voxels < 1:
+        raise ValueError(
+            f"min_overlap_voxels must be >= 1, got {min_overlap_voxels} — "
+            "a value of 0 would credit any pair of components as overlapping"
+        )
     p_lab, n_pred = connected_components(pred)
     g_lab, n_gt = connected_components(gt)
 

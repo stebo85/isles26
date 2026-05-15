@@ -57,10 +57,14 @@ def main() -> int:
     ap.add_argument("--pred-dir", required=True, type=Path)
     ap.add_argument("--out-dir", required=True, type=Path)
     ap.add_argument("--title", default="Stroke segmentation benchmark on soop_bench")
-    ap.add_argument("--min-overlap-voxels", type=int, default=1)
+    ap.add_argument("--min-overlap-voxels", type=int, default=1,
+                    help="Minimum voxel overlap to count a connected-component as detected (must be >= 1).")
     ap.add_argument("--allow-missing", action="store_true",
                     help="If set, subjects without a prediction file are evaluated as empty predictions (counts as misses).")
     args = ap.parse_args()
+
+    if args.min_overlap_voxels < 1:
+        ap.error("--min-overlap-voxels must be >= 1")
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     subjects = discover_soop_bench(args.data_root)
