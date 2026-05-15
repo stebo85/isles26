@@ -3,6 +3,9 @@
 - commit and push after new features are implemented
 - when learning new insights make sure to update agents.md with a short description and longer documentation goes in docs (linked from agents.md)
 - literature review for ISLES'26 preparation lives in [docs/README.md](docs/README.md); key current lessons are to start with nnU-Net/MAPPING-style baselines, build metrics first, stratify validation by center/chronicity/lesion size, and treat small-lesion detection as the main risk, and compare any attention/transformer/SAM branch against nnU-Net under identical splits
+- evaluation framework lives in [eval/](eval/) with docs in [docs/evaluation_framework.md](docs/evaluation_framework.md); sensitive metrics include lesion-wise F1, HD95/ASSD, surface Dice @ 3 mm, and size-binned recall (pooled across cases) plus per-chronicity/per-center stratification; runner is `eval/run_eval.py`, unit tests with `PYTHONPATH=. python eval/tests/test_metrics.py` (19/19)
+- python venv for eval is at `.venv-eval/` (built with `python/3.12.1` module); scipy/numpy/etc. need `--only-binary=:all:` and `numpy<2.1 scipy<1.14` on this cluster (no OpenBLAS dev headers available for source builds)
+- soop_bench reference benchmark uses DeepISLES (`isleschallenge/deepisles`, SEALS+NVAUTO+SWAN ensemble) because GT masks are in DWI/TRACE space; pipeline is `analysis_01_pull_deepisles.sh` → `analysis_02_run_deepisles.sh` (SLURM array) → `analysis_03_evaluate.sh`
 - don't run large analyses directly - write and sumbit slurm job files! Make sure to make them robust to interruption
 
 ```bash
