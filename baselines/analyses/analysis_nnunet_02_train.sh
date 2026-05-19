@@ -70,7 +70,7 @@ if not torch.cuda.is_available():
 PY
 
 PREPROCESSED_DATASET="$nnUNet_preprocessed/Dataset501_ATLASR21"
-for required in dataset.json plans.json splits_final.json splits_summary.json; do
+for required in dataset.json nnUNetPlans.json splits_final.json splits_summary.json; do
   if [[ ! -s "$PREPROCESSED_DATASET/$required" ]]; then
     echo "[error] Did you run analysis_nnunet_01? Missing $PREPROCESSED_DATASET/$required" >&2
     exit 2

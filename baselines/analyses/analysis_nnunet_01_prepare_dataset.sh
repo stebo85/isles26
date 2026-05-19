@@ -59,11 +59,11 @@ then
   # pydicom (verified by `grep -r 'dicom2nifti\|import gdcm\|import pydicom'`).
   # Our inputs are NIfTI throughout.
   python -m pip install \
-      "acvl-utils==0.2" "dynamic-network-architectures>=0.3.1,<0.5" \
+      "acvl-utils>=0.2.3,<0.3" "dynamic-network-architectures>=0.3.1,<0.5" \
       "batchgenerators==0.25.1" "batchgeneratorsv2==0.3.0" \
       "tqdm" "nibabel" "scikit-image>=0.19.3" "scipy<1.14" \
-      "numpy<2.1" "matplotlib" "SimpleITK>=2.2.1" "pandas" \
-      "pyyaml" "graphviz" "imagecodecs" "yacs" "blosc2>=3.0.0b1" \
+      "numpy<2.1" "matplotlib" "seaborn" "SimpleITK>=2.2.1" "pandas" \
+      "pyyaml" "graphviz" "yacs" "blosc2>=3.0.0b1" \
       "einops"
 fi
 
