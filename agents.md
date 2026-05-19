@@ -1,11 +1,10 @@
 ## general guidelines
-- no credentials in the repo
-- commit and push after new features are implemented
 - when learning new insights make sure to update agents.md with a short description and longer documentation goes in docs (linked from agents.md)
+- always use codex to implement code and use codex adversarial review to check generated code and assumptions
 - literature review for ISLES'26 preparation lives in [docs/Literature_review_summary.md](docs/Literature_review_summary.md); key current lessons are to start with nnU-Net/MAPPING-style baselines, build metrics first, stratify validation by center/chronicity/lesion size, and treat small-lesion detection as the main risk, and compare any attention/transformer/SAM branch against nnU-Net under identical splits
 - evaluation framework lives in [eval/](eval/) with docs in [docs/evaluation_framework.md](docs/evaluation_framework.md); sensitive metrics include lesion-wise F1, HD95/ASSD, surface Dice @ 3 mm, and size-binned recall (pooled across cases) plus per-chronicity/per-center stratification; runner is `eval/run_eval.py`, unit tests with `PYTHONPATH=. python eval/tests/test_metrics.py` (19/19)
+- ATLAS R2.1 raw training data is decrypted to `data/ATLAS_R2.1_raw/Training_Raw/` (gitignored). Characterization: 955 sessions / 33 sites, all readable, file/affine/shape sanity OK; key lessons = 82 % 1 mm iso (R015/R027/R049 are non-iso outliers), orientations split LAS/RAS (force canonical), T1w intensity scale varies by 5 orders of magnitude (per-image percentile + z-score required; `t1_brain_p50`/`t1_brain_p99` columns added as normalization anchors), 126 sessions have no `DAYS_POST_STROKE` and 24 R049/R050 sessions encode it as `0`/`-4` (treated as `unknown` → `chronicity_counts = {ge180d: 540, lt180d: 264, unknown: 151}`), R039 stores masks as float64 `0.9999…` (re-binarize on load is step 1 of the preprocessing block — mandatory), lesion volumes log-skewed (median 4.3 mL, p95 136 mL, p5 0.14 mL — small lesions dominate lesion-wise F1), 26-connectivity CC distribution median 2 / p75 3 / p95 8 / max 38 (matches `eval/metrics.py`), severe per-site chronicity bias (R031 ≈3 % chronic vs. R047/R048 = 100 %). Full report + per-site CSV + QC PNGs in [docs/atlas_r21_training_data_characterization.md](docs/atlas_r21_training_data_characterization.md) and [baselines/reports/training_data_characterization/](baselines/reports/training_data_characterization/) (includes `adversarial_review.md` with defects 1–7 + fixes); pipeline scripts in [scripts/analysis/](scripts/analysis/) (SLURM job `analysis_01_characterize_training_data.sh`).
 - python venv for eval is at `.venv-eval/` (built with `python/3.12.1` module); scipy/numpy/etc. need `--only-binary=:all:` and `numpy<2.1 scipy<1.14` on this cluster (no OpenBLAS dev headers available for source builds)
-- soop_bench reference benchmark uses DeepISLES (`isleschallenge/deepisles`, SEALS+NVAUTO+SWAN ensemble) because GT masks are in DWI/TRACE space; pipeline is `baselines/analyses/analysis_01_pull_deepisles.sh` → `baselines/analyses/analysis_02_run_deepisles.sh` (SLURM array) → `baselines/analyses/analysis_03_evaluate.sh`; benchmark artifacts (md + json + QC PNGs) committed under [baselines/reports/](baselines/reports/), regenerable per-case outputs (containers, predictions, run dirs) stay under `work/` (gitignored)
 - don't run large analyses directly - write and sumbit slurm job files! Make sure to make them robust to interruption
 
 ```bash
@@ -16,8 +15,8 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem-per-cpu=2G
-#SBATCH --output=logs/%x_%j.out
-#SBATCH --error=logs/%x_%j.err
+#SBATCH --output=work/logs/%x_%j.out
+#SBATCH --error=work/logs/%x_%j.err
 #SBATCH -p owners
 
 
@@ -32,11 +31,9 @@ and submit them to the owners que:
 sbatch -p owners submit.sbatch
 ```
 
-- always use codex adversarial review to check generated code and assumptions
-
 ## project layout
 
-Rule of thumb: anything reviewable (markdown reports, summary JSONs, QC snapshots) belongs in `baselines/`; anything regenerable from a script belongs in `work/`.
+Rule of thumb: anything reviewable (markdown reports, summary JSONs, QC snapshots) belongs in this repo (e.g. `baselines/` for analysing existing state of the art baseline models); anything temporary and regenerable from a script belongs in `work/` including logs. 
 
 
 ```
@@ -66,6 +63,3 @@ isles26challenge/
 ├── logs/                              # SLURM stdout/stderr (gitignored)
 └── .venv-eval/                        # python venv for eval (gitignored)
 ```
-
-
-

@@ -1,0 +1,4 @@
+chronicity,n,lesion_ml_median,lesion_ml_p95,empty_lesion,cc_median,days_post_stroke_median
+ge180d,540,5.3604,135.727705,0,2.0,915.5
+lt180d,264,5.146,141.51704999999998,0,2.0,52.0
+unknown,151,1.476,97.394,0,2.0,0.0
