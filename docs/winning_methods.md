@@ -71,15 +71,43 @@ Reported improvements over the ATLAS winner baseline:
 
 This is a good candidate for our second-line experiment after reproducing nnU-Net and MAPPING metrics.
 
+## Post-MAPPING Advances (2024–2025)
+
+Three directions have emerged since the MICCAI'22 challenge closed. All three are ATLAS-targeted, all three have released code, and none of them has yet been compared head-to-head on the hidden generalizability set, so leaderboard claims should be read with care.
+
+### Transformer hybrids: Neuro-TransUNet
+
+Nouman et al. (arXiv 2406.06017) couple a SwinUNETR transformer backbone (Mix Vision Transformer encoder) with a U-Net decoder, processed 2.5D, and lean on an "ecological augmentation" scheme that inserts real lesion topologies into healthy brains during training. Reported to outperform nnU-Net and vanilla SwinUNETR on the ATLAS v2.0 training partition. The trade-off is the usual transformer one — more data hunger, less inductive bias, harder to train than nnU-Net out of the box.
+
+### Foundation models: BrainSegFounder
+
+Cox/Liu et al. (Med. Image Anal. 2024; arXiv 2406.10395) pretrain a 3D vision transformer with two-stage self-supervised learning on 41,400 multimodal MRI scans from the UK Biobank, then fine-tune on ATLAS v2.0 and BraTS. The thesis is that a model that already knows healthy neuroanatomy needs far fewer pathological examples to spot a lesion. Reportedly matches the MAPPING ensemble with a structurally simpler architecture and is directly relevant to the ISLES'26 cross-contrast stretch goal because the same encoder transfers to other modalities. Code: `lab-smile/BrainSegFounder`.
+
+### Physics-constrained synthetic data: qATLAS / qSynth
+
+Chalcroft et al. (arXiv 2412.03318, MICCAI 2025) replace ad-hoc augmentation with physics-constrained synthesis of qMRI maps — qATLAS estimates them from MPRAGE, qSynth generates them from tissue labels using MRI signal equations. Networks trained on this synthetic data learn lesion physiology rather than scanner-specific noise. Reported to beat both a real-data UNet baseline and earlier SynthSeg-style augmentation on out-of-domain datasets. Code: `liamchalcroft/qsynth`.
+
+### Deployment: StrokeSeg
+
+Published October 2025 (arXiv 2510.24378), StrokeSeg decouples preprocessing (Anima/BIDS), inference (ONNX Float16, ~50% size reduction), and post-processing into independent modules. On 300 held-out sub-acute/chronic stroke MRIs, the quantized ONNX model matched the PyTorch teacher (Dice difference < 10⁻³). A useful reference template once a teacher model exists.
+
+### Cross-MRI promptable segmentation: SAMRI
+
+Wang, Dai, Dao, Bollmann, Sun, Engstrom, Chandra (arXiv 2510.26635, October 2025) fine-tune only the SAM mask decoder on 1.1 million MRI slice-mask pairs covering 47 targets and 10+ imaging protocols, freezing the encoders to keep the surface small (96% fewer trainable params, 94% less training time vs full retraining). Reports mean DSC 0.87 ± 0.11 across all targets vs MedSAM 0.74 ± 0.24, with the headline number for our use case being a **+42.4% gain on small structures** (and +26.9% on medium structures) — directly relevant to the ATLAS small-lesion failure mode. Still prompted, so not an automatic challenge submission on its own, but a strong candidate for annotation assistance, pseudo-label generation, or as a teacher in a distillation pipeline. The author list overlaps with this project.
+
 ## Recommended Experiment Ladder
 
-1. Baseline: nnU-Net 3D full-resolution on ISLES'26 training data.
-2. Validation discipline: center-, chronicity-, and lesion-size-stratified folds.
-3. ATLAS replication: run CTRL/MAPPING on ATLAS v2.0 and verify published metrics if data access permits.
-4. Small-lesion branch: add MSL and DBL labels to a compact nnU-Net-compatible model.
-5. Metadata branch: condition normalization or sampling on `CENTER`, `CHRONICITY`, and `DAYS_POST_STROKE`.
-6. Augmentation branch: SynthSeg-like intensity and contrast randomization for cross-contrast robustness.
-7. Compression branch: distill ensemble into a smaller browser-capable model only after a high-quality teacher exists.
+1. Preprocessing: HD-BET or deepbet brain extraction, audited on a stratified sample before any training.
+2. Baseline: nnU-Net 3D full-resolution on ISLES'26 training data.
+3. Validation discipline: center-, chronicity-, and lesion-size-stratified folds.
+4. ATLAS replication: run CTRL/MAPPING on ATLAS v2.0 and verify published metrics if data access permits.
+5. Small-lesion branch: add MSL and DBL labels to a compact nnU-Net-compatible model.
+6. Metadata branch: condition normalization or sampling on `CENTER`, `CHRONICITY`, and `DAYS_POST_STROKE`.
+7. Augmentation branch: qSynth physics-constrained synthesis (preferred over plain SynthSeg) for center-shift robustness.
+8. Foundation-model branch: fine-tune the BrainSegFounder encoder against the nnU-Net baseline on identical folds.
+9. Transformer-hybrid branch: Neuro-TransUNet on identical folds.
+10. Annotation / pseudo-label branch: SAMRI as a labeling assistant and pseudo-label generator on uncertain cases, with expert review before any downstream training.
+11. Compression branch: StrokeSeg-style ONNX Float16 deployment after a strong teacher exists.
 
 ## Sources
 
@@ -87,3 +115,10 @@ This is a good candidate for our second-line experiment after reproducing nnU-Ne
 - CTRL/MAPPING code: https://github.com/King-HAW/ATLAS-R2-Docker-Submission
 - de la Rosa et al. 2025, DeepISLES: https://www.nature.com/articles/s41467-025-62373-x
 - Shang et al. 2024, MSL/DBL: https://arxiv.org/abs/2408.02929
+- Nouman et al. 2024, Neuro-TransUNet: https://arxiv.org/abs/2406.06017
+- Cox/Liu et al. 2024, BrainSegFounder: https://arxiv.org/abs/2406.10395
+- Chalcroft et al. 2025, qATLAS/qSynth: https://arxiv.org/abs/2412.03318
+- StrokeSeg deployment framework, 2025: https://arxiv.org/abs/2510.24378
+- HD-BET (Isensee et al. 2019): https://arxiv.org/abs/1901.11341
+- deepbet (Fisch et al. 2024): https://arxiv.org/abs/2308.07003
+- SAMRI (Wang, Dai, Dao, Bollmann, Sun, Engstrom, Chandra 2025): https://arxiv.org/abs/2510.26635
