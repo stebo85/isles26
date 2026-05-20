@@ -38,6 +38,7 @@ module load py-pytorch/2.4.1_py312
 export LD_LIBRARY_PATH="/share/software/user/open/python/3.12.1/lib:${LD_LIBRARY_PATH:-}"
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-4}"
 export PYTHONNOUSERSITE=1
+export nnUNet_compile=f  # cluster torch 2.4.0a0 has a broken _inductor/triton; skip torch.compile
 export nnUNet_raw="$REPO/work/nnunet/nnUNet_raw"
 export nnUNet_preprocessed="$REPO/work/nnunet/nnUNet_preprocessed"
 export nnUNet_results="$REPO/work/nnunet/nnUNet_results"

@@ -1,7 +1,59 @@
 # nnU-Net v2 baseline — pipeline status
 
-Submitted 2026-05-19. Final report lands here (`report.md`, `report.json`,
-`per_case.json`) once the chain completes.
+**COMPLETED 2026-05-20.** Reports: `report.md` (soop_bench OOD) here and
+`baselines/reports/nnunet_atlas_val/report.md` (ATLAS fold-0 held-out).
+
+## Headline results
+
+| Eval set | n | Dice mean / median | Lesion F1 | Surface Dice 3mm | HD95 mm |
+|---|---:|---:|---:|---:|---:|
+| **ATLAS R2.1 fold-0 held-out** (in-distribution) | 194 | **0.640 / 0.725** | 0.654 | 0.756 | 18.8 |
+| **soop_bench** (OOD, T1w-only) | 12 | **0.188 / 0.000** | 0.201 | 0.200 | 50.5 |
+| soop_bench — DeepISLES reference (DWI/ADC/FLAIR) | 12 | 0.540 / 0.704 | 0.582 | 0.763 | 18.9 |
+
+Training reached **Mean Validation Dice 0.6436** (matches the eval-framework's
+0.640), in line with the MAPPING ATLAS winner (~0.667) despite only fold 0 /
+250 epochs / no ensemble / no TTA.
+
+## Interpretation — the key finding
+
+The model is **strong in-distribution and collapses out-of-distribution**, and
+the failure is structural, not a bug:
+
+- **ATLAS held-out (0.64 Dice / 0.65 lesion-F1)** confirms the training is sound
+  and the stratified split is honest. Performance is roughly flat across
+  chronicity (ge180d 0.66, lt180d 0.59).
+- **soop_bench (0.19 Dice)** is far below DeepISLES (0.54). The per-chronicity
+  breakdown explains why: Dice is **chronic 0.53 > mixed 0.33 > acute 0.12**,
+  monotonic with chronicity. ATLAS R2.1 is a **chronic T1w** lesion dataset, so
+  the model learns chronic encephalomalacia/cavity appearance on T1w. soop_bench
+  GT is **DWI/TRACE-defined**, dominated by **acute** infarcts that are bright on
+  DWI but subtle/invisible on T1w — so the model massively under-segments them
+  (e.g. sub-8: 0.48 mL predicted vs 79.7 mL GT). DeepISLES wins on soop_bench
+  precisely because it consumes the DWI/ADC/FLAIR modalities the acute lesions
+  are defined on.
+
+**Takeaway for ISLES'26:** a T1w-only chronic-trained nnU-Net is a legitimate
+strong baseline for *chronic T1w* lesion segmentation (ATLAS-like), but is the
+wrong tool for acute DWI-defined benchmarks. The soop_bench number is a
+domain-and-modality-mismatch result, not a model-quality result. For a fair
+T1w-vs-T1w comparison we would need a T1w-defined acute/subacute test set, or to
+add the DWI modality to match soop_bench's target.
+
+## Caveats baked into these numbers
+
+- Reduced schedule: single fold (fold 0), 250 epochs (vs MAPPING's 5×1000 +
+  ensemble), TTA disabled.
+- soop_bench predictions are warped T1w→TRACE via per-subject ANTs rigid
+  registration; QC overlays in `work/qc_t1_to_trace/*.png` should be eyeballed
+  before over-interpreting individual soop cases.
+- soop_bench T1w skull-stripped with SynthStrip at inference vs ATLAS curator
+  brain-extraction at training — a secondary domain shift on top of the
+  chronicity/modality mismatch.
+
+---
+
+## (original pre-run plan below)
 
 ## Why nnU-Net v2
 

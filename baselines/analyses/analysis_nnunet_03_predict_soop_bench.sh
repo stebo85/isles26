@@ -60,6 +60,7 @@ module load ants/2.6.0
 export LD_LIBRARY_PATH="/share/software/user/open/python/3.12.1/lib:${LD_LIBRARY_PATH:-}"
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-4}"
 export PYTHONNOUSERSITE=1
+export nnUNet_compile=f  # cluster torch 2.4.0a0 has a broken _inductor/triton; skip torch.compile
 export nnUNet_raw="$REPO/work/nnunet/nnUNet_raw"
 export nnUNet_preprocessed="$REPO/work/nnunet/nnUNet_preprocessed"
 export nnUNet_results="$REPO/work/nnunet/nnUNet_results"
@@ -293,11 +294,14 @@ mv "$AFFINE_SENTINEL.tmp" "$AFFINE_SENTINEL"
 
 WARPED_PRED_TMP="$REG_DIR/${SUB}_pred_trace_tmp.nii.gz"
 rm -f "$WARPED_PRED_TMP"
+# -u uchar forces uint8 output; GenericLabel keeps the warped mask binary, but
+# ANTs otherwise writes float64 which fails the integer-dtype validation.
 antsApplyTransforms -d 3 \
   -i "$PRED_T1SPACE" \
   -r "$TRACE_REF3D" \
   -o "$WARPED_PRED_TMP" \
   -n GenericLabel \
+  -u uchar \
   -t "$AFFINE_MAT"
 validate_integer_nifti "$WARPED_PRED_TMP"
 

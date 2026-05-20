@@ -67,6 +67,27 @@ then
       "einops"
 fi
 
+# nnU-Net's trainer discovery (find_class_by_name) imports every variant
+# module to scan for the requested trainer class and does not catch
+# ImportError. The Primus trainer's import chain
+# (primus -> timm -> torchvision) cannot resolve against the cluster's
+# custom torch 2.4.0a0+gitunknown build (no published torchvision wheel
+# matches the dev-build ABI). Since we don't use Primus, neutralize its
+# discovery module to a no-op so other trainer lookups succeed.
+PRIMUS_VARIANT="$VENV/lib/python3.12/site-packages/nnunetv2/training/nnUNetTrainer/primus/primus_trainers.py"
+if [[ -f "$PRIMUS_VARIANT" ]]; then
+  primus_size=$(stat -c %s "$PRIMUS_VARIANT")
+  if (( primus_size > 100 )); then
+    cat > "$PRIMUS_VARIANT" <<'PY'
+# Neutralized: Primus requires timm+torchvision compatible with the cluster's
+# custom torch 2.4.0a0 dev build, which is not satisfiable. nnU-Net's
+# find_class_by_name walker fails on any ImportError; this stub lets the
+# walker skip past Primus and find the trainers we actually use.
+PY
+    echo "[info] neutralized $PRIMUS_VARIANT"
+  fi
+fi
+
 python -c "import nnunetv2, sys; assert '.venv-nnunet' in nnunetv2.__file__, nnunetv2.__file__"
 python - <<'PY'
 import importlib.metadata

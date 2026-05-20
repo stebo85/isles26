@@ -50,6 +50,7 @@ module load py-pytorch/2.4.1_py312
 export LD_LIBRARY_PATH="/share/software/user/open/python/3.12.1/lib:${LD_LIBRARY_PATH:-}"
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-8}"
 export nnUNet_n_proc_DA="${SLURM_CPUS_PER_TASK:-8}"
+export nnUNet_compile=f  # cluster torch 2.4.0a0 has a broken _inductor/triton; skip torch.compile
 export nnUNet_raw="$REPO/work/nnunet/nnUNet_raw"
 export nnUNet_preprocessed="$REPO/work/nnunet/nnUNet_preprocessed"
 export nnUNet_results="$REPO/work/nnunet/nnUNet_results"
@@ -121,8 +122,7 @@ child_pid=$!
 wait "$child_pid"
 child_pid=""
 
-nnUNetv2_find_best_configuration \
-  -d 501 \
+nnUNetv2_find_best_configuration 501 \
   -c 3d_fullres \
   -f 0 \
   -tr nnUNetTrainer_250epochs \
