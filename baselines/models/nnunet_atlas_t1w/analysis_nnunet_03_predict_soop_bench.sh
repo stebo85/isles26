@@ -77,7 +77,7 @@ if [[ ! -x "$VENV/bin/python" ]]; then
   exit 2
 fi
 source "$VENV/bin/activate"
-python "$REPO/baselines/analyses/nnunet_helpers/install_trainer_variant.py"
+python "$REPO/baselines/models/nnunet_atlas_t1w/nnunet_helpers/install_trainer_variant.py"
 
 RESULT_FOLD="$nnUNet_results/Dataset501_ATLASR21/nnUNetTrainer_250epochs__nnUNetPlans__3d_fullres/fold_0"
 if [[ -s "$RESULT_FOLD/checkpoint_final.pth" ]]; then

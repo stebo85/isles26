@@ -35,6 +35,21 @@ Action:
 - Do not assume a single intensity signature for lesions.
 - Build intensity augmentation that can mimic phase and scanner variation.
 
+**Empirically confirmed (2026-05-20).** Our first nnU-Net v2 baseline trained
+on ATLAS R2.1 (chronic T1w) scored 0.640 Dice / 0.654 lesion-F1 on the ATLAS
+fold-0 held-out set (in-distribution, ~MAPPING-level) but only **0.188 Dice /
+0.201 lesion-F1 on soop_bench** (out-of-distribution). The soop_bench
+per-chronicity breakdown is monotonic — **chronic 0.53 > mixed 0.33 >
+acute 0.12** — and the model massively under-segments acute cases (e.g. 0.48 mL
+predicted vs 79.7 mL GT). Mechanism: ATLAS lesions are chronic encephalomalacia
+on T1w; soop_bench GT is DWI/TRACE-defined acute infarcts that are bright on DWI
+but subtle/invisible on T1w. **A chronic-T1w-trained model is the wrong tool for
+an acute DWI-defined benchmark, and the gap is modality+phase, not model
+quality.** Implication for ISLES'26: a T1w-only model must be validated on a
+T1w-defined test set across all phases; do not read a low score on a
+DWI-defined benchmark as a model-quality verdict. Full numbers + caveats in
+`baselines/reports/nnunet/PIPELINE_STATUS.md`.
+
 ## Problem 4: Center And Scanner Shift Matter
 
 ATLAS v2.0 was designed with a hidden generalizability set from separate cohorts. ISLES'22 multimodal data included a test center unseen during training, and DeepISLES analyzed performance by center. ISLES'26 has 60+ centers, so center shift is not a side issue.
@@ -74,6 +89,28 @@ Action:
 - Expect label noise, especially at lesion boundaries and tiny lesions.
 - Use robust losses and evaluate boundary tolerance where possible.
 - Review apparent false positives manually; some may be plausible lesions absent from the label.
+
+## Problem 8: Published "Strong T1w" Weights Are Effectively Unreachable
+
+The strongest published T1w stroke segmenters all gate their weights behind
+interactive auth that a compute cluster cannot script through (verified
+2026-05-20):
+
+- **MAPPING / CTRL** (ATLAS R2 winner): weights on a KCL SharePoint folder —
+  returns HTTP 403 `Forms_Based_Auth_Required` from the cluster.
+- **Halai et al. 2026** (`AjayHalai/Lesion-Segmentation-nnUNet`): weights on a
+  Cambridge OneDrive share.
+- **BrainSegFounder** (`lab-smile/BrainSegFounder`): weights on Google Drive.
+- **qSynth** (`liamchalcroft/qsynth`): weights "coming soon", not yet released.
+
+Action:
+
+- Budget for **training our own** baseline rather than assuming a drop-in
+  pretrained model; this is why the canonical move is "train nnU-Net on the
+  data we have" (we have ATLAS R2.1 decrypted locally).
+- If a published model is essential, ask a human to fetch the weights via
+  browser and stage them on `/scratch`; do not burn cycles scripting around
+  SharePoint/OneDrive auth.
 
 ## What We Should Avoid
 

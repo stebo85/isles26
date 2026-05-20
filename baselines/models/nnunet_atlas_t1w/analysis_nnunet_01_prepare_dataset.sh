@@ -29,7 +29,7 @@ export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-8}"
 export PYTHONNOUSERSITE=1
 
 VENV="$REPO/.venv-nnunet"
-REQ="$REPO/baselines/analyses/nnunet_helpers/requirements_nnunet.txt"
+REQ="$REPO/baselines/models/nnunet_atlas_t1w/nnunet_helpers/requirements_nnunet.txt"
 venv_created=0
 if [[ ! -x "$VENV/bin/python" ]]; then
   python3 -m venv --system-site-packages "$VENV"
@@ -101,7 +101,7 @@ if [[ -z "$NNUNET_TRAIN_BIN" || "$NNUNET_TRAIN_BIN" != "$VENV/"* ]]; then
   exit 2
 fi
 
-python "$REPO/baselines/analyses/nnunet_helpers/install_trainer_variant.py"
+python "$REPO/baselines/models/nnunet_atlas_t1w/nnunet_helpers/install_trainer_variant.py"
 
 export nnUNet_raw="$REPO/work/nnunet/nnUNet_raw"
 export nnUNet_preprocessed="$REPO/work/nnunet/nnUNet_preprocessed"
@@ -112,14 +112,14 @@ DATASET_DIR="$nnUNet_raw/Dataset501_ATLASR21"
 PREPROCESSED_DIR="$nnUNet_preprocessed/Dataset501_ATLASR21"
 INVENTORY="$REPO/baselines/reports/training_data_characterization/per_session.csv"
 
-python "$REPO/baselines/analyses/nnunet_helpers/convert_atlas_r21_to_nnunet.py" convert \
+python "$REPO/baselines/models/nnunet_atlas_t1w/nnunet_helpers/convert_atlas_r21_to_nnunet.py" convert \
   --inventory "$INVENTORY" \
   --dataset-dir "$DATASET_DIR" \
   --repo-root "$REPO"
 
 nnUNetv2_plan_and_preprocess -d 501 -c 3d_fullres --verify_dataset_integrity
 
-python "$REPO/baselines/analyses/nnunet_helpers/convert_atlas_r21_to_nnunet.py" splits \
+python "$REPO/baselines/models/nnunet_atlas_t1w/nnunet_helpers/convert_atlas_r21_to_nnunet.py" splits \
   --dataset-dir "$DATASET_DIR" \
   --preprocessed-dir "$PREPROCESSED_DIR" \
   --folds 5 \

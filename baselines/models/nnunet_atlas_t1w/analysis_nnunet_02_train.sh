@@ -62,7 +62,7 @@ if [[ ! -x "$VENV/bin/python" ]]; then
 fi
 source "$VENV/bin/activate"
 
-python "$REPO/baselines/analyses/nnunet_helpers/install_trainer_variant.py"
+python "$REPO/baselines/models/nnunet_atlas_t1w/nnunet_helpers/install_trainer_variant.py"
 python - <<'PY'
 import torch
 print(f"[info] torch={torch.__version__} cuda_available={torch.cuda.is_available()}")

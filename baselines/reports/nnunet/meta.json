@@ -1,0 +1,11 @@
+{
+  "method": "nnunet_atlas_t1w",
+  "display_name": "nnU-Net v2 3D fullres (ATLAS R2.1, fold 0, 250ep, T1w)",
+  "model_family": "nnunet",
+  "eval_set": "soop_bench",
+  "input_modalities": ["T1w"],
+  "trained_on": "ATLAS R2.1 (chronic T1w, fold 0 of stratified 5-fold)",
+  "status": "complete",
+  "pipeline_dir": "baselines/models/nnunet_atlas_t1w",
+  "notes": "single fold, reduced 250-epoch schedule, no TTA, no ensemble; T1w prediction warped to TRACE space via ANTs rigid registration"
+}

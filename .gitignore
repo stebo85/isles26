@@ -3,3 +3,5 @@ data/
 work
 logs
 DeepIsles
+__pycache__/
+*.pyc

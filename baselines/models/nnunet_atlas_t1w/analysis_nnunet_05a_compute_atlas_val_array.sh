@@ -3,7 +3,7 @@
 # Materialize the fold-0 ATLAS validation case list for the array prediction job.
 #
 # Usage:
-#   bash baselines/analyses/analysis_nnunet_05a_compute_atlas_val_array.sh
+#   bash baselines/models/nnunet_atlas_t1w/analysis_nnunet_05a_compute_atlas_val_array.sh
 #
 # The script writes work/predictions_atlas_val/val_cases.txt idempotently and
 # prints the sbatch array range as:

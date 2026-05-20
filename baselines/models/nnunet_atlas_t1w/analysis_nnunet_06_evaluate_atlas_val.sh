@@ -61,7 +61,7 @@ if (( ${#missing[@]} > 0 )); then
   exit 2
 fi
 
-PYTHONPATH="$REPO" python baselines/analyses/nnunet_helpers/run_atlas_eval.py \
+PYTHONPATH="$REPO" python baselines/models/nnunet_atlas_t1w/nnunet_helpers/run_atlas_eval.py \
   --manifest work/nnunet/nnUNet_raw/Dataset501_ATLASR21/conversion_manifest.csv \
   --splits work/nnunet/nnUNet_preprocessed/Dataset501_ATLASR21/splits_final.json \
   --pred-dir work/predictions_atlas_val \

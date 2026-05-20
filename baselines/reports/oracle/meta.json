@@ -1,0 +1,11 @@
+{
+  "method": "oracle",
+  "display_name": "Oracle (GT as prediction)",
+  "model_family": "sanity",
+  "eval_set": "soop_bench",
+  "input_modalities": [],
+  "trained_on": null,
+  "status": "complete",
+  "pipeline_dir": null,
+  "notes": "upper-bound sanity check: ground truth copied as prediction (Dice should be ~1.0)"
+}

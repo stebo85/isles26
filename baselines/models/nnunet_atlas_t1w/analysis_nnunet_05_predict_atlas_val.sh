@@ -13,11 +13,11 @@
 # Run nnU-Net prediction for one fold-0 ATLAS validation case per array task.
 #
 # First compute the validation list and array bound:
-#   bash baselines/analyses/analysis_nnunet_05a_compute_atlas_val_array.sh
+#   bash baselines/models/nnunet_atlas_t1w/analysis_nnunet_05a_compute_atlas_val_array.sh
 #
 # That writes work/predictions_atlas_val/val_cases.txt and prints array=0-N.
 # Submit this script with that bound, for example:
-#   sbatch --array=0-N baselines/analyses/analysis_nnunet_05_predict_atlas_val.sh
+#   sbatch --array=0-N baselines/models/nnunet_atlas_t1w/analysis_nnunet_05_predict_atlas_val.sh
 
 set -euo pipefail
 
@@ -49,7 +49,7 @@ if [[ ! -x "$VENV/bin/python" ]]; then
   exit 2
 fi
 source "$VENV/bin/activate"
-python "$REPO/baselines/analyses/nnunet_helpers/install_trainer_variant.py"
+python "$REPO/baselines/models/nnunet_atlas_t1w/nnunet_helpers/install_trainer_variant.py"
 NNUNET_PREDICT_BIN="$(command -v nnUNetv2_predict || true)"
 if [[ -z "$NNUNET_PREDICT_BIN" || "$NNUNET_PREDICT_BIN" != "$VENV/"* ]]; then
   echo "[error] nnUNetv2_predict is not inside $VENV: ${NNUNET_PREDICT_BIN:-not found}" >&2
@@ -74,7 +74,7 @@ if [[ ! -d "$RAW_IMAGES" ]]; then
 fi
 if [[ ! -s "$VAL_LIST" ]]; then
   echo "[error] missing validation case list: $VAL_LIST" >&2
-  echo "[error] run baselines/analyses/analysis_nnunet_05a_compute_atlas_val_array.sh first" >&2
+  echo "[error] run baselines/models/nnunet_atlas_t1w/analysis_nnunet_05a_compute_atlas_val_array.sh first" >&2
   exit 2
 fi
 

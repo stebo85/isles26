@@ -1,0 +1,11 @@
+{
+  "method": "empty",
+  "display_name": "Empty (all-background prediction)",
+  "model_family": "sanity",
+  "eval_set": "soop_bench",
+  "input_modalities": [],
+  "trained_on": null,
+  "status": "complete",
+  "pipeline_dir": null,
+  "notes": "lower-bound sanity check: null prediction (Dice 0); confirms metrics handle empty masks"
+}

@@ -1,0 +1,11 @@
+{
+  "method": "deepisles",
+  "display_name": "DeepISLES ensemble (SEALS+NVAUTO+SWAN)",
+  "model_family": "ensemble",
+  "eval_set": "soop_bench",
+  "input_modalities": ["DWI", "ADC", "FLAIR"],
+  "trained_on": "ISLES'22 (acute DWI/ADC/FLAIR)",
+  "status": "complete",
+  "pipeline_dir": "baselines/models/deepisles",
+  "notes": "pretrained apptainer ensemble; consumes the DWI/ADC/FLAIR modalities the soop_bench GT is defined on"
+}
