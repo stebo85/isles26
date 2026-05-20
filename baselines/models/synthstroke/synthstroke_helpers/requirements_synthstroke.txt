@@ -1,0 +1,11 @@
+# SynthStroke deps (torch comes from the cluster py-pytorch module via
+# --system-site-packages, so it is intentionally NOT pinned here).
+# Mirrors liamchalcroft/synthstroke requirements.txt minus torch.
+monai>=1.3.0
+nibabel>=5.0.0
+scikit-image>=0.21.0
+tqdm>=4.65.0
+# wandb is installed separately for Phase B training to avoid py3.12 sdist build failures during Phase A.
+cornucopia>=0.1.0
+huggingface_hub>=0.20.0
+safetensors>=0.4.0
