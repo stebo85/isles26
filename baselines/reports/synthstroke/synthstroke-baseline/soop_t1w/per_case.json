@@ -9,43 +9,43 @@
     "chronicity": "mixed",
     "center": "Philips|Intera",
     "overlap": {
-      "dice": 0.0,
-      "iou": 0.0,
-      "sensitivity": 0.0,
-      "specificity": 1.0,
-      "precision": NaN,
-      "npv": 0.9805350152240104,
-      "tp": 0,
-      "fp": 0,
-      "fn": 20943,
-      "tn": 1054989
+      "dice": 0.4647594801018357,
+      "iou": 0.30272747108880643,
+      "sensitivity": 0.3312323926849067,
+      "specificity": 0.9981307861977707,
+      "precision": 0.7786508025592098,
+      "npv": 0.9868737599845552,
+      "tp": 6937,
+      "fp": 1972,
+      "fn": 14006,
+      "tn": 1053017
     },
     "volume": {
-      "pred_vol_ml": 0.0,
+      "pred_vol_ml": 46.98105244726698,
       "gt_vol_ml": 110.44159629622993,
-      "abs_volume_diff_ml": 110.44159629622993,
-      "signed_volume_diff_ml": -110.44159629622993,
-      "relative_abs_volume_diff": 1.0
+      "abs_volume_diff_ml": 63.46054384896295,
+      "signed_volume_diff_ml": -63.46054384896295,
+      "relative_abs_volume_diff": 0.5746072673446976
     },
     "boundary": {
-      "hd95_mm": NaN,
-      "assd_mm": NaN,
-      "masd_mm": NaN,
-      "surface_dice_3mm": NaN
+      "hd95_mm": 53.027639009597905,
+      "assd_mm": 15.940759511162453,
+      "masd_mm": 12.183673425808683,
+      "surface_dice_3mm": 0.32821048749001047
     },
     "lesionwise": {
       "gt_lesion_count": 4,
-      "pred_lesion_count": 0,
-      "tp_lesions": 0,
-      "fp_lesions": 0,
-      "fn_lesions": 4,
-      "lesion_precision": 1.0,
-      "lesion_recall": 0.0,
-      "lesion_f1": 0.0,
-      "abs_lesion_count_diff": 4,
-      "signed_lesion_count_diff": -4,
+      "pred_lesion_count": 2,
+      "tp_lesions": 1,
+      "fp_lesions": 1,
+      "fn_lesions": 3,
+      "lesion_precision": 0.5,
+      "lesion_recall": 0.25,
+      "lesion_f1": 0.3333333333333333,
+      "abs_lesion_count_diff": 2,
+      "signed_lesion_count_diff": -2,
       "per_gt_overlap": [
-        0,
+        6937,
         0,
         0,
         0
@@ -56,8 +56,13 @@
         1394,
         18
       ],
-      "per_pred_size_voxels": [],
-      "detected_gt_indices": []
+      "per_pred_size_voxels": [
+        8906,
+        3
+      ],
+      "detected_gt_indices": [
+        1
+      ]
     },
     "size_bins_voxels": {
       "tiny_<10": {
@@ -82,8 +87,8 @@
       },
       "huge_>=10k": {
         "n_gt": 1,
-        "n_detected": 0,
-        "recall": 0.0
+        "n_detected": 1,
+        "recall": 1.0
       }
     },
     "size_bins_ml": {
@@ -109,8 +114,8 @@
       },
       "vlarge_>=50mL": {
         "n_gt": 1,
-        "n_detected": 0,
-        "recall": 0.0
+        "n_detected": 1,
+        "recall": 1.0
       }
     },
     "extras": {},
@@ -135,45 +140,49 @@
       "dice": 0.0,
       "iou": 0.0,
       "sensitivity": 0.0,
-      "specificity": 1.0,
-      "precision": NaN,
-      "npv": 0.9980357142857142,
+      "specificity": 0.9998400358319737,
+      "precision": 0.0,
+      "npv": 0.9980354006375189,
       "tp": 0,
-      "fp": 0,
+      "fp": 135,
       "fn": 1661,
-      "tn": 843939
+      "tn": 843804
     },
     "volume": {
-      "pred_vol_ml": 0.0,
+      "pred_vol_ml": 0.9904078620711836,
       "gt_vol_ml": 12.185684880742489,
-      "abs_volume_diff_ml": 12.185684880742489,
-      "signed_volume_diff_ml": -12.185684880742489,
-      "relative_abs_volume_diff": 1.0
+      "abs_volume_diff_ml": 11.195277018671305,
+      "signed_volume_diff_ml": -11.195277018671305,
+      "relative_abs_volume_diff": 0.9187236604455148
     },
     "boundary": {
-      "hd95_mm": NaN,
-      "assd_mm": NaN,
-      "masd_mm": NaN,
-      "surface_dice_3mm": NaN
+      "hd95_mm": 59.02030859774092,
+      "assd_mm": 39.087186888747,
+      "masd_mm": 42.686669755984866,
+      "surface_dice_3mm": 0.0
     },
     "lesionwise": {
       "gt_lesion_count": 1,
-      "pred_lesion_count": 0,
+      "pred_lesion_count": 3,
       "tp_lesions": 0,
-      "fp_lesions": 0,
+      "fp_lesions": 3,
       "fn_lesions": 1,
-      "lesion_precision": 1.0,
+      "lesion_precision": 0.0,
       "lesion_recall": 0.0,
       "lesion_f1": 0.0,
-      "abs_lesion_count_diff": 1,
-      "signed_lesion_count_diff": -1,
+      "abs_lesion_count_diff": 2,
+      "signed_lesion_count_diff": 2,
       "per_gt_overlap": [
         0
       ],
       "per_gt_size_voxels": [
         1661
       ],
-      "per_pred_size_voxels": [],
+      "per_pred_size_voxels": [
+        91,
+        2,
+        42
+      ],
       "detected_gt_indices": []
     },
     "size_bins_voxels": {
@@ -249,51 +258,56 @@
     "chronicity": "chronic",
     "center": "Philips|Ingenia Ambition X",
     "overlap": {
-      "dice": 0.0,
-      "iou": 0.0,
-      "sensitivity": 0.0,
-      "specificity": 1.0,
-      "precision": NaN,
-      "npv": 0.9991252255181022,
-      "tp": 0,
-      "fp": 0,
-      "fn": 705,
-      "tn": 805217
+      "dice": 0.4563758389261745,
+      "iou": 0.2956521739130435,
+      "sensitivity": 0.3375886524822695,
+      "specificity": 0.9998758098748536,
+      "precision": 0.7041420118343196,
+      "npv": 0.9994202963316053,
+      "tp": 238,
+      "fp": 100,
+      "fn": 467,
+      "tn": 805117
     },
     "volume": {
-      "pred_vol_ml": 0.0,
+      "pred_vol_ml": 2.4796848061683754,
       "gt_vol_ml": 5.172123634167765,
-      "abs_volume_diff_ml": 5.172123634167765,
-      "signed_volume_diff_ml": -5.172123634167765,
-      "relative_abs_volume_diff": 1.0
+      "abs_volume_diff_ml": 2.69243882799939,
+      "signed_volume_diff_ml": -2.69243882799939,
+      "relative_abs_volume_diff": 0.5205673758865248
     },
     "boundary": {
-      "hd95_mm": NaN,
-      "assd_mm": NaN,
-      "masd_mm": NaN,
-      "surface_dice_3mm": NaN
+      "hd95_mm": 36.856984872047974,
+      "assd_mm": 6.952399395281192,
+      "masd_mm": 5.6155273443224685,
+      "surface_dice_3mm": 0.5412147505422994
     },
     "lesionwise": {
       "gt_lesion_count": 2,
-      "pred_lesion_count": 0,
-      "tp_lesions": 0,
-      "fp_lesions": 0,
-      "fn_lesions": 2,
-      "lesion_precision": 1.0,
-      "lesion_recall": 0.0,
-      "lesion_f1": 0.0,
-      "abs_lesion_count_diff": 2,
-      "signed_lesion_count_diff": -2,
+      "pred_lesion_count": 2,
+      "tp_lesions": 1,
+      "fp_lesions": 1,
+      "fn_lesions": 1,
+      "lesion_precision": 0.5,
+      "lesion_recall": 0.5,
+      "lesion_f1": 0.5,
+      "abs_lesion_count_diff": 0,
+      "signed_lesion_count_diff": 0,
       "per_gt_overlap": [
-        0,
+        238,
         0
       ],
       "per_gt_size_voxels": [
         588,
         117
       ],
-      "per_pred_size_voxels": [],
-      "detected_gt_indices": []
+      "per_pred_size_voxels": [
+        320,
+        18
+      ],
+      "detected_gt_indices": [
+        1
+      ]
     },
     "size_bins_voxels": {
       "tiny_<10": {
@@ -308,8 +322,8 @@
       },
       "medium_100-1k": {
         "n_gt": 2,
-        "n_detected": 0,
-        "recall": 0.0
+        "n_detected": 1,
+        "recall": 0.5
       },
       "large_1k-10k": {
         "n_gt": 0,
@@ -335,8 +349,8 @@
       },
       "med_1-10mL": {
         "n_gt": 1,
-        "n_detected": 0,
-        "recall": 0.0
+        "n_detected": 1,
+        "recall": 1.0
       },
       "large_10-50mL": {
         "n_gt": 0,
@@ -492,45 +506,50 @@
       "dice": 0.0,
       "iou": 0.0,
       "sensitivity": 0.0,
-      "specificity": 1.0,
-      "precision": NaN,
-      "npv": 0.9999281070709642,
+      "specificity": 0.9998338093144575,
+      "precision": 0.0,
+      "npv": 0.9999280951219024,
       "tp": 0,
-      "fp": 0,
+      "fp": 141,
       "fn": 61,
-      "tn": 848423
+      "tn": 848282
     },
     "volume": {
-      "pred_vol_ml": 0.0,
+      "pred_vol_ml": 1.0344257719572063,
       "gt_vol_ml": 0.44751753254886234,
-      "abs_volume_diff_ml": 0.44751753254886234,
-      "signed_volume_diff_ml": -0.44751753254886234,
-      "relative_abs_volume_diff": 1.0
+      "abs_volume_diff_ml": 0.586908239408344,
+      "signed_volume_diff_ml": 0.586908239408344,
+      "relative_abs_volume_diff": 1.3114754098360655
     },
     "boundary": {
-      "hd95_mm": NaN,
-      "assd_mm": NaN,
-      "masd_mm": NaN,
-      "surface_dice_3mm": NaN
+      "hd95_mm": 32.60670578677702,
+      "assd_mm": 23.021487582319487,
+      "masd_mm": 21.703871281959692,
+      "surface_dice_3mm": 0.0
     },
     "lesionwise": {
       "gt_lesion_count": 1,
-      "pred_lesion_count": 0,
+      "pred_lesion_count": 4,
       "tp_lesions": 0,
-      "fp_lesions": 0,
+      "fp_lesions": 4,
       "fn_lesions": 1,
-      "lesion_precision": 1.0,
+      "lesion_precision": 0.0,
       "lesion_recall": 0.0,
       "lesion_f1": 0.0,
-      "abs_lesion_count_diff": 1,
-      "signed_lesion_count_diff": -1,
+      "abs_lesion_count_diff": 3,
+      "signed_lesion_count_diff": 3,
       "per_gt_overlap": [
         0
       ],
       "per_gt_size_voxels": [
         61
       ],
-      "per_pred_size_voxels": [],
+      "per_pred_size_voxels": [
+        24,
+        115,
+        1,
+        1
+      ],
       "detected_gt_indices": []
     },
     "size_bins_voxels": {
@@ -606,43 +625,43 @@
     "chronicity": "acute",
     "center": "Philips|Ingenia Elition X",
     "overlap": {
-      "dice": 0.0,
-      "iou": 0.0,
-      "sensitivity": 0.0,
-      "specificity": 1.0,
-      "precision": NaN,
-      "npv": 0.987101980932887,
-      "tp": 0,
-      "fp": 0,
-      "fn": 44765,
-      "tn": 3425923
+      "dice": 0.08618153131063304,
+      "iou": 0.045031194295900176,
+      "sensitivity": 0.04514687814140512,
+      "specificity": 0.9999664324037639,
+      "precision": 0.9461610486891385,
+      "npv": 0.9876767019782319,
+      "tp": 2021,
+      "fp": 115,
+      "fn": 42744,
+      "tn": 3425808
     },
     "volume": {
-      "pred_vol_ml": 0.0,
+      "pred_vol_ml": 3.955556671531205,
       "gt_vol_ml": 82.89817153609287,
-      "abs_volume_diff_ml": 82.89817153609287,
-      "signed_volume_diff_ml": -82.89817153609287,
-      "relative_abs_volume_diff": 1.0
+      "abs_volume_diff_ml": 78.94261486456168,
+      "signed_volume_diff_ml": -78.94261486456168,
+      "relative_abs_volume_diff": 0.9522841505640568
     },
     "boundary": {
-      "hd95_mm": NaN,
-      "assd_mm": NaN,
-      "masd_mm": NaN,
-      "surface_dice_3mm": NaN
+      "hd95_mm": 46.108285667308024,
+      "assd_mm": 17.9976720731558,
+      "masd_mm": 10.977682015420372,
+      "surface_dice_3mm": 0.08970966556413083
     },
     "lesionwise": {
       "gt_lesion_count": 7,
-      "pred_lesion_count": 0,
-      "tp_lesions": 0,
-      "fp_lesions": 0,
-      "fn_lesions": 7,
-      "lesion_precision": 1.0,
-      "lesion_recall": 0.0,
-      "lesion_f1": 0.0,
-      "abs_lesion_count_diff": 7,
-      "signed_lesion_count_diff": -7,
+      "pred_lesion_count": 4,
+      "tp_lesions": 1,
+      "fp_lesions": 1,
+      "fn_lesions": 6,
+      "lesion_precision": 0.75,
+      "lesion_recall": 0.14285714285714285,
+      "lesion_f1": 0.24,
+      "abs_lesion_count_diff": 3,
+      "signed_lesion_count_diff": -3,
       "per_gt_overlap": [
-        0,
+        923,
         0,
         0,
         0,
@@ -659,8 +678,15 @@
         45,
         2545
       ],
-      "per_pred_size_voxels": [],
-      "detected_gt_indices": []
+      "per_pred_size_voxels": [
+        930,
+        648,
+        40,
+        518
+      ],
+      "detected_gt_indices": [
+        1
+      ]
     },
     "size_bins_voxels": {
       "tiny_<10": {
@@ -685,8 +711,8 @@
       },
       "huge_>=10k": {
         "n_gt": 1,
-        "n_detected": 0,
-        "recall": 0.0
+        "n_detected": 1,
+        "recall": 1.0
       }
     },
     "size_bins_ml": {
@@ -712,8 +738,8 @@
       },
       "vlarge_>=50mL": {
         "n_gt": 1,
-        "n_detected": 0,
-        "recall": 0.0
+        "n_detected": 1,
+        "recall": 1.0
       }
     },
     "extras": {},
@@ -735,43 +761,43 @@
     "chronicity": "mixed",
     "center": "Philips|Achieva",
     "overlap": {
-      "dice": 0.0,
-      "iou": 0.0,
-      "sensitivity": 0.0,
-      "specificity": 1.0,
-      "precision": NaN,
-      "npv": 0.9736722560489656,
-      "tp": 0,
-      "fp": 0,
-      "fn": 33035,
-      "tn": 1221725
+      "dice": 0.00048306261699172754,
+      "iou": 0.0002415896599625536,
+      "sensitivity": 0.00024216739821401545,
+      "specificity": 0.999935337330414,
+      "precision": 0.09195402298850575,
+      "npv": 0.973676806626109,
+      "tp": 8,
+      "fp": 79,
+      "fn": 33027,
+      "tn": 1221646
     },
     "volume": {
-      "pred_vol_ml": 0.0,
+      "pred_vol_ml": 0.42135289812245963,
       "gt_vol_ml": 159.99302286753397,
-      "abs_volume_diff_ml": 159.99302286753397,
-      "signed_volume_diff_ml": -159.99302286753397,
-      "relative_abs_volume_diff": 1.0
+      "abs_volume_diff_ml": 159.57166996941152,
+      "signed_volume_diff_ml": -159.57166996941152,
+      "relative_abs_volume_diff": 0.9973664295444227
     },
     "boundary": {
-      "hd95_mm": NaN,
-      "assd_mm": NaN,
-      "masd_mm": NaN,
-      "surface_dice_3mm": NaN
+      "hd95_mm": 90.81855401684496,
+      "assd_mm": 64.40808065222834,
+      "masd_mm": 35.82726773554704,
+      "surface_dice_3mm": 0.003367230116506162
     },
     "lesionwise": {
       "gt_lesion_count": 5,
-      "pred_lesion_count": 0,
-      "tp_lesions": 0,
-      "fp_lesions": 0,
-      "fn_lesions": 5,
-      "lesion_precision": 1.0,
-      "lesion_recall": 0.0,
-      "lesion_f1": 0.0,
-      "abs_lesion_count_diff": 5,
-      "signed_lesion_count_diff": -5,
+      "pred_lesion_count": 3,
+      "tp_lesions": 1,
+      "fp_lesions": 1,
+      "fn_lesions": 4,
+      "lesion_precision": 0.6666666666666666,
+      "lesion_recall": 0.2,
+      "lesion_f1": 0.30769230769230765,
+      "abs_lesion_count_diff": 2,
+      "signed_lesion_count_diff": -2,
       "per_gt_overlap": [
-        0,
+        7,
         0,
         0,
         0,
@@ -784,8 +810,14 @@
         31073,
         21
       ],
-      "per_pred_size_voxels": [],
-      "detected_gt_indices": []
+      "per_pred_size_voxels": [
+        1,
+        75,
+        11
+      ],
+      "detected_gt_indices": [
+        1
+      ]
     },
     "size_bins_voxels": {
       "tiny_<10": {
@@ -800,8 +832,8 @@
       },
       "medium_100-1k": {
         "n_gt": 1,
-        "n_detected": 0,
-        "recall": 0.0
+        "n_detected": 1,
+        "recall": 1.0
       },
       "large_1k-10k": {
         "n_gt": 1,
@@ -827,8 +859,8 @@
       },
       "med_1-10mL": {
         "n_gt": 2,
-        "n_detected": 0,
-        "recall": 0.0
+        "n_detected": 1,
+        "recall": 0.5
       },
       "large_10-50mL": {
         "n_gt": 0,
@@ -1236,38 +1268,38 @@
       "dice": 0.0,
       "iou": 0.0,
       "sensitivity": 0.0,
-      "specificity": 1.0,
-      "precision": NaN,
-      "npv": 0.9856678097247867,
+      "specificity": 0.9999519659644548,
+      "precision": 0.0,
+      "npv": 0.9856671311264729,
       "tp": 0,
-      "fp": 0,
+      "fp": 42,
       "fn": 12714,
-      "tn": 874380
+      "tn": 874338
     },
     "volume": {
-      "pred_vol_ml": 0.0,
+      "pred_vol_ml": 0.26341555342857914,
       "gt_vol_ml": 79.7396511021656,
-      "abs_volume_diff_ml": 79.7396511021656,
-      "signed_volume_diff_ml": -79.7396511021656,
-      "relative_abs_volume_diff": 1.0
+      "abs_volume_diff_ml": 79.47623554873702,
+      "signed_volume_diff_ml": -79.47623554873702,
+      "relative_abs_volume_diff": 0.9966965549787636
     },
     "boundary": {
-      "hd95_mm": NaN,
-      "assd_mm": NaN,
-      "masd_mm": NaN,
-      "surface_dice_3mm": NaN
+      "hd95_mm": 83.7870690020499,
+      "assd_mm": 63.102914589006666,
+      "masd_mm": 43.93061355863436,
+      "surface_dice_3mm": 0.0
     },
     "lesionwise": {
       "gt_lesion_count": 9,
-      "pred_lesion_count": 0,
+      "pred_lesion_count": 1,
       "tp_lesions": 0,
-      "fp_lesions": 0,
+      "fp_lesions": 1,
       "fn_lesions": 9,
-      "lesion_precision": 1.0,
+      "lesion_precision": 0.0,
       "lesion_recall": 0.0,
       "lesion_f1": 0.0,
-      "abs_lesion_count_diff": 9,
-      "signed_lesion_count_diff": -9,
+      "abs_lesion_count_diff": 8,
+      "signed_lesion_count_diff": -8,
       "per_gt_overlap": [
         0,
         0,
@@ -1290,7 +1322,9 @@
         74,
         28
       ],
-      "per_pred_size_voxels": [],
+      "per_pred_size_voxels": [
+        42
+      ],
       "detected_gt_indices": []
     },
     "size_bins_voxels": {
@@ -1366,51 +1400,61 @@
     "chronicity": "acute",
     "center": "Philips|Ingenia Elition X",
     "overlap": {
-      "dice": 0.0,
-      "iou": 0.0,
-      "sensitivity": 0.0,
-      "specificity": 1.0,
-      "precision": NaN,
-      "npv": 0.9935482566135426,
-      "tp": 0,
-      "fp": 0,
-      "fn": 15950,
-      "tn": 2456250
+      "dice": 0.1780577544876798,
+      "iou": 0.09772963710911205,
+      "sensitivity": 0.10012539184952977,
+      "specificity": 0.9998408142493639,
+      "precision": 0.8033199195171026,
+      "npv": 0.9941895675350941,
+      "tp": 1597,
+      "fp": 391,
+      "fn": 14353,
+      "tn": 2455859
     },
     "volume": {
-      "pred_vol_ml": 0.0,
+      "pred_vol_ml": 4.279181044180716,
       "gt_vol_ml": 34.332463608995184,
-      "abs_volume_diff_ml": 34.332463608995184,
-      "signed_volume_diff_ml": -34.332463608995184,
-      "relative_abs_volume_diff": 1.0
+      "abs_volume_diff_ml": 30.053282564814467,
+      "signed_volume_diff_ml": -30.053282564814467,
+      "relative_abs_volume_diff": 0.8753605015673981
     },
     "boundary": {
-      "hd95_mm": NaN,
-      "assd_mm": NaN,
-      "masd_mm": NaN,
-      "surface_dice_3mm": NaN
+      "hd95_mm": 24.657537715923752,
+      "assd_mm": 9.3939662286437,
+      "masd_mm": 6.369323775037925,
+      "surface_dice_3mm": 0.28958168902920284
     },
     "lesionwise": {
       "gt_lesion_count": 2,
-      "pred_lesion_count": 0,
-      "tp_lesions": 0,
-      "fp_lesions": 0,
-      "fn_lesions": 2,
-      "lesion_precision": 1.0,
-      "lesion_recall": 0.0,
-      "lesion_f1": 0.0,
-      "abs_lesion_count_diff": 2,
-      "signed_lesion_count_diff": -2,
+      "pred_lesion_count": 7,
+      "tp_lesions": 1,
+      "fp_lesions": 6,
+      "fn_lesions": 1,
+      "lesion_precision": 0.14285714285714285,
+      "lesion_recall": 0.5,
+      "lesion_f1": 0.22222222222222224,
+      "abs_lesion_count_diff": 5,
+      "signed_lesion_count_diff": 5,
       "per_gt_overlap": [
         0,
-        0
+        1597
       ],
       "per_gt_size_voxels": [
         2,
         15948
       ],
-      "per_pred_size_voxels": [],
-      "detected_gt_indices": []
+      "per_pred_size_voxels": [
+        17,
+        29,
+        1800,
+        16,
+        4,
+        121,
+        1
+      ],
+      "detected_gt_indices": [
+        2
+      ]
     },
     "size_bins_voxels": {
       "tiny_<10": {
@@ -1435,8 +1479,8 @@
       },
       "huge_>=10k": {
         "n_gt": 1,
-        "n_detected": 0,
-        "recall": 0.0
+        "n_detected": 1,
+        "recall": 1.0
       }
     },
     "size_bins_ml": {
@@ -1457,8 +1501,8 @@
       },
       "large_10-50mL": {
         "n_gt": 1,
-        "n_detected": 0,
-        "recall": 0.0
+        "n_detected": 1,
+        "recall": 1.0
       },
       "vlarge_>=50mL": {
         "n_gt": 0,

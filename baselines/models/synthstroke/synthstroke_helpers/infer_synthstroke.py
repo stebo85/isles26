@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Optional
 
 import nibabel as nib
+import monai as mn
 import numpy as np
 import torch
 
@@ -89,6 +90,69 @@ def _load_model(args: argparse.Namespace):
     return SynthStrokeModel.from_checkpoint(str(checkpoint_path))
 
 
+def _run_inference(
+    model: torch.nn.Module,
+    image_path: Path,
+    device: torch.device,
+    patch: int,
+    use_tta: bool,
+) -> np.ndarray:
+    lesion_cls = 5 if model.config.out_channels == 6 else 1
+
+    load = mn.transforms.Compose(
+        [
+            mn.transforms.LoadImageD(keys=["img"], image_only=True),
+            mn.transforms.EnsureChannelFirstD(keys=["img"]),
+            mn.transforms.ToTensorD(keys=["img"], device=device),
+        ]
+    )
+    preproc = mn.transforms.Compose(
+        [
+            mn.transforms.OrientationD(keys=["img"], axcodes="RAS"),
+            mn.transforms.SpacingD(keys=["img"], pixdim=1),
+            mn.transforms.HistogramNormalizeD(keys="img"),
+            mn.transforms.NormalizeIntensityD(keys="img", nonzero=False, channel_wise=True),
+        ]
+    )
+    postproc = mn.transforms.Compose(
+        [
+            mn.transforms.Activations(softmax=True),
+            mn.transforms.AsDiscrete(argmax=True),
+        ]
+    )
+    window = mn.inferers.SlidingWindowInferer(
+        [patch] * 3,
+        sw_batch_size=1,
+        overlap=0.5,
+        mode="gaussian",
+        sigma_scale=0.125,
+        progress=False,
+    )
+
+    batch = load({"img": str(image_path)})
+    batch = preproc(batch)
+    img = batch["img"]
+
+    with torch.no_grad():
+        pred = window(img[None], model)[0]
+        if use_tta:
+            flips = [
+                mn.transforms.Flip(spatial_axis=ax)
+                for ax in [[0], [1], [2], [0, 1], [0, 2], [1, 2], [0, 1, 2]]
+            ]
+            for flip in flips:
+                pred += flip(window(flip(img)[None], model)[0])
+            pred /= len(flips) + 1
+
+    pred.applied_operations = img.applied_operations
+    with mn.transforms.utils.allow_missing_keys_mode(preproc):
+        inv = preproc.inverse({"img": pred})["img"]
+    disc = postproc(inv)
+
+    label_map = np.asarray(disc.detach().cpu())[0]
+    return (label_map == lesion_cls).astype(np.uint8)
+
+
 def main() -> int:
     args = _parse_args()
     _add_synthstroke_repo(args.repo)
@@ -100,32 +164,21 @@ def main() -> int:
     image_path = Path(args.image).expanduser()
     out_path = Path(args.out).expanduser()
 
-    img = nib.load(str(image_path))
-    image_data = img.get_fdata()
-
-    with torch.no_grad():
-        result = model.predict_comprehensive_with_preprocessing(
-            image_data,
-            affine=img.affine,
-            is_ct=False,
-            use_tta=args.tta,
-            use_sliding_window=True,
-            patch_size=args.patch,
-        )
-
-    lesion_mask = np.asarray(result["lesion_mask"]).astype(np.uint8, copy=False)
-    expected_shape = img.shape[:3]
+    ref_img = nib.load(str(image_path))
+    lesion_mask = np.squeeze(_run_inference(model, image_path, device, args.patch, args.tta))
+    expected_shape = ref_img.shape[:3]
     if lesion_mask.shape != expected_shape:
         raise ValueError(
             f"Predicted mask shape {lesion_mask.shape} does not match input grid {expected_shape}."
         )
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    header = img.header.copy()
+    header = ref_img.header.copy()
     header.set_data_dtype(np.uint8)
     header.set_slope_inter(1, 0)
-    out_img = nib.Nifti1Image(lesion_mask, img.affine, header=header)
+    out_img = nib.Nifti1Image(lesion_mask.astype(np.uint8, copy=False), ref_img.affine, header=header)
     out_img.set_data_dtype(np.uint8)
+    out_img.header.set_slope_inter(1, 0)
     nib.save(out_img, str(out_path))
 
     lesion_voxels = int(np.count_nonzero(lesion_mask))

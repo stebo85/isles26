@@ -4,126 +4,126 @@
     {
       "metric": "dice",
       "n_valid": 12,
-      "mean": 0.0,
+      "mean": 0.043754783085509064,
       "median": 0.0,
-      "std": 0.0,
+      "std": 0.14477261411460193,
       "min": 0.0,
-      "max": 0.0
+      "max": 0.5239100817438692
     },
     {
       "metric": "iou",
       "n_valid": 12,
-      "mean": 0.0,
+      "mean": 0.029625416195255622,
       "median": 0.0,
-      "std": 0.0,
+      "std": 0.09808345344625491,
       "min": 0.0,
-      "max": 0.0
+      "max": 0.3549310074299691
     },
     {
       "metric": "sensitivity",
       "n_valid": 12,
-      "mean": 0.0,
+      "mean": 0.03066845084530247,
       "median": 0.0,
-      "std": 0.0,
+      "std": 0.10147882618940242,
       "min": 0.0,
-      "max": 0.0
+      "max": 0.36723487561476387
     },
     {
       "metric": "precision",
-      "n_valid": 0,
-      "mean": NaN,
-      "median": NaN,
-      "std": NaN,
-      "min": NaN,
-      "max": NaN
+      "n_valid": 12,
+      "mean": 0.0763221277030584,
+      "median": 0.0,
+      "std": 0.25249346873497097,
+      "min": 0.0,
+      "max": 0.9137459902578116
     },
     {
       "metric": "specificity",
       "n_valid": 12,
-      "mean": 1.0,
-      "median": 1.0,
-      "std": 0.0,
-      "min": 1.0,
-      "max": 1.0
+      "mean": 0.9971252533481265,
+      "median": 0.9983111604923478,
+      "std": 0.0026357106895811373,
+      "min": 0.9928675556379929,
+      "max": 0.999907873059915
     },
     {
       "metric": "hd95_mm",
-      "n_valid": 0,
-      "mean": NaN,
-      "median": NaN,
-      "std": NaN,
-      "min": NaN,
-      "max": NaN
+      "n_valid": 12,
+      "mean": 60.129045821391294,
+      "median": 56.912264083819466,
+      "std": 12.922402635968387,
+      "min": 43.15617385473955,
+      "max": 82.25173957708792
     },
     {
       "metric": "assd_mm",
-      "n_valid": 0,
-      "mean": NaN,
-      "median": NaN,
-      "std": NaN,
-      "min": NaN,
-      "max": NaN
+      "n_valid": 12,
+      "mean": 35.6912877670999,
+      "median": 36.48717567465195,
+      "std": 13.177000127816058,
+      "min": 12.904618302671462,
+      "max": 52.06450543330447
     },
     {
       "metric": "surface_dice_3mm",
-      "n_valid": 0,
-      "mean": NaN,
-      "median": NaN,
-      "std": NaN,
-      "min": NaN,
-      "max": NaN
+      "n_valid": 12,
+      "mean": 0.03872713911322393,
+      "median": 0.0,
+      "std": 0.10397331803518849,
+      "min": 0.0,
+      "max": 0.37825829383886256
     },
     {
       "metric": "abs_volume_diff_ml",
       "n_valid": 12,
-      "mean": 41.573125354542,
-      "median": 10.35766128016802,
-      "std": 51.417349167892034,
-      "min": 0.44751753254886234,
-      "max": 159.99302286753397
+      "mean": 40.206729983357796,
+      "median": 30.497376031986768,
+      "std": 42.453420299420166,
+      "min": 1.8854407607360393,
+      "max": 157.7167485903207
     },
     {
       "metric": "rel_abs_volume_diff",
       "n_valid": 12,
-      "mean": 1.0,
-      "median": 1.0,
-      "std": 0.0,
-      "min": 1.0,
-      "max": 1.0
+      "mean": 11.952894261784708,
+      "median": 0.9276911370490339,
+      "std": 23.025120039791272,
+      "min": 0.08827586206896554,
+      "max": 78.18032786885246
     },
     {
       "metric": "lesion_f1",
       "n_valid": 12,
-      "mean": 0.0,
+      "mean": 0.020833333333333332,
       "median": 0.0,
-      "std": 0.0,
+      "std": 0.04959325297599201,
       "min": 0.0,
-      "max": 0.0
+      "max": 0.16666666666666666
     },
     {
       "metric": "lesion_precision",
       "n_valid": 12,
-      "mean": 1.0,
-      "median": 1.0,
-      "std": 0.0,
-      "min": 1.0,
-      "max": 1.0
+      "mean": 0.01597222222222222,
+      "median": 0.0,
+      "std": 0.03764760046786056,
+      "min": 0.0,
+      "max": 0.125
     },
     {
       "metric": "lesion_recall",
       "n_valid": 12,
-      "mean": 0.0,
+      "mean": 0.03009259259259259,
       "median": 0.0,
-      "std": 0.0,
+      "std": 0.07301764025734955,
       "min": 0.0,
-      "max": 0.0
+      "max": 0.25
     },
     {
       "metric": "abs_lesion_count_diff",
       "n_valid": 12,
-      "mean": 4.0,
-      "median": 2.5,
-      "std": 3.4641016151377544,
+      "mean": 6.416666666666667,
+      "median": 5.5,
+      "std": 3.522743564641375,
       "min": 1.0,
       "max": 12.0
     }
@@ -146,13 +146,13 @@
     },
     "large_1k-10k": {
       "n_gt": 9,
-      "n_detected": 0,
-      "recall": 0.0
+      "n_detected": 1,
+      "recall": 0.1111111111111111
     },
     "huge_>=10k": {
       "n_gt": 4,
-      "n_detected": 0,
-      "recall": 0.0
+      "n_detected": 1,
+      "recall": 0.25
     }
   },
   "size_bins_ml_pooled": {
@@ -173,33 +173,33 @@
     },
     "large_10-50mL": {
       "n_gt": 4,
-      "n_detected": 0,
-      "recall": 0.0
+      "n_detected": 1,
+      "recall": 0.25
     },
     "vlarge_>=50mL": {
       "n_gt": 4,
-      "n_detected": 0,
-      "recall": 0.0
+      "n_detected": 1,
+      "recall": 0.25
     }
   },
   "by_chronicity": {
     "mixed": {
       "n": 2,
-      "dice_mean": 0.0,
-      "dice_median": 0.0,
-      "lesion_f1_mean": 0.0,
-      "lesion_recall_mean": 0.0,
-      "hd95_mm_mean": NaN,
-      "abs_volume_diff_ml_mean": 135.21730958188195
+      "dice_mean": 0.2619550408719346,
+      "dice_median": 0.2619550408719346,
+      "lesion_f1_mean": 0.08333333333333333,
+      "lesion_recall_mean": 0.125,
+      "hd95_mm_mean": 63.42672881126643,
+      "abs_volume_diff_ml_mean": 111.88591178278332
     },
     "acute": {
       "n": 9,
-      "dice_mean": 0.0,
+      "dice_mean": 0.0001274794758043955,
       "dice_median": 0.0,
-      "lesion_f1_mean": 0.0,
-      "lesion_recall_mean": 0.0,
-      "hd95_mm_mean": NaN,
-      "abs_volume_diff_ml_mean": 24.807862384063583
+      "lesion_f1_mean": 0.00925925925925926,
+      "lesion_recall_mean": 0.012345679012345678,
+      "hd95_mm_mean": 57.47156516078309,
+      "abs_volume_diff_ml_mean": 25.849211154181944
     },
     "chronic": {
       "n": 1,
@@ -207,28 +207,28 @@
       "dice_median": 0.0,
       "lesion_f1_mean": 0.0,
       "lesion_recall_mean": 0.0,
-      "hd95_mm_mean": NaN,
-      "abs_volume_diff_ml_mean": 5.172123634167765
+      "hd95_mm_mean": 77.45100578711488,
+      "abs_volume_diff_ml_mean": 26.06603584708946
     }
   },
   "by_center": {
     "Philips|Intera": {
       "n": 2,
-      "dice_mean": 0.0,
-      "dice_median": 0.0,
-      "lesion_f1_mean": 0.0,
-      "lesion_recall_mean": 0.0,
-      "hd95_mm_mean": NaN,
-      "abs_volume_diff_ml_mean": 55.761531366566324
+      "dice_mean": 0.2619550408719346,
+      "dice_median": 0.2619550408719346,
+      "lesion_f1_mean": 0.08333333333333333,
+      "lesion_recall_mean": 0.125,
+      "hd95_mm_mean": 58.37202796786414,
+      "abs_volume_diff_ml_mean": 39.77096709550576
     },
     "Philips|Ingenia Ambition X": {
       "n": 6,
-      "dice_mean": 0.0,
+      "dice_mean": 0.00019121921370659326,
       "dice_median": 0.0,
-      "lesion_f1_mean": 0.0,
-      "lesion_recall_mean": 0.0,
-      "hd95_mm_mean": NaN,
-      "abs_volume_diff_ml_mean": 18.217101132187388
+      "lesion_f1_mean": 0.01388888888888889,
+      "lesion_recall_mean": 0.018518518518518517,
+      "hd95_mm_mean": 58.01172449331991,
+      "abs_volume_diff_ml_mean": 21.86197846198688
     },
     "Philips|Ingenia Elition X": {
       "n": 2,
@@ -236,8 +236,8 @@
       "dice_median": 0.0,
       "lesion_f1_mean": 0.0,
       "lesion_recall_mean": 0.0,
-      "hd95_mm_mean": NaN,
-      "abs_volume_diff_ml_mean": 58.61531757254403
+      "hd95_mm_mean": 50.097269705773726,
+      "abs_volume_diff_ml_mean": 39.56074501507804
     },
     "Philips|Achieva": {
       "n": 2,
@@ -245,8 +245,8 @@
       "dice_median": 0.0,
       "lesion_f1_mean": 0.0,
       "lesion_recall_mean": 0.0,
-      "hd95_mm_mean": NaN,
-      "abs_volume_diff_ml_mean": 80.41059979157946
+      "hd95_mm_mean": 78.26980377475019,
+      "abs_volume_diff_ml_mean": 96.32273240360239
     }
   },
   "per_case": [
@@ -254,21 +254,21 @@
       "subject_id": "sub-1",
       "chronicity": "mixed",
       "center": "Philips|Intera",
-      "dice": 0.0,
-      "iou": 0.0,
-      "sensitivity": 0.0,
-      "precision": NaN,
-      "lesion_f1": 0.0,
-      "lesion_recall": 0.0,
-      "lesion_precision": 1.0,
-      "hd95_mm": NaN,
-      "assd_mm": NaN,
-      "surface_dice_3mm": NaN,
-      "abs_volume_diff_ml": 110.44159629622993,
-      "pred_vol_ml": 0.0,
+      "dice": 0.5239100817438692,
+      "iou": 0.3549310074299691,
+      "sensitivity": 0.36723487561476387,
+      "precision": 0.9137459902578116,
+      "lesion_f1": 0.16666666666666666,
+      "lesion_recall": 0.25,
+      "lesion_precision": 0.125,
+      "hd95_mm": 52.56558965012042,
+      "assd_mm": 14.022781433661285,
+      "surface_dice_3mm": 0.37825829383886256,
+      "abs_volume_diff_ml": 66.05507497524596,
+      "pred_vol_ml": 44.386521320983974,
       "gt_vol_ml": 110.44159629622993,
       "gt_lesion_count": 4,
-      "pred_lesion_count": 0
+      "pred_lesion_count": 8
     },
     {
       "subject_id": "sub-10",
@@ -277,18 +277,18 @@
       "dice": 0.0,
       "iou": 0.0,
       "sensitivity": 0.0,
-      "precision": NaN,
+      "precision": 0.0,
       "lesion_f1": 0.0,
       "lesion_recall": 0.0,
-      "lesion_precision": 1.0,
-      "hd95_mm": NaN,
-      "assd_mm": NaN,
-      "surface_dice_3mm": NaN,
-      "abs_volume_diff_ml": 12.185684880742489,
-      "pred_vol_ml": 0.0,
+      "lesion_precision": 0.0,
+      "hd95_mm": 43.15617385473955,
+      "assd_mm": 27.39782473444832,
+      "surface_dice_3mm": 0.0,
+      "abs_volume_diff_ml": 10.087487484058352,
+      "pred_vol_ml": 2.0981973966841374,
       "gt_vol_ml": 12.185684880742489,
       "gt_lesion_count": 1,
-      "pred_lesion_count": 0
+      "pred_lesion_count": 2
     },
     {
       "subject_id": "sub-11",
@@ -297,18 +297,18 @@
       "dice": 0.0,
       "iou": 0.0,
       "sensitivity": 0.0,
-      "precision": NaN,
+      "precision": 0.0,
       "lesion_f1": 0.0,
       "lesion_recall": 0.0,
-      "lesion_precision": 1.0,
-      "hd95_mm": NaN,
-      "assd_mm": NaN,
-      "surface_dice_3mm": NaN,
-      "abs_volume_diff_ml": 5.172123634167765,
-      "pred_vol_ml": 0.0,
+      "lesion_precision": 0.0,
+      "hd95_mm": 77.45100578711488,
+      "assd_mm": 44.16800128352336,
+      "surface_dice_3mm": 0.0,
+      "abs_volume_diff_ml": 26.06603584708946,
+      "pred_vol_ml": 31.238159481257224,
       "gt_vol_ml": 5.172123634167765,
       "gt_lesion_count": 2,
-      "pred_lesion_count": 0
+      "pred_lesion_count": 7
     },
     {
       "subject_id": "sub-13",
@@ -317,18 +317,18 @@
       "dice": 0.0,
       "iou": 0.0,
       "sensitivity": 0.0,
-      "precision": NaN,
+      "precision": 0.0,
       "lesion_f1": 0.0,
       "lesion_recall": 0.0,
-      "lesion_precision": 1.0,
-      "hd95_mm": NaN,
-      "assd_mm": NaN,
-      "surface_dice_3mm": NaN,
-      "abs_volume_diff_ml": 1.0814664369027118,
-      "pred_vol_ml": 0.0,
+      "lesion_precision": 0.0,
+      "hd95_mm": 64.17846628560787,
+      "assd_mm": 39.29389283500219,
+      "surface_dice_3mm": 0.00539568345323741,
+      "abs_volume_diff_ml": 13.486859215765563,
+      "pred_vol_ml": 14.568325652668275,
       "gt_vol_ml": 1.0814664369027118,
       "gt_lesion_count": 3,
-      "pred_lesion_count": 0
+      "pred_lesion_count": 12
     },
     {
       "subject_id": "sub-14",
@@ -337,18 +337,18 @@
       "dice": 0.0,
       "iou": 0.0,
       "sensitivity": 0.0,
-      "precision": NaN,
+      "precision": 0.0,
       "lesion_f1": 0.0,
       "lesion_recall": 0.0,
-      "lesion_precision": 1.0,
-      "hd95_mm": NaN,
-      "assd_mm": NaN,
-      "surface_dice_3mm": NaN,
-      "abs_volume_diff_ml": 0.44751753254886234,
-      "pred_vol_ml": 0.0,
+      "lesion_precision": 0.0,
+      "hd95_mm": 71.35850145086907,
+      "assd_mm": 51.54803427555227,
+      "surface_dice_3mm": 0.0,
+      "abs_volume_diff_ml": 34.98706742172991,
+      "pred_vol_ml": 35.434584954278776,
       "gt_vol_ml": 0.44751753254886234,
       "gt_lesion_count": 1,
-      "pred_lesion_count": 0
+      "pred_lesion_count": 12
     },
     {
       "subject_id": "sub-2",
@@ -357,18 +357,18 @@
       "dice": 0.0,
       "iou": 0.0,
       "sensitivity": 0.0,
-      "precision": NaN,
+      "precision": 0.0,
       "lesion_f1": 0.0,
       "lesion_recall": 0.0,
-      "lesion_precision": 1.0,
-      "hd95_mm": NaN,
-      "assd_mm": NaN,
-      "surface_dice_3mm": NaN,
-      "abs_volume_diff_ml": 82.89817153609287,
-      "pred_vol_ml": 0.0,
+      "lesion_precision": 0.0,
+      "hd95_mm": 54.47933118331523,
+      "assd_mm": 33.680458514301705,
+      "surface_dice_3mm": 0.00010407271213487824,
+      "abs_volume_diff_ml": 76.09076220812064,
+      "pred_vol_ml": 6.807409327972242,
       "gt_vol_ml": 82.89817153609287,
       "gt_lesion_count": 7,
-      "pred_lesion_count": 0
+      "pred_lesion_count": 10
     },
     {
       "subject_id": "sub-3",
@@ -377,18 +377,18 @@
       "dice": 0.0,
       "iou": 0.0,
       "sensitivity": 0.0,
-      "precision": NaN,
+      "precision": 0.0,
       "lesion_f1": 0.0,
       "lesion_recall": 0.0,
-      "lesion_precision": 1.0,
-      "hd95_mm": NaN,
-      "assd_mm": NaN,
-      "surface_dice_3mm": NaN,
-      "abs_volume_diff_ml": 159.99302286753397,
-      "pred_vol_ml": 0.0,
+      "lesion_precision": 0.0,
+      "hd95_mm": 74.28786797241244,
+      "assd_mm": 51.44517309673012,
+      "surface_dice_3mm": 0.0,
+      "abs_volume_diff_ml": 157.7167485903207,
+      "pred_vol_ml": 2.276274277213288,
       "gt_vol_ml": 159.99302286753397,
       "gt_lesion_count": 5,
-      "pred_lesion_count": 0
+      "pred_lesion_count": 7
     },
     {
       "subject_id": "sub-4",
@@ -397,18 +397,18 @@
       "dice": 0.0,
       "iou": 0.0,
       "sensitivity": 0.0,
-      "precision": NaN,
+      "precision": 0.0,
       "lesion_f1": 0.0,
       "lesion_recall": 0.0,
-      "lesion_precision": 1.0,
-      "hd95_mm": NaN,
-      "assd_mm": NaN,
-      "surface_dice_3mm": NaN,
-      "abs_volume_diff_ml": 3.2279919639060592,
-      "pred_vol_ml": 0.0,
+      "lesion_precision": 0.0,
+      "hd95_mm": 46.170890679934985,
+      "assd_mm": 12.904618302671462,
+      "surface_dice_3mm": 0.06633499170812604,
+      "abs_volume_diff_ml": 1.8854407607360393,
+      "pred_vol_ml": 1.34255120317002,
       "gt_vol_ml": 3.2279919639060592,
       "gt_lesion_count": 1,
-      "pred_lesion_count": 0
+      "pred_lesion_count": 10
     },
     {
       "subject_id": "sub-5",
@@ -417,18 +417,18 @@
       "dice": 0.0,
       "iou": 0.0,
       "sensitivity": 0.0,
-      "precision": NaN,
+      "precision": 0.0,
       "lesion_f1": 0.0,
       "lesion_recall": 0.0,
-      "lesion_precision": 1.0,
-      "hd95_mm": NaN,
-      "assd_mm": NaN,
-      "surface_dice_3mm": NaN,
-      "abs_volume_diff_ml": 0.8281767156249553,
-      "pred_vol_ml": 0.0,
+      "lesion_precision": 0.0,
+      "hd95_mm": 82.25173957708792,
+      "assd_mm": 52.06450543330447,
+      "surface_dice_3mm": 0.0,
+      "abs_volume_diff_ml": 34.92871621688408,
+      "pred_vol_ml": 35.75689293250903,
       "gt_vol_ml": 0.8281767156249553,
       "gt_lesion_count": 1,
-      "pred_lesion_count": 0
+      "pred_lesion_count": 13
     },
     {
       "subject_id": "sub-7",
@@ -437,38 +437,38 @@
       "dice": 0.0,
       "iou": 0.0,
       "sensitivity": 0.0,
-      "precision": NaN,
+      "precision": 0.0,
       "lesion_f1": 0.0,
       "lesion_recall": 0.0,
-      "lesion_precision": 1.0,
-      "hd95_mm": NaN,
-      "assd_mm": NaN,
-      "surface_dice_3mm": NaN,
-      "abs_volume_diff_ml": 8.529637679593552,
-      "pred_vol_ml": 0.0,
+      "lesion_precision": 0.0,
+      "hd95_mm": 59.34519698432369,
+      "assd_mm": 44.24132644287888,
+      "surface_dice_3mm": 0.0,
+      "abs_volume_diff_ml": 7.996535324618955,
+      "pred_vol_ml": 0.533102354974597,
       "gt_vol_ml": 8.529637679593552,
       "gt_lesion_count": 12,
-      "pred_lesion_count": 0
+      "pred_lesion_count": 2
     },
     {
       "subject_id": "sub-8",
       "chronicity": "acute",
       "center": "Philips|Ingenia Ambition X",
-      "dice": 0.0,
-      "iou": 0.0,
-      "sensitivity": 0.0,
-      "precision": NaN,
-      "lesion_f1": 0.0,
-      "lesion_recall": 0.0,
-      "lesion_precision": 1.0,
-      "hd95_mm": NaN,
-      "assd_mm": NaN,
-      "surface_dice_3mm": NaN,
-      "abs_volume_diff_ml": 79.7396511021656,
-      "pred_vol_ml": 0.0,
+      "dice": 0.0011473152822395595,
+      "iou": 0.0005739869130983814,
+      "sensitivity": 0.0007865345288658172,
+      "precision": 0.00211954217888936,
+      "lesion_f1": 0.08333333333333334,
+      "lesion_recall": 0.1111111111111111,
+      "lesion_precision": 0.06666666666666667,
+      "hd95_mm": 50.588578202937256,
+      "assd_mm": 29.22013166374558,
+      "surface_dice_3mm": 0.014632627646326276,
+      "abs_volume_diff_ml": 50.14930393368854,
+      "pred_vol_ml": 29.590347168477056,
       "gt_vol_ml": 79.7396511021656,
       "gt_lesion_count": 9,
-      "pred_lesion_count": 0
+      "pred_lesion_count": 15
     },
     {
       "subject_id": "sub-9",
@@ -477,18 +477,18 @@
       "dice": 0.0,
       "iou": 0.0,
       "sensitivity": 0.0,
-      "precision": NaN,
+      "precision": 0.0,
       "lesion_f1": 0.0,
       "lesion_recall": 0.0,
-      "lesion_precision": 1.0,
-      "hd95_mm": NaN,
-      "assd_mm": NaN,
-      "surface_dice_3mm": NaN,
-      "abs_volume_diff_ml": 34.332463608995184,
-      "pred_vol_ml": 0.0,
+      "lesion_precision": 0.0,
+      "hd95_mm": 45.71520822823222,
+      "assd_mm": 28.30870518937922,
+      "surface_dice_3mm": 0.0,
+      "abs_volume_diff_ml": 3.0307278220354377,
+      "pred_vol_ml": 31.301735786959746,
       "gt_vol_ml": 34.332463608995184,
       "gt_lesion_count": 2,
-      "pred_lesion_count": 0
+      "pred_lesion_count": 7
     }
   ],
   "n_missing_predictions": 0
