@@ -35,6 +35,7 @@ INFER_PY="$REPO/.venv-synthstroke/bin/python"
 EVAL_PY="$REPO/.venv-eval/bin/python"
 PREDICT="$REPO/baselines/models/synthstroke/synthstroke_helpers/our_predict.py"
 export PYTHONPATH="$REPO/work/synthstroke/repo:$REPO:${PYTHONPATH:-}"
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 if [[ ! -s "$CKPT" ]]; then echo "[error] missing checkpoint: $CKPT" >&2; exit 2; fi
 echo "[info] checkpoint=$CKPT tag=$TAG"

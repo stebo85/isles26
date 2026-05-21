@@ -37,12 +37,12 @@ def run_inference(model, image_path, device, patch, use_tta, lesion_cls):
         mn.transforms.HistogramNormalizeD(keys="img"),
         mn.transforms.NormalizeIntensityD(keys="img", nonzero=False, channel_wise=True),
     ])
-    postproc = mn.transforms.Compose([
-        mn.transforms.Activations(softmax=True),
-        mn.transforms.AsDiscrete(argmax=True),
-    ])
+    softmax = mn.transforms.Activations(softmax=True)
+    # Keep the full-volume 34-class output buffer on CPU (only 128^3 patches run
+    # on GPU) so inference fits on small (~11GB) GPUs.
     window = mn.inferers.SlidingWindowInferer([patch] * 3, sw_batch_size=1, overlap=0.5,
-                                              mode="gaussian", sigma_scale=0.125, progress=False)
+                                              mode="gaussian", sigma_scale=0.125, progress=False,
+                                              sw_device=device, device=torch.device("cpu"))
     batch = preproc(load({"img": str(image_path)}))
     img = batch["img"]
     with torch.no_grad():
@@ -56,9 +56,12 @@ def run_inference(model, image_path, device, patch, use_tta, lesion_cls):
     pred.applied_operations = img.applied_operations
     with mn.transforms.utils.allow_missing_keys_mode(preproc):
         inv = preproc.inverse({"img": pred})["img"]
-    disc = postproc(inv)
-    label_map = np.asarray(disc.detach().cpu())[0]
-    return (label_map == lesion_cls).astype(np.uint8)
+    # Binary lesion mask by thresholding the lesion-channel probability (matches
+    # the checkpoint-selection metric used in training; argmax over 34 classes
+    # over-segments for an undertrained model).
+    probs = softmax(inv)
+    les = np.asarray(probs[lesion_cls].detach().cpu()) > 0.5
+    return les.astype(np.uint8)
 
 
 def main():

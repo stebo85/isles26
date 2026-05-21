@@ -1,0 +1,2261 @@
+[
+  {
+    "subject_id": "sub-1",
+    "voxel_size_mm": [
+      0.9375001192092896,
+      0.9375000596046448,
+      5.999998569488525
+    ],
+    "chronicity": "mixed",
+    "center": "Philips|Intera",
+    "overlap": {
+      "dice": 0.5227491806439175,
+      "iou": 0.3538662316476346,
+      "sensitivity": 0.5178818698371771,
+      "specificity": 0.9907989561976476,
+      "precision": 0.5277088502894954,
+      "npv": 0.9904328208160291,
+      "tp": 10846,
+      "fp": 9707,
+      "fn": 10097,
+      "tn": 1045282
+    },
+    "volume": {
+      "pred_vol_ml": 108.38495576929827,
+      "gt_vol_ml": 110.44159629622993,
+      "abs_volume_diff_ml": 2.056640526931659,
+      "signed_volume_diff_ml": -2.056640526931659,
+      "relative_abs_volume_diff": 0.018621973929236525
+    },
+    "boundary": {
+      "hd95_mm": 24.898695619279415,
+      "assd_mm": 8.683312054196302,
+      "masd_mm": 8.7103131508692,
+      "surface_dice_3mm": 0.3289950355561519
+    },
+    "lesionwise": {
+      "gt_lesion_count": 4,
+      "pred_lesion_count": 19,
+      "tp_lesions": 1,
+      "fp_lesions": 18,
+      "fn_lesions": 3,
+      "lesion_precision": 0.05263157894736842,
+      "lesion_recall": 0.25,
+      "lesion_f1": 0.08695652173913043,
+      "abs_lesion_count_diff": 15,
+      "signed_lesion_count_diff": 15,
+      "per_gt_overlap": [
+        10846,
+        0,
+        0,
+        0
+      ],
+      "per_gt_size_voxels": [
+        16102,
+        3429,
+        1394,
+        18
+      ],
+      "per_pred_size_voxels": [
+        20321,
+        6,
+        1,
+        11,
+        3,
+        1,
+        1,
+        65,
+        1,
+        1,
+        1,
+        1,
+        1,
+        20,
+        17,
+        57,
+        41,
+        1,
+        3
+      ],
+      "detected_gt_indices": [
+        1
+      ]
+    },
+    "size_bins_voxels": {
+      "tiny_<10": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "small_10-100": {
+        "n_gt": 1,
+        "n_detected": 0,
+        "recall": 0.0
+      },
+      "medium_100-1k": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "large_1k-10k": {
+        "n_gt": 2,
+        "n_detected": 0,
+        "recall": 0.0
+      },
+      "huge_>=10k": {
+        "n_gt": 1,
+        "n_detected": 1,
+        "recall": 1.0
+      }
+    },
+    "size_bins_ml": {
+      "vsmall_<0.1mL": {
+        "n_gt": 1,
+        "n_detected": 0,
+        "recall": 0.0
+      },
+      "small_0.1-1mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "med_1-10mL": {
+        "n_gt": 1,
+        "n_detected": 0,
+        "recall": 0.0
+      },
+      "large_10-50mL": {
+        "n_gt": 1,
+        "n_detected": 0,
+        "recall": 0.0
+      },
+      "vlarge_>=50mL": {
+        "n_gt": 1,
+        "n_detected": 1,
+        "recall": 1.0
+      }
+    },
+    "extras": {},
+    "prediction_path": "/scratch/users/sciget/isles26challenge/work/synthstroke/pred/soop_t1w/our_isles26_fs_synth_mixreal/sub-1.nii.gz",
+    "gt_path": "data/soop_bench/derivatives/lesion_masks/sub-1/dwi/sub-1_space-TRACE_desc-lesion_mask.nii.gz",
+    "sidecar_metadata": {
+      "Manufacturer": "Philips",
+      "ManufacturersModelName": "Intera",
+      "MagneticFieldStrength": 1.5
+    }
+  },
+  {
+    "subject_id": "sub-10",
+    "voxel_size_mm": [
+      1.105769157409668,
+      1.1057692766189575,
+      6.000000953674316
+    ],
+    "chronicity": "acute",
+    "center": "Philips|Ingenia Ambition X",
+    "overlap": {
+      "dice": 0.12444771723122239,
+      "iou": 0.066352571652925,
+      "sensitivity": 0.30523780854906685,
+      "specificity": 0.9929141798163137,
+      "precision": 0.0781563126252505,
+      "npv": 0.9986247382652873,
+      "tp": 507,
+      "fp": 5980,
+      "fn": 1154,
+      "tn": 837959
+    },
+    "volume": {
+      "pred_vol_ml": 47.59093186115384,
+      "gt_vol_ml": 12.185684880742489,
+      "abs_volume_diff_ml": 35.40524698041135,
+      "signed_volume_diff_ml": 35.40524698041135,
+      "relative_abs_volume_diff": 2.905478627332932
+    },
+    "boundary": {
+      "hd95_mm": 166.7191669348438,
+      "assd_mm": 42.48777303339868,
+      "masd_mm": 28.16305851164835,
+      "surface_dice_3mm": 0.15436037678517167
+    },
+    "lesionwise": {
+      "gt_lesion_count": 1,
+      "pred_lesion_count": 59,
+      "tp_lesions": 1,
+      "fp_lesions": 58,
+      "fn_lesions": 0,
+      "lesion_precision": 0.01694915254237288,
+      "lesion_recall": 1.0,
+      "lesion_f1": 0.03333333333333333,
+      "abs_lesion_count_diff": 58,
+      "signed_lesion_count_diff": 58,
+      "per_gt_overlap": [
+        507
+      ],
+      "per_gt_size_voxels": [
+        1661
+      ],
+      "per_pred_size_voxels": [
+        293,
+        14,
+        10,
+        2,
+        2,
+        18,
+        4,
+        1,
+        12,
+        2,
+        4,
+        2254,
+        134,
+        1,
+        1,
+        1,
+        3,
+        7,
+        2,
+        6,
+        6,
+        2,
+        33,
+        2,
+        4,
+        3,
+        1,
+        1,
+        11,
+        5,
+        304,
+        8,
+        36,
+        1,
+        9,
+        326,
+        3,
+        1754,
+        9,
+        60,
+        275,
+        1,
+        41,
+        26,
+        7,
+        4,
+        12,
+        14,
+        33,
+        1,
+        27,
+        2,
+        623,
+        1,
+        1,
+        1,
+        2,
+        2,
+        65
+      ],
+      "detected_gt_indices": [
+        1
+      ]
+    },
+    "size_bins_voxels": {
+      "tiny_<10": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "small_10-100": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "medium_100-1k": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "large_1k-10k": {
+        "n_gt": 1,
+        "n_detected": 1,
+        "recall": 1.0
+      },
+      "huge_>=10k": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      }
+    },
+    "size_bins_ml": {
+      "vsmall_<0.1mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "small_0.1-1mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "med_1-10mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "large_10-50mL": {
+        "n_gt": 1,
+        "n_detected": 1,
+        "recall": 1.0
+      },
+      "vlarge_>=50mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      }
+    },
+    "extras": {},
+    "prediction_path": "/scratch/users/sciget/isles26challenge/work/synthstroke/pred/soop_t1w/our_isles26_fs_synth_mixreal/sub-10.nii.gz",
+    "gt_path": "data/soop_bench/derivatives/lesion_masks/sub-10/dwi/sub-10_space-TRACE_desc-lesion_mask.nii.gz",
+    "sidecar_metadata": {
+      "Manufacturer": "Philips",
+      "ManufacturersModelName": "Ingenia Ambition X",
+      "MagneticFieldStrength": 1.5
+    }
+  },
+  {
+    "subject_id": "sub-11",
+    "voxel_size_mm": [
+      1.1057690382003784,
+      1.1057692766189575,
+      5.999994277954102
+    ],
+    "chronicity": "chronic",
+    "center": "Philips|Ingenia Ambition X",
+    "overlap": {
+      "dice": 0.09703679583197655,
+      "iou": 0.05099247091033539,
+      "sensitivity": 0.21134751773049645,
+      "specificity": 0.9972467049255046,
+      "precision": 0.06297548605240913,
+      "npv": 0.9993080756039405,
+      "tp": 149,
+      "fp": 2217,
+      "fn": 556,
+      "tn": 803000
+    },
+    "volume": {
+      "pred_vol_ml": 17.357793643178628,
+      "gt_vol_ml": 5.172123634167765,
+      "abs_volume_diff_ml": 12.185670009010863,
+      "signed_volume_diff_ml": 12.185670009010863,
+      "relative_abs_volume_diff": 2.3560283687943264
+    },
+    "boundary": {
+      "hd95_mm": 59.985494219132306,
+      "assd_mm": 25.353283483942214,
+      "masd_mm": 17.884645048695383,
+      "surface_dice_3mm": 0.17413793103448275
+    },
+    "lesionwise": {
+      "gt_lesion_count": 2,
+      "pred_lesion_count": 70,
+      "tp_lesions": 1,
+      "fp_lesions": 68,
+      "fn_lesions": 1,
+      "lesion_precision": 0.02857142857142857,
+      "lesion_recall": 0.5,
+      "lesion_f1": 0.05405405405405405,
+      "abs_lesion_count_diff": 68,
+      "signed_lesion_count_diff": 68,
+      "per_gt_overlap": [
+        145,
+        0
+      ],
+      "per_gt_size_voxels": [
+        588,
+        117
+      ],
+      "per_pred_size_voxels": [
+        15,
+        9,
+        2,
+        3,
+        1,
+        1,
+        19,
+        1,
+        12,
+        76,
+        6,
+        53,
+        2,
+        4,
+        1,
+        482,
+        97,
+        129,
+        187,
+        2,
+        1,
+        34,
+        1,
+        1,
+        7,
+        1,
+        7,
+        2,
+        1,
+        4,
+        4,
+        1,
+        17,
+        17,
+        24,
+        8,
+        1,
+        16,
+        16,
+        1,
+        1,
+        2,
+        16,
+        124,
+        4,
+        185,
+        1,
+        12,
+        186,
+        5,
+        1,
+        1,
+        12,
+        7,
+        33,
+        44,
+        4,
+        3,
+        5,
+        2,
+        1,
+        2,
+        232,
+        1,
+        74,
+        1,
+        1,
+        1,
+        138,
+        1
+      ],
+      "detected_gt_indices": [
+        1
+      ]
+    },
+    "size_bins_voxels": {
+      "tiny_<10": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "small_10-100": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "medium_100-1k": {
+        "n_gt": 2,
+        "n_detected": 1,
+        "recall": 0.5
+      },
+      "large_1k-10k": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "huge_>=10k": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      }
+    },
+    "size_bins_ml": {
+      "vsmall_<0.1mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "small_0.1-1mL": {
+        "n_gt": 1,
+        "n_detected": 0,
+        "recall": 0.0
+      },
+      "med_1-10mL": {
+        "n_gt": 1,
+        "n_detected": 1,
+        "recall": 1.0
+      },
+      "large_10-50mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "vlarge_>=50mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      }
+    },
+    "extras": {},
+    "prediction_path": "/scratch/users/sciget/isles26challenge/work/synthstroke/pred/soop_t1w/our_isles26_fs_synth_mixreal/sub-11.nii.gz",
+    "gt_path": "data/soop_bench/derivatives/lesion_masks/sub-11/dwi/sub-11_space-TRACE_desc-lesion_mask.nii.gz",
+    "sidecar_metadata": {
+      "Manufacturer": "Philips",
+      "ManufacturersModelName": "Ingenia Ambition X",
+      "MagneticFieldStrength": 1.5
+    }
+  },
+  {
+    "subject_id": "sub-13",
+    "voxel_size_mm": [
+      0.9765625,
+      0.9765624403953552,
+      5.999999046325684
+    ],
+    "chronicity": "acute",
+    "center": "Philips|Intera",
+    "overlap": {
+      "dice": 0.0,
+      "iou": 0.0,
+      "sensitivity": 0.0,
+      "specificity": 0.9978627817149706,
+      "precision": 0.0,
+      "npv": 0.9998285768705756,
+      "tp": 0,
+      "fp": 2361,
+      "fn": 189,
+      "tn": 1102346
+    },
+    "volume": {
+      "pred_vol_ml": 13.509747394324352,
+      "gt_vol_ml": 1.0814664369027118,
+      "abs_volume_diff_ml": 12.42828095742164,
+      "signed_volume_diff_ml": 12.42828095742164,
+      "relative_abs_volume_diff": 11.492063492063492
+    },
+    "boundary": {
+      "hd95_mm": 60.115703452080446,
+      "assd_mm": 45.37651932976278,
+      "masd_mm": 31.749699962989393,
+      "surface_dice_3mm": 0.0
+    },
+    "lesionwise": {
+      "gt_lesion_count": 3,
+      "pred_lesion_count": 64,
+      "tp_lesions": 0,
+      "fp_lesions": 64,
+      "fn_lesions": 3,
+      "lesion_precision": 0.0,
+      "lesion_recall": 0.0,
+      "lesion_f1": 0.0,
+      "abs_lesion_count_diff": 61,
+      "signed_lesion_count_diff": 61,
+      "per_gt_overlap": [
+        0,
+        0,
+        0
+      ],
+      "per_gt_size_voxels": [
+        13,
+        61,
+        115
+      ],
+      "per_pred_size_voxels": [
+        13,
+        7,
+        22,
+        50,
+        1,
+        35,
+        3,
+        6,
+        9,
+        8,
+        13,
+        6,
+        16,
+        278,
+        7,
+        5,
+        53,
+        1,
+        5,
+        23,
+        27,
+        21,
+        4,
+        21,
+        1,
+        10,
+        21,
+        4,
+        1,
+        847,
+        46,
+        2,
+        19,
+        25,
+        5,
+        4,
+        8,
+        3,
+        2,
+        5,
+        478,
+        4,
+        2,
+        9,
+        10,
+        31,
+        1,
+        82,
+        21,
+        23,
+        34,
+        4,
+        3,
+        3,
+        3,
+        2,
+        4,
+        1,
+        2,
+        1,
+        1,
+        1,
+        3,
+        1
+      ],
+      "detected_gt_indices": []
+    },
+    "size_bins_voxels": {
+      "tiny_<10": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "small_10-100": {
+        "n_gt": 2,
+        "n_detected": 0,
+        "recall": 0.0
+      },
+      "medium_100-1k": {
+        "n_gt": 1,
+        "n_detected": 0,
+        "recall": 0.0
+      },
+      "large_1k-10k": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "huge_>=10k": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      }
+    },
+    "size_bins_ml": {
+      "vsmall_<0.1mL": {
+        "n_gt": 1,
+        "n_detected": 0,
+        "recall": 0.0
+      },
+      "small_0.1-1mL": {
+        "n_gt": 2,
+        "n_detected": 0,
+        "recall": 0.0
+      },
+      "med_1-10mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "large_10-50mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "vlarge_>=50mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      }
+    },
+    "extras": {},
+    "prediction_path": "/scratch/users/sciget/isles26challenge/work/synthstroke/pred/soop_t1w/our_isles26_fs_synth_mixreal/sub-13.nii.gz",
+    "gt_path": "data/soop_bench/derivatives/lesion_masks/sub-13/dwi/sub-13_space-TRACE_desc-lesion_mask.nii.gz",
+    "sidecar_metadata": {
+      "Manufacturer": "Philips",
+      "ManufacturersModelName": "Intera",
+      "MagneticFieldStrength": 1.5
+    }
+  },
+  {
+    "subject_id": "sub-14",
+    "voxel_size_mm": [
+      1.105769157409668,
+      1.105769395828247,
+      5.999999046325684
+    ],
+    "chronicity": "acute",
+    "center": "Philips|Ingenia Ambition X",
+    "overlap": {
+      "dice": 0.0,
+      "iou": 0.0,
+      "sensitivity": 0.0,
+      "specificity": 0.995576498986944,
+      "precision": 0.0,
+      "npv": 0.9999277876625814,
+      "tp": 0,
+      "fp": 3753,
+      "fn": 61,
+      "tn": 844670
+    },
+    "volume": {
+      "pred_vol_ml": 27.533332781243942,
+      "gt_vol_ml": 0.44751753254886234,
+      "abs_volume_diff_ml": 27.08581524869508,
+      "signed_volume_diff_ml": 27.08581524869508,
+      "relative_abs_volume_diff": 60.524590163934434
+    },
+    "boundary": {
+      "hd95_mm": 88.5336773311924,
+      "assd_mm": 48.195494847199114,
+      "masd_mm": 32.655783435155264,
+      "surface_dice_3mm": 0.0
+    },
+    "lesionwise": {
+      "gt_lesion_count": 1,
+      "pred_lesion_count": 84,
+      "tp_lesions": 0,
+      "fp_lesions": 84,
+      "fn_lesions": 1,
+      "lesion_precision": 0.0,
+      "lesion_recall": 0.0,
+      "lesion_f1": 0.0,
+      "abs_lesion_count_diff": 83,
+      "signed_lesion_count_diff": 83,
+      "per_gt_overlap": [
+        0
+      ],
+      "per_gt_size_voxels": [
+        61
+      ],
+      "per_pred_size_voxels": [
+        50,
+        13,
+        2,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        2,
+        2,
+        1,
+        32,
+        633,
+        4,
+        4,
+        4,
+        8,
+        10,
+        20,
+        7,
+        9,
+        76,
+        23,
+        45,
+        2,
+        4,
+        2,
+        3,
+        139,
+        19,
+        3,
+        17,
+        4,
+        3,
+        3,
+        17,
+        22,
+        2,
+        7,
+        1,
+        4,
+        1,
+        1,
+        730,
+        3,
+        5,
+        760,
+        45,
+        76,
+        1,
+        11,
+        18,
+        77,
+        26,
+        261,
+        29,
+        31,
+        2,
+        2,
+        1,
+        152,
+        34,
+        4,
+        18,
+        5,
+        17,
+        1,
+        1,
+        10,
+        4,
+        7,
+        1,
+        17,
+        2,
+        5,
+        3,
+        14,
+        6,
+        14,
+        124,
+        29,
+        1,
+        1
+      ],
+      "detected_gt_indices": []
+    },
+    "size_bins_voxels": {
+      "tiny_<10": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "small_10-100": {
+        "n_gt": 1,
+        "n_detected": 0,
+        "recall": 0.0
+      },
+      "medium_100-1k": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "large_1k-10k": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "huge_>=10k": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      }
+    },
+    "size_bins_ml": {
+      "vsmall_<0.1mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "small_0.1-1mL": {
+        "n_gt": 1,
+        "n_detected": 0,
+        "recall": 0.0
+      },
+      "med_1-10mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "large_10-50mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "vlarge_>=50mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      }
+    },
+    "extras": {},
+    "prediction_path": "/scratch/users/sciget/isles26challenge/work/synthstroke/pred/soop_t1w/our_isles26_fs_synth_mixreal/sub-14.nii.gz",
+    "gt_path": "data/soop_bench/derivatives/lesion_masks/sub-14/dwi/sub-14_space-TRACE_desc-lesion_mask.nii.gz",
+    "sidecar_metadata": {
+      "Manufacturer": "Philips",
+      "ManufacturersModelName": "Ingenia Ambition X",
+      "MagneticFieldStrength": 1.5
+    }
+  },
+  {
+    "subject_id": "sub-2",
+    "voxel_size_mm": [
+      0.5555556416511536,
+      0.5555555820465088,
+      6.000000476837158
+    ],
+    "chronicity": "acute",
+    "center": "Philips|Ingenia Elition X",
+    "overlap": {
+      "dice": 0.350536055221031,
+      "iou": 0.2125151364057269,
+      "sensitivity": 0.2665922037305931,
+      "specificity": 0.9966750566197781,
+      "precision": 0.5116398713826367,
+      "npv": 0.9904764888408909,
+      "tp": 11934,
+      "fp": 11391,
+      "fn": 32831,
+      "tn": 3414532
+    },
+    "volume": {
+      "pred_vol_ml": 43.194456630835845,
+      "gt_vol_ml": 82.89817153609287,
+      "abs_volume_diff_ml": 39.70371490525703,
+      "signed_volume_diff_ml": -39.70371490525703,
+      "relative_abs_volume_diff": 0.47894560482519816
+    },
+    "boundary": {
+      "hd95_mm": 43.30612044504314,
+      "assd_mm": 13.130087862282123,
+      "masd_mm": 14.05341192199985,
+      "surface_dice_3mm": 0.3367020776534737
+    },
+    "lesionwise": {
+      "gt_lesion_count": 7,
+      "pred_lesion_count": 63,
+      "tp_lesions": 2,
+      "fp_lesions": 56,
+      "fn_lesions": 5,
+      "lesion_precision": 0.1111111111111111,
+      "lesion_recall": 0.2857142857142857,
+      "lesion_f1": 0.16,
+      "abs_lesion_count_diff": 56,
+      "signed_lesion_count_diff": 56,
+      "per_gt_overlap": [
+        10897,
+        15,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "per_gt_size_voxels": [
+        38432,
+        67,
+        53,
+        3465,
+        158,
+        45,
+        2545
+      ],
+      "per_pred_size_voxels": [
+        80,
+        46,
+        25,
+        1,
+        1,
+        520,
+        4,
+        14,
+        2,
+        2,
+        2,
+        12412,
+        227,
+        10,
+        6,
+        2,
+        63,
+        459,
+        70,
+        8,
+        366,
+        642,
+        40,
+        10,
+        3,
+        79,
+        1,
+        4,
+        183,
+        6,
+        11,
+        722,
+        3,
+        9,
+        1609,
+        6,
+        65,
+        2,
+        4,
+        10,
+        31,
+        4,
+        7,
+        7,
+        5,
+        103,
+        1,
+        1163,
+        2,
+        77,
+        3,
+        1325,
+        237,
+        34,
+        14,
+        15,
+        70,
+        11,
+        15,
+        1,
+        15,
+        2455,
+        1
+      ],
+      "detected_gt_indices": [
+        1,
+        2
+      ]
+    },
+    "size_bins_voxels": {
+      "tiny_<10": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "small_10-100": {
+        "n_gt": 3,
+        "n_detected": 1,
+        "recall": 0.3333333333333333
+      },
+      "medium_100-1k": {
+        "n_gt": 1,
+        "n_detected": 0,
+        "recall": 0.0
+      },
+      "large_1k-10k": {
+        "n_gt": 2,
+        "n_detected": 0,
+        "recall": 0.0
+      },
+      "huge_>=10k": {
+        "n_gt": 1,
+        "n_detected": 1,
+        "recall": 1.0
+      }
+    },
+    "size_bins_ml": {
+      "vsmall_<0.1mL": {
+        "n_gt": 2,
+        "n_detected": 0,
+        "recall": 0.0
+      },
+      "small_0.1-1mL": {
+        "n_gt": 2,
+        "n_detected": 1,
+        "recall": 0.5
+      },
+      "med_1-10mL": {
+        "n_gt": 2,
+        "n_detected": 0,
+        "recall": 0.0
+      },
+      "large_10-50mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "vlarge_>=50mL": {
+        "n_gt": 1,
+        "n_detected": 1,
+        "recall": 1.0
+      }
+    },
+    "extras": {},
+    "prediction_path": "/scratch/users/sciget/isles26challenge/work/synthstroke/pred/soop_t1w/our_isles26_fs_synth_mixreal/sub-2.nii.gz",
+    "gt_path": "data/soop_bench/derivatives/lesion_masks/sub-2/dwi/sub-2_space-TRACE_desc-lesion_mask.nii.gz",
+    "sidecar_metadata": {
+      "Manufacturer": "Philips",
+      "ManufacturersModelName": "Ingenia Elition X",
+      "MagneticFieldStrength": 3
+    }
+  },
+  {
+    "subject_id": "sub-3",
+    "voxel_size_mm": [
+      0.8984373807907104,
+      0.8984374403953552,
+      5.999997615814209
+    ],
+    "chronicity": "mixed",
+    "center": "Philips|Achieva",
+    "overlap": {
+      "dice": 0.0628550954598966,
+      "iou": 0.03244728637108281,
+      "sensitivity": 0.03717269562585137,
+      "specificity": 0.9960621252736909,
+      "precision": 0.20334492465640006,
+      "npv": 0.9745283373948224,
+      "tp": 1228,
+      "fp": 4811,
+      "fn": 31807,
+      "tn": 1216914
+    },
+    "volume": {
+      "pred_vol_ml": 29.247702893810732,
+      "gt_vol_ml": 159.99302286753397,
+      "abs_volume_diff_ml": 130.74531997372324,
+      "signed_volume_diff_ml": -130.74531997372324,
+      "relative_abs_volume_diff": 0.8171938852731951
+    },
+    "boundary": {
+      "hd95_mm": 30.901265233784184,
+      "assd_mm": 13.722181720604997,
+      "masd_mm": 13.530737221741106,
+      "surface_dice_3mm": 0.14664539926228692
+    },
+    "lesionwise": {
+      "gt_lesion_count": 5,
+      "pred_lesion_count": 48,
+      "tp_lesions": 2,
+      "fp_lesions": 35,
+      "fn_lesions": 3,
+      "lesion_precision": 0.2708333333333333,
+      "lesion_recall": 0.4,
+      "lesion_f1": 0.32298136645962733,
+      "abs_lesion_count_diff": 43,
+      "signed_lesion_count_diff": 43,
+      "per_gt_overlap": [
+        47,
+        0,
+        0,
+        438,
+        0
+      ],
+      "per_gt_size_voxels": [
+        510,
+        1367,
+        64,
+        31073,
+        21
+      ],
+      "per_pred_size_voxels": [
+        35,
+        18,
+        19,
+        2,
+        8,
+        1215,
+        17,
+        2,
+        84,
+        7,
+        57,
+        1,
+        1,
+        6,
+        1,
+        1,
+        1,
+        63,
+        12,
+        131,
+        3,
+        199,
+        2134,
+        50,
+        2,
+        4,
+        10,
+        1283,
+        5,
+        305,
+        1,
+        5,
+        15,
+        29,
+        9,
+        8,
+        54,
+        12,
+        1,
+        6,
+        13,
+        40,
+        113,
+        52,
+        1,
+        2,
+        1,
+        1
+      ],
+      "detected_gt_indices": [
+        1,
+        4
+      ]
+    },
+    "size_bins_voxels": {
+      "tiny_<10": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "small_10-100": {
+        "n_gt": 2,
+        "n_detected": 0,
+        "recall": 0.0
+      },
+      "medium_100-1k": {
+        "n_gt": 1,
+        "n_detected": 1,
+        "recall": 1.0
+      },
+      "large_1k-10k": {
+        "n_gt": 1,
+        "n_detected": 0,
+        "recall": 0.0
+      },
+      "huge_>=10k": {
+        "n_gt": 1,
+        "n_detected": 1,
+        "recall": 1.0
+      }
+    },
+    "size_bins_ml": {
+      "vsmall_<0.1mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "small_0.1-1mL": {
+        "n_gt": 2,
+        "n_detected": 0,
+        "recall": 0.0
+      },
+      "med_1-10mL": {
+        "n_gt": 2,
+        "n_detected": 1,
+        "recall": 0.5
+      },
+      "large_10-50mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "vlarge_>=50mL": {
+        "n_gt": 1,
+        "n_detected": 1,
+        "recall": 1.0
+      }
+    },
+    "extras": {},
+    "prediction_path": "/scratch/users/sciget/isles26challenge/work/synthstroke/pred/soop_t1w/our_isles26_fs_synth_mixreal/sub-3.nii.gz",
+    "gt_path": "data/soop_bench/derivatives/lesion_masks/sub-3/dwi/sub-3_space-TRACE_desc-lesion_mask.nii.gz",
+    "sidecar_metadata": {
+      "Manufacturer": "Philips",
+      "ManufacturersModelName": "Achieva",
+      "MagneticFieldStrength": 1.5
+    }
+  },
+  {
+    "subject_id": "sub-4",
+    "voxel_size_mm": [
+      1.1057690382003784,
+      1.105769157409668,
+      5.99999475479126
+    ],
+    "chronicity": "acute",
+    "center": "Philips|Ingenia Ambition X",
+    "overlap": {
+      "dice": 0.0,
+      "iou": 0.0,
+      "sensitivity": 0.0,
+      "specificity": 0.9965736740905524,
+      "precision": 0.0,
+      "npv": 0.9995243639178144,
+      "tp": 0,
+      "fp": 3179,
+      "fn": 440,
+      "tn": 924637
+    },
+    "volume": {
+      "pred_vol_ml": 23.32224193922128,
+      "gt_vol_ml": 3.2279919639060592,
+      "abs_volume_diff_ml": 20.09424997531522,
+      "signed_volume_diff_ml": 20.09424997531522,
+      "relative_abs_volume_diff": 6.225
+    },
+    "boundary": {
+      "hd95_mm": 73.71435777935314,
+      "assd_mm": 41.360461280591124,
+      "masd_mm": 31.91477361810356,
+      "surface_dice_3mm": 0.0
+    },
+    "lesionwise": {
+      "gt_lesion_count": 1,
+      "pred_lesion_count": 78,
+      "tp_lesions": 0,
+      "fp_lesions": 78,
+      "fn_lesions": 1,
+      "lesion_precision": 0.0,
+      "lesion_recall": 0.0,
+      "lesion_f1": 0.0,
+      "abs_lesion_count_diff": 77,
+      "signed_lesion_count_diff": 77,
+      "per_gt_overlap": [
+        0
+      ],
+      "per_gt_size_voxels": [
+        440
+      ],
+      "per_pred_size_voxels": [
+        1,
+        4,
+        7,
+        7,
+        7,
+        57,
+        11,
+        4,
+        3,
+        2,
+        21,
+        1,
+        6,
+        12,
+        4,
+        7,
+        104,
+        11,
+        200,
+        18,
+        1,
+        1,
+        1,
+        12,
+        2,
+        56,
+        4,
+        32,
+        3,
+        19,
+        1,
+        21,
+        12,
+        3,
+        65,
+        1,
+        11,
+        2,
+        1,
+        7,
+        4,
+        3,
+        270,
+        555,
+        3,
+        53,
+        11,
+        3,
+        10,
+        22,
+        4,
+        270,
+        11,
+        1,
+        1,
+        2,
+        4,
+        6,
+        25,
+        52,
+        7,
+        1,
+        3,
+        9,
+        1,
+        852,
+        1,
+        2,
+        1,
+        1,
+        239,
+        2,
+        1,
+        1,
+        1,
+        1,
+        3,
+        1
+      ],
+      "detected_gt_indices": []
+    },
+    "size_bins_voxels": {
+      "tiny_<10": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "small_10-100": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "medium_100-1k": {
+        "n_gt": 1,
+        "n_detected": 0,
+        "recall": 0.0
+      },
+      "large_1k-10k": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "huge_>=10k": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      }
+    },
+    "size_bins_ml": {
+      "vsmall_<0.1mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "small_0.1-1mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "med_1-10mL": {
+        "n_gt": 1,
+        "n_detected": 0,
+        "recall": 0.0
+      },
+      "large_10-50mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "vlarge_>=50mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      }
+    },
+    "extras": {},
+    "prediction_path": "/scratch/users/sciget/isles26challenge/work/synthstroke/pred/soop_t1w/our_isles26_fs_synth_mixreal/sub-4.nii.gz",
+    "gt_path": "data/soop_bench/derivatives/lesion_masks/sub-4/dwi/sub-4_space-TRACE_desc-lesion_mask.nii.gz",
+    "sidecar_metadata": {
+      "Manufacturer": "Philips",
+      "ManufacturersModelName": "Ingenia Ambition X",
+      "MagneticFieldStrength": 1.5
+    }
+  },
+  {
+    "subject_id": "sub-5",
+    "voxel_size_mm": [
+      0.8984376192092896,
+      0.8984375596046448,
+      5.999997615814209
+    ],
+    "chronicity": "acute",
+    "center": "Philips|Achieva",
+    "overlap": {
+      "dice": 0.0,
+      "iou": 0.0,
+      "sensitivity": 0.0,
+      "specificity": 0.9967946024118733,
+      "precision": 0.0,
+      "npv": 0.9998342994354553,
+      "tp": 0,
+      "fp": 3318,
+      "fn": 171,
+      "tn": 1031811
+    },
+    "volume": {
+      "pred_vol_ml": 16.06953416633685,
+      "gt_vol_ml": 0.8281767156249553,
+      "abs_volume_diff_ml": 15.241357450711895,
+      "signed_volume_diff_ml": 15.241357450711895,
+      "relative_abs_volume_diff": 18.403508771929822
+    },
+    "boundary": {
+      "hd95_mm": 72.02241721856169,
+      "assd_mm": 50.09428125567431,
+      "masd_mm": 31.787596948669638,
+      "surface_dice_3mm": 0.0
+    },
+    "lesionwise": {
+      "gt_lesion_count": 1,
+      "pred_lesion_count": 36,
+      "tp_lesions": 0,
+      "fp_lesions": 36,
+      "fn_lesions": 1,
+      "lesion_precision": 0.0,
+      "lesion_recall": 0.0,
+      "lesion_f1": 0.0,
+      "abs_lesion_count_diff": 35,
+      "signed_lesion_count_diff": 35,
+      "per_gt_overlap": [
+        0
+      ],
+      "per_gt_size_voxels": [
+        171
+      ],
+      "per_pred_size_voxels": [
+        13,
+        50,
+        6,
+        1,
+        1,
+        166,
+        618,
+        5,
+        2,
+        505,
+        6,
+        16,
+        48,
+        3,
+        18,
+        4,
+        45,
+        11,
+        6,
+        10,
+        1,
+        22,
+        88,
+        34,
+        1026,
+        31,
+        422,
+        1,
+        2,
+        1,
+        11,
+        3,
+        12,
+        6,
+        122,
+        2
+      ],
+      "detected_gt_indices": []
+    },
+    "size_bins_voxels": {
+      "tiny_<10": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "small_10-100": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "medium_100-1k": {
+        "n_gt": 1,
+        "n_detected": 0,
+        "recall": 0.0
+      },
+      "large_1k-10k": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "huge_>=10k": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      }
+    },
+    "size_bins_ml": {
+      "vsmall_<0.1mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "small_0.1-1mL": {
+        "n_gt": 1,
+        "n_detected": 0,
+        "recall": 0.0
+      },
+      "med_1-10mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "large_10-50mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "vlarge_>=50mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      }
+    },
+    "extras": {},
+    "prediction_path": "/scratch/users/sciget/isles26challenge/work/synthstroke/pred/soop_t1w/our_isles26_fs_synth_mixreal/sub-5.nii.gz",
+    "gt_path": "data/soop_bench/derivatives/lesion_masks/sub-5/dwi/sub-5_space-TRACE_desc-lesion_mask.nii.gz",
+    "sidecar_metadata": {
+      "Manufacturer": "Philips",
+      "ManufacturersModelName": "Achieva",
+      "MagneticFieldStrength": 1.5
+    }
+  },
+  {
+    "subject_id": "sub-7",
+    "voxel_size_mm": [
+      1.0223990678787231,
+      1.0223989486694336,
+      5.999994277954102
+    ],
+    "chronicity": "acute",
+    "center": "Philips|Ingenia Ambition X",
+    "overlap": {
+      "dice": 0.1400933955970647,
+      "iou": 0.07532281205164992,
+      "sensitivity": 0.3088235294117647,
+      "specificity": 0.9954305037717853,
+      "precision": 0.090595340811044,
+      "npv": 0.9989775540482333,
+      "tp": 420,
+      "fp": 4216,
+      "fn": 940,
+      "tn": 918424
+    },
+    "volume": {
+      "pred_vol_ml": 29.07602961955567,
+      "gt_vol_ml": 8.529637679593552,
+      "abs_volume_diff_ml": 20.546391939962117,
+      "signed_volume_diff_ml": 20.546391939962117,
+      "relative_abs_volume_diff": 2.408823529411765
+    },
+    "boundary": {
+      "hd95_mm": 66.1071263197095,
+      "assd_mm": 28.16324841892437,
+      "masd_mm": 19.137020882143688,
+      "surface_dice_3mm": 0.1924301379554298
+    },
+    "lesionwise": {
+      "gt_lesion_count": 12,
+      "pred_lesion_count": 75,
+      "tp_lesions": 4,
+      "fp_lesions": 74,
+      "fn_lesions": 8,
+      "lesion_precision": 0.013333333333333334,
+      "lesion_recall": 0.3333333333333333,
+      "lesion_f1": 0.025641025641025644,
+      "abs_lesion_count_diff": 63,
+      "signed_lesion_count_diff": 63,
+      "per_gt_overlap": [
+        0,
+        0,
+        0,
+        0,
+        395,
+        6,
+        0,
+        0,
+        16,
+        0,
+        3,
+        0
+      ],
+      "per_gt_size_voxels": [
+        19,
+        10,
+        8,
+        5,
+        1118,
+        75,
+        26,
+        13,
+        53,
+        7,
+        20,
+        6
+      ],
+      "per_pred_size_voxels": [
+        15,
+        4,
+        1955,
+        5,
+        1,
+        2,
+        3,
+        5,
+        25,
+        17,
+        5,
+        183,
+        60,
+        2,
+        23,
+        1,
+        2,
+        24,
+        8,
+        100,
+        7,
+        43,
+        22,
+        15,
+        1,
+        1,
+        1,
+        2,
+        19,
+        24,
+        9,
+        4,
+        3,
+        10,
+        1,
+        1075,
+        66,
+        3,
+        112,
+        40,
+        267,
+        4,
+        8,
+        3,
+        16,
+        17,
+        84,
+        77,
+        16,
+        4,
+        1,
+        9,
+        1,
+        10,
+        1,
+        27,
+        62,
+        27,
+        1,
+        1,
+        29,
+        2,
+        1,
+        1,
+        1,
+        7,
+        1,
+        2,
+        7,
+        21,
+        26,
+        1,
+        1,
+        1,
+        1
+      ],
+      "detected_gt_indices": [
+        5,
+        6,
+        9,
+        11
+      ]
+    },
+    "size_bins_voxels": {
+      "tiny_<10": {
+        "n_gt": 4,
+        "n_detected": 0,
+        "recall": 0.0
+      },
+      "small_10-100": {
+        "n_gt": 7,
+        "n_detected": 3,
+        "recall": 0.42857142857142855
+      },
+      "medium_100-1k": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "large_1k-10k": {
+        "n_gt": 1,
+        "n_detected": 1,
+        "recall": 1.0
+      },
+      "huge_>=10k": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      }
+    },
+    "size_bins_ml": {
+      "vsmall_<0.1mL": {
+        "n_gt": 6,
+        "n_detected": 0,
+        "recall": 0.0
+      },
+      "small_0.1-1mL": {
+        "n_gt": 5,
+        "n_detected": 3,
+        "recall": 0.6
+      },
+      "med_1-10mL": {
+        "n_gt": 1,
+        "n_detected": 1,
+        "recall": 1.0
+      },
+      "large_10-50mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "vlarge_>=50mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      }
+    },
+    "extras": {},
+    "prediction_path": "/scratch/users/sciget/isles26challenge/work/synthstroke/pred/soop_t1w/our_isles26_fs_synth_mixreal/sub-7.nii.gz",
+    "gt_path": "data/soop_bench/derivatives/lesion_masks/sub-7/dwi/sub-7_space-TRACE_desc-lesion_mask.nii.gz",
+    "sidecar_metadata": {
+      "Manufacturer": "Philips",
+      "ManufacturersModelName": "Ingenia Ambition X",
+      "MagneticFieldStrength": 1.5
+    }
+  },
+  {
+    "subject_id": "sub-8",
+    "voxel_size_mm": [
+      1.0223990678787231,
+      1.0223989486694336,
+      6.000000476837158
+    ],
+    "chronicity": "acute",
+    "center": "Philips|Ingenia Ambition X",
+    "overlap": {
+      "dice": 0.07648494711147275,
+      "iou": 0.03976311336717428,
+      "sensitivity": 0.04805725971370143,
+      "specificity": 0.9969669937555754,
+      "precision": 0.18725099601593626,
+      "npv": 0.9863062055981291,
+      "tp": 611,
+      "fp": 2652,
+      "fn": 12103,
+      "tn": 871728
+    },
+    "volume": {
+      "pred_vol_ml": 20.464879781844136,
+      "gt_vol_ml": 79.7396511021656,
+      "abs_volume_diff_ml": 59.27477132032146,
+      "signed_volume_diff_ml": -59.27477132032146,
+      "relative_abs_volume_diff": 0.7433537832310839
+    },
+    "boundary": {
+      "hd95_mm": 33.600055272549156,
+      "assd_mm": 14.867976156363213,
+      "masd_mm": 16.8816918196045,
+      "surface_dice_3mm": 0.10889929742388758
+    },
+    "lesionwise": {
+      "gt_lesion_count": 9,
+      "pred_lesion_count": 77,
+      "tp_lesions": 5,
+      "fp_lesions": 71,
+      "fn_lesions": 4,
+      "lesion_precision": 0.07792207792207792,
+      "lesion_recall": 0.5555555555555556,
+      "lesion_f1": 0.13667425968109337,
+      "abs_lesion_count_diff": 68,
+      "signed_lesion_count_diff": 68,
+      "per_gt_overlap": [
+        143,
+        0,
+        423,
+        1,
+        0,
+        8,
+        30,
+        0,
+        0
+      ],
+      "per_gt_size_voxels": [
+        977,
+        197,
+        8067,
+        145,
+        95,
+        2221,
+        910,
+        74,
+        28
+      ],
+      "per_pred_size_voxels": [
+        10,
+        7,
+        29,
+        4,
+        2,
+        99,
+        9,
+        203,
+        50,
+        4,
+        185,
+        17,
+        8,
+        22,
+        26,
+        8,
+        17,
+        254,
+        2,
+        35,
+        4,
+        15,
+        1,
+        34,
+        108,
+        2,
+        30,
+        1,
+        475,
+        1,
+        23,
+        41,
+        1,
+        1,
+        21,
+        1,
+        1,
+        3,
+        2,
+        482,
+        292,
+        2,
+        1,
+        2,
+        1,
+        5,
+        3,
+        30,
+        28,
+        59,
+        36,
+        1,
+        43,
+        15,
+        11,
+        4,
+        8,
+        3,
+        9,
+        3,
+        12,
+        180,
+        1,
+        69,
+        1,
+        1,
+        1,
+        2,
+        3,
+        137,
+        2,
+        27,
+        13,
+        5,
+        6,
+        6,
+        3
+      ],
+      "detected_gt_indices": [
+        1,
+        3,
+        4,
+        6,
+        7
+      ]
+    },
+    "size_bins_voxels": {
+      "tiny_<10": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "small_10-100": {
+        "n_gt": 3,
+        "n_detected": 0,
+        "recall": 0.0
+      },
+      "medium_100-1k": {
+        "n_gt": 4,
+        "n_detected": 3,
+        "recall": 0.75
+      },
+      "large_1k-10k": {
+        "n_gt": 2,
+        "n_detected": 2,
+        "recall": 1.0
+      },
+      "huge_>=10k": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      }
+    },
+    "size_bins_ml": {
+      "vsmall_<0.1mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "small_0.1-1mL": {
+        "n_gt": 4,
+        "n_detected": 1,
+        "recall": 0.25
+      },
+      "med_1-10mL": {
+        "n_gt": 3,
+        "n_detected": 2,
+        "recall": 0.6666666666666666
+      },
+      "large_10-50mL": {
+        "n_gt": 1,
+        "n_detected": 1,
+        "recall": 1.0
+      },
+      "vlarge_>=50mL": {
+        "n_gt": 1,
+        "n_detected": 1,
+        "recall": 1.0
+      }
+    },
+    "extras": {},
+    "prediction_path": "/scratch/users/sciget/isles26challenge/work/synthstroke/pred/soop_t1w/our_isles26_fs_synth_mixreal/sub-8.nii.gz",
+    "gt_path": "data/soop_bench/derivatives/lesion_masks/sub-8/dwi/sub-8_space-TRACE_desc-lesion_mask.nii.gz",
+    "sidecar_metadata": {
+      "Manufacturer": "Philips",
+      "ManufacturersModelName": "Ingenia Ambition X",
+      "MagneticFieldStrength": 1.5
+    }
+  },
+  {
+    "subject_id": "sub-9",
+    "voxel_size_mm": [
+      0.598958432674408,
+      0.5989582538604736,
+      5.999997138977051
+    ],
+    "chronicity": "acute",
+    "center": "Philips|Ingenia Elition X",
+    "overlap": {
+      "dice": 0.5680370777900037,
+      "iou": 0.3966842080752573,
+      "sensitivity": 0.5340438871473354,
+      "specificity": 0.9977514503816793,
+      "precision": 0.6066519478669611,
+      "npv": 0.9969765991540824,
+      "tp": 8518,
+      "fp": 5523,
+      "fn": 7432,
+      "tn": 2450727
+    },
+    "volume": {
+      "pred_vol_ml": 30.223330503692875,
+      "gt_vol_ml": 34.332463608995184,
+      "abs_volume_diff_ml": 4.109133105302309,
+      "signed_volume_diff_ml": -4.109133105302309,
+      "relative_abs_volume_diff": 0.1196865203761756
+    },
+    "boundary": {
+      "hd95_mm": 46.10965334168011,
+      "assd_mm": 7.913728441684468,
+      "masd_mm": 7.880344070095644,
+      "surface_dice_3mm": 0.6295901335311572
+    },
+    "lesionwise": {
+      "gt_lesion_count": 2,
+      "pred_lesion_count": 73,
+      "tp_lesions": 1,
+      "fp_lesions": 67,
+      "fn_lesions": 1,
+      "lesion_precision": 0.0821917808219178,
+      "lesion_recall": 0.5,
+      "lesion_f1": 0.1411764705882353,
+      "abs_lesion_count_diff": 71,
+      "signed_lesion_count_diff": 71,
+      "per_gt_overlap": [
+        0,
+        8492
+      ],
+      "per_gt_size_voxels": [
+        2,
+        15948
+      ],
+      "per_pred_size_voxels": [
+        168,
+        1,
+        12,
+        30,
+        2,
+        2,
+        1,
+        158,
+        32,
+        11,
+        4,
+        15,
+        916,
+        45,
+        14,
+        4,
+        75,
+        16,
+        2,
+        3,
+        2,
+        98,
+        1,
+        1,
+        4,
+        11,
+        1,
+        52,
+        2,
+        10415,
+        8,
+        81,
+        987,
+        51,
+        23,
+        4,
+        1,
+        1,
+        22,
+        2,
+        4,
+        1,
+        2,
+        9,
+        3,
+        6,
+        66,
+        8,
+        185,
+        6,
+        4,
+        31,
+        80,
+        7,
+        69,
+        21,
+        35,
+        7,
+        37,
+        7,
+        12,
+        4,
+        1,
+        1,
+        3,
+        108,
+        1,
+        4,
+        1,
+        1,
+        13,
+        4,
+        22
+      ],
+      "detected_gt_indices": [
+        2
+      ]
+    },
+    "size_bins_voxels": {
+      "tiny_<10": {
+        "n_gt": 1,
+        "n_detected": 0,
+        "recall": 0.0
+      },
+      "small_10-100": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "medium_100-1k": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "large_1k-10k": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "huge_>=10k": {
+        "n_gt": 1,
+        "n_detected": 1,
+        "recall": 1.0
+      }
+    },
+    "size_bins_ml": {
+      "vsmall_<0.1mL": {
+        "n_gt": 1,
+        "n_detected": 0,
+        "recall": 0.0
+      },
+      "small_0.1-1mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "med_1-10mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      },
+      "large_10-50mL": {
+        "n_gt": 1,
+        "n_detected": 1,
+        "recall": 1.0
+      },
+      "vlarge_>=50mL": {
+        "n_gt": 0,
+        "n_detected": 0,
+        "recall": NaN
+      }
+    },
+    "extras": {},
+    "prediction_path": "/scratch/users/sciget/isles26challenge/work/synthstroke/pred/soop_t1w/our_isles26_fs_synth_mixreal/sub-9.nii.gz",
+    "gt_path": "data/soop_bench/derivatives/lesion_masks/sub-9/dwi/sub-9_space-TRACE_desc-lesion_mask.nii.gz",
+    "sidecar_metadata": {
+      "Manufacturer": "Philips",
+      "ManufacturersModelName": "Ingenia Elition X",
+      "MagneticFieldStrength": 3
+    }
+  }
+]
