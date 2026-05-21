@@ -6,6 +6,6 @@ nibabel>=5.0.0
 scikit-image>=0.21.0
 tqdm>=4.65.0
 # wandb is installed separately for Phase B training to avoid py3.12 sdist build failures during Phase A.
-cornucopia>=0.1.0
+cornucopia==0.3.0
 huggingface_hub>=0.20.0
 safetensors>=0.4.0
