@@ -6,8 +6,9 @@ GMM synthesis) and loss (DiceCEL2Loss) and mirror the repo's train.py loop, but:
   - drop the wandb coupling (offline cluster) -> plain logging,
   - load OUR 34-class label maps (work/synthstroke/labelmaps/<CASE>.nii.gz;
     tissue 0..32 + lesion 33) for the fold-0 split,
-  - support --mix-real: 50:50 synthetic (GMM-from-label, contrast-randomized)
-    and real ATLAS T1w batches (same 34-class label as target),
+  - support --mix-real: configurable synthetic:real mix (default 33% synth = 67%
+    real, ATLAS-first) controlled by --synth-prob,
+  - lesion-focused patch sampling via RandCropByPosNegLabeld,
   - preempt-safe checkpointing for SLURM requeue.
 
 The model is a MONAI UNet with out_channels = N_CLASSES (34); the lesion is the
@@ -18,6 +19,7 @@ import argparse
 import glob
 import json
 import os
+import random
 import signal
 import sys
 from pathlib import Path
@@ -25,6 +27,7 @@ from pathlib import Path
 import numpy as np
 import torch
 import monai as mn
+from monai.data import list_data_collate
 from monai.networks.nets import UNet
 
 REPO = Path(__file__).resolve().parents[4]
@@ -73,17 +76,63 @@ class SynthFromLabelD(mn.transforms.MapTransform):
         return d
 
 
+class LesionMaskD(mn.transforms.MapTransform):
+    """Write a binary lesion mask key for use with RandCropByPosNegLabeld.
+
+    Creates d[mask_key] = (d[label_key] == lesion_idx) as float32, shape
+    (1, H, W, D), suitable for MONAI's positive/negative label sampling.
+    """
+
+    def __init__(self, lesion_idx, label_key="label", mask_key="lesion"):
+        super().__init__([label_key])
+        self.lesion_idx = lesion_idx
+        self.lk = label_key
+        self.mk = mask_key
+
+    def __call__(self, data):
+        d = dict(data)
+        lab = d[self.lk]
+        if torch.is_tensor(lab):
+            mask = (lab == self.lesion_idx).float()
+        else:
+            mask = torch.as_tensor((np.asarray(lab) == self.lesion_idx).astype(np.float32))
+        # Ensure channel-first shape (1, H, W, D)
+        if mask.ndim == 3:
+            mask = mask.unsqueeze(0)
+        d[self.mk] = mask
+        return d
+
+
 def synth_transform(patch, n_classes, device, syn):
-    # cornucopia SynthFromLabelTransform synthesizes an image from the integer
-    # label map and returns the deformed integer label (lesion = class 33). We
-    # crop to the patch first (cheap), synthesize, augment, then one-hot the
-    # integer label as the training target.
+    """Synthetic transform: lesion-focused crop BEFORE synthesis for efficiency.
+
+    Critical ordering:
+    Load label -> EnsureChannelFirst -> Spacing(nearest) -> ToTensor ->
+    LesionMaskD (build lesion binary mask) ->
+    RandCropByPosNegLabeld (crop label + lesion mask) ->
+    SpatialPadD (pad up to patch if crop was smaller) ->
+    DeleteItemsd (drop lesion key) ->
+    SynthFromLabelD (synthesize image from cropped label) ->
+    flips -> NormalizeIntensity -> AsDiscrete(one-hot) -> ToTensor
+    """
+    lesion_idx = n_classes - 1
     return mn.transforms.Compose([
         mn.transforms.LoadImageD(keys=["label"], image_only=True),
         mn.transforms.EnsureChannelFirstD(keys=["label"]),
         mn.transforms.SpacingD(keys=["label"], pixdim=1, mode="nearest"),
         mn.transforms.ToTensorD(keys=["label"], dtype=torch.float32, device=device),
-        mn.transforms.RandSpatialCropD(keys=["label"], roi_size=(patch,) * 3, random_size=False),
+        LesionMaskD(lesion_idx, label_key="label", mask_key="lesion"),
+        mn.transforms.RandCropByPosNegLabeld(
+            keys=["label", "lesion"],
+            label_key="lesion",
+            spatial_size=(patch,) * 3,
+            pos=1,
+            neg=1,
+            num_samples=1,
+            allow_smaller=True,
+        ),
+        mn.transforms.SpatialPadD(keys=["label", "lesion"], spatial_size=(patch,) * 3),
+        mn.transforms.DeleteItemsd(keys=["lesion"]),
         SynthFromLabelD(syn, label_key="label", image_key="image"),
         mn.transforms.RandAxisFlipd(keys=["image", "label"], prob=0.8),
         mn.transforms.RandAxisFlipd(keys=["image", "label"], prob=0.8),
@@ -95,6 +144,12 @@ def synth_transform(patch, n_classes, device, syn):
 
 
 def real_transform(patch, n_classes, device, train=True):
+    """Real ATLAS T1w transform.
+
+    Train branch uses lesion-focused RandCropByPosNegLabeld.
+    Val/non-train branch keeps full-volume behavior (no crop).
+    """
+    lesion_idx = n_classes - 1
     keys = ["image", "label"]
     tfms = [
         mn.transforms.LoadImageD(keys=keys, image_only=True),
@@ -106,7 +161,18 @@ def real_transform(patch, n_classes, device, train=True):
     ]
     if train:
         tfms += [
-            mn.transforms.RandSpatialCropD(keys=keys, roi_size=(patch,) * 3, random_size=False),
+            LesionMaskD(lesion_idx, label_key="label", mask_key="lesion"),
+            mn.transforms.RandCropByPosNegLabeld(
+                keys=["image", "label", "lesion"],
+                label_key="lesion",
+                spatial_size=(patch,) * 3,
+                pos=1,
+                neg=1,
+                num_samples=1,
+                allow_smaller=True,
+            ),
+            mn.transforms.SpatialPadD(keys=["image", "label", "lesion"], spatial_size=(patch,) * 3),
+            mn.transforms.DeleteItemsd(keys=["lesion"]),
             mn.transforms.RandAxisFlipd(keys=keys, prob=0.8),
             mn.transforms.RandAxisFlipd(keys=keys, prob=0.8),
             mn.transforms.RandAxisFlipd(keys=keys, prob=0.8),
@@ -137,8 +203,14 @@ def val_transform(device):
 
 
 def make_loader(dicts, transform, shuffle):
+    # Use MONAI's DataLoader so that list outputs from RandCropByPosNegLabeld
+    # (num_samples=1 -> list of length 1) are collated correctly via
+    # list_data_collate. Keep batch_size=1, num_workers=0 for GPU memory safety.
     ds = mn.data.Dataset(dicts, transform=transform)
-    return torch.utils.data.DataLoader(ds, batch_size=1, shuffle=shuffle, num_workers=0)
+    return mn.data.DataLoader(
+        ds, batch_size=1, shuffle=shuffle, num_workers=0,
+        collate_fn=list_data_collate,
+    )
 
 
 def cycle(loader):
@@ -167,10 +239,15 @@ def main():
     ap.add_argument("--l2", type=int, default=50)
     ap.add_argument("--lesion-weight", type=float, default=2.0)
     ap.add_argument("--mix-real", action="store_true")
+    ap.add_argument("--synth-prob", type=float, default=0.33,
+                    help="probability of drawing a synthetic batch each step "
+                         "(default 0.33 = 67%% real, ATLAS-first); "
+                         "ignored when --mix-real is not set")
     ap.add_argument("--amp", action="store_true")
     ap.add_argument("--device", default="auto")
     ap.add_argument("--max-val", type=int, default=32, help="cap in-training val cases for checkpoint selection")
     ap.add_argument("--smoke", action="store_true", help="few steps for a quick sanity run")
+    ap.add_argument("--requeue", action="store_true", help="(no-op flag; requeue is handled by SIGUSR1 handler)")
     args = ap.parse_args()
 
     repo = _add_repo(args.repo)
@@ -184,7 +261,8 @@ def main():
     lesion_idx = n_classes - 1
     outdir = Path(args.logdir) / args.name
     outdir.mkdir(parents=True, exist_ok=True)
-    print(f"[info] device={device} n_classes={n_classes} mix_real={args.mix_real} epochs={args.epochs}")
+    print(f"[info] device={device} n_classes={n_classes} mix_real={args.mix_real} "
+          f"synth_prob={args.synth_prob:.2f} epochs={args.epochs}")
 
     train_ids, val_ids = fold0(args.splits)
     lm = Path(args.labelmaps_dir)
@@ -251,6 +329,10 @@ def main():
     cur_epoch = start_epoch
     scaler = torch.cuda.amp.GradScaler(enabled=args.amp)
 
+    # Seeded RNG for reproducible synth/real selection
+    _mix_rng = random.Random(0)
+    synth_prob = args.synth_prob
+
     for epoch in range(start_epoch, epochs):
         cur_epoch = epoch
         model.train()
@@ -258,8 +340,10 @@ def main():
         n_ok = 0
         n_nan = 0
         for step in range(epoch_len):
-            # 50:50 synth/real interleave
-            if real_iter is not None and step % 2 == 1:
+            # Configurable synth:real mix. When --mix-real is not set, always
+            # use synth. Otherwise draw synth with probability synth_prob
+            # (default 0.33 = 67% real / ATLAS-first).
+            if real_iter is not None and _mix_rng.random() >= synth_prob:
                 batch = next(real_iter)
             else:
                 batch = next(synth_iter)

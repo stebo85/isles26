@@ -12,8 +12,11 @@
 #SBATCH -p owners
 
 # Phase B / Step 6: train a SynthStroke-style model on our self-contained ATLAS
-# label maps (34-class: tissue 0..32 + lesion 33), fold 0, reduced schedule
-# (150 epochs x 200 iters), with 50:50 synthetic/real mixing. Preempt-safe.
+# label maps (34-class: tissue 0..32 + lesion 33), fold 0, extended schedule
+# (500 epochs x 200 iters), with configurable synthetic:real mixing.
+# --synth-prob 0.33 = 33% synthetic / 67% real (ATLAS-first default).
+# Preempt-safe: SIGUSR1 triggers checkpoint + scontrol requeue.
+# --time 24:00:00 covers ~21h; SLURM requeue handles overflow automatically.
 
 set -uo pipefail
 
@@ -43,7 +46,7 @@ NAME="${SYNTH_TRAIN_NAME:-isles26_fs_synth_mixreal}"
 
 python "$REPO/baselines/models/synthstroke/synthstroke_helpers/our_train.py" \
   --name "$NAME" \
-  --epochs 150 \
+  --epochs 500 \
   --epoch-length 200 \
   --val-interval 5 \
   --patch 128 \
@@ -51,6 +54,7 @@ python "$REPO/baselines/models/synthstroke/synthstroke_helpers/our_train.py" \
   --l2 50 \
   --lesion-weight 2 \
   --mix-real \
+  --synth-prob "${SYNTH_PROB:-0.33}" \
   --device auto &
 PY_PID=$!
 wait "$PY_PID"

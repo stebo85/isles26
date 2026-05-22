@@ -12,6 +12,13 @@
 # Phase B / Step 7: predict + evaluate OUR self-trained SynthStroke model on
 # ATLAS fold-0 val (T1w), soop_bench native TRACE, and soop_bench T1w-in-TRACE,
 # using our_predict.py and the existing eval framework. Mirrors analysis_synth_03.
+#
+# Post-processing operating point (prob-threshold, min-cc-voxels) is resolved
+# in this priority:
+#   1. Env vars PROB_THRESHOLD / MIN_CC_VOXELS if set.
+#   2. baselines/reports/synthstroke/$TAG/postproc_tuning/postproc_operating_point.json
+#      if it exists (written by analysis_synth_08_tune_postproc.sh).
+#   3. Defaults: prob_threshold=0.5, min_cc_voxels=0.
 
 set -euo pipefail
 REPO=/scratch/users/sciget/isles26challenge
@@ -40,11 +47,34 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 if [[ ! -s "$CKPT" ]]; then echo "[error] missing checkpoint: $CKPT" >&2; exit 2; fi
 echo "[info] checkpoint=$CKPT tag=$TAG"
 
+# Resolve post-processing operating point
+_OP_JSON="$REPO/baselines/reports/synthstroke/$TAG/postproc_tuning/postproc_operating_point.json"
+
+if [[ -n "${PROB_THRESHOLD:-}" ]]; then
+  THR="${PROB_THRESHOLD}"
+  CC="${MIN_CC_VOXELS:-0}"
+  echo "[info] postproc from env: prob_threshold=$THR min_cc_voxels=$CC"
+elif [[ -f "$_OP_JSON" ]]; then
+  THR=$("$EVAL_PY" -c "import json,sys; d=json.load(open(sys.argv[1])); print(d['prob_threshold'])" "$_OP_JSON")
+  CC=$("$EVAL_PY" -c "import json,sys; d=json.load(open(sys.argv[1])); print(d['min_cc_voxels'])" "$_OP_JSON")
+  echo "[info] postproc from $( basename $_OP_JSON ): prob_threshold=$THR min_cc_voxels=$CC"
+else
+  THR="0.5"
+  CC="0"
+  echo "[info] postproc defaults: prob_threshold=$THR min_cc_voxels=$CC"
+fi
+
 predict_one() { # image out
   local image="$1" out="$2"
   [[ -s "$out" ]] && { echo "[skip] $out"; return 0; }
   mkdir -p "$(dirname "$out")"
-  "$INFER_PY" "$PREDICT" --checkpoint "$CKPT" --image "$image" --out "$out" --device auto
+  "$INFER_PY" "$PREDICT" \
+    --checkpoint "$CKPT" \
+    --image "$image" \
+    --out "$out" \
+    --prob-threshold "$THR" \
+    --min-cc-voxels "$CC" \
+    --device auto
 }
 
 # A) ATLAS fold-0 val (T1w)

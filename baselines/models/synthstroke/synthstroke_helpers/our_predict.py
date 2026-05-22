@@ -13,6 +13,7 @@ from pathlib import Path
 
 import numpy as np
 import nibabel as nib
+import scipy.ndimage
 import torch
 import monai as mn
 from monai.networks.nets import UNet
@@ -25,7 +26,25 @@ def build_model(n_classes, device):
                 norm="INSTANCE", dropout=0.0, bias=True, adn_ordering="NDA").to(device).eval()
 
 
-def run_inference(model, image_path, device, patch, use_tta, lesion_cls):
+def run_inference(model, image_path, device, patch, use_tta, lesion_cls,
+                  prob_threshold=0.5, min_cc_voxels=0):
+    """Run sliding-window inference and return (binary_mask, lesion_prob_array).
+
+    Parameters
+    ----------
+    prob_threshold : float
+        Binarisation threshold on the lesion-channel softmax probability.
+    min_cc_voxels : int
+        If > 0, connected components smaller than this (26-connectivity) are
+        removed from the binary mask. Default 0 = disabled, to avoid destroying
+        true tiny lesions with an aggressive default.
+
+    Returns
+    -------
+    mask : np.ndarray of uint8, shape (H, W, D)
+    lesion_prob : np.ndarray of float32, shape (H, W, D)
+        Lesion-channel probability map in the same space as the mask.
+    """
     load = mn.transforms.Compose([
         mn.transforms.LoadImageD(keys=["img"], image_only=True),
         mn.transforms.EnsureChannelFirstD(keys=["img"]),
@@ -56,12 +75,25 @@ def run_inference(model, image_path, device, patch, use_tta, lesion_cls):
     pred.applied_operations = img.applied_operations
     with mn.transforms.utils.allow_missing_keys_mode(preproc):
         inv = preproc.inverse({"img": pred})["img"]
-    # Binary lesion mask by thresholding the lesion-channel probability (matches
-    # the checkpoint-selection metric used in training; argmax over 34 classes
-    # over-segments for an undertrained model).
+    # Binary lesion mask by thresholding the lesion-channel probability.
     probs = softmax(inv)
-    les = np.asarray(probs[lesion_cls].detach().cpu()) > 0.5
-    return les.astype(np.uint8)
+    lesion_prob = np.asarray(probs[lesion_cls].detach().cpu(), dtype=np.float32)
+    mask = (lesion_prob > prob_threshold)
+
+    # Connected-component post-processing: remove small spurious components.
+    # Uses 26-connectivity (3x3x3 structure) to match eval/metrics.py.
+    if min_cc_voxels > 0 and mask.any():
+        labeled, n_comp = scipy.ndimage.label(mask, structure=np.ones((3, 3, 3), dtype=np.uint8))
+        if n_comp > 0:
+            sizes = np.bincount(labeled.ravel())  # index 0 = background
+            # Zero out components smaller than threshold
+            remove_labels = np.where(sizes < min_cc_voxels)[0]
+            remove_labels = remove_labels[remove_labels > 0]  # never touch background
+            if remove_labels.size > 0:
+                remove_mask = np.isin(labeled, remove_labels)
+                mask = mask & ~remove_mask
+
+    return mask.astype(np.uint8), lesion_prob
 
 
 def main():
@@ -73,6 +105,14 @@ def main():
     ap.add_argument("--patch", type=int, default=128)
     ap.add_argument("--tta", action="store_true")
     ap.add_argument("--device", default="auto")
+    ap.add_argument("--prob-threshold", type=float, default=0.5,
+                    help="lesion-channel softmax probability threshold (default 0.5)")
+    ap.add_argument("--min-cc-voxels", type=int, default=0,
+                    help="remove connected components smaller than this many voxels "
+                         "(26-connectivity); 0 = disabled (default)")
+    ap.add_argument("--save-prob", type=str, default=None,
+                    help="if set, save lesion-channel probability map as float32 NIfTI "
+                         "to this path (same native space/affine as the output mask)")
     args = ap.parse_args()
 
     device = torch.device("cuda" if (args.device == "auto" and torch.cuda.is_available())
@@ -84,15 +124,38 @@ def main():
     model.load_state_dict(state)
 
     ref = nib.load(str(args.image))
-    mask = np.squeeze(run_inference(model, args.image, device, args.patch, args.tta, lesion_cls))
+    mask, lesion_prob = run_inference(
+        model, args.image, device, args.patch, args.tta, lesion_cls,
+        prob_threshold=args.prob_threshold,
+        min_cc_voxels=args.min_cc_voxels,
+    )
+    mask = np.squeeze(mask)
+    lesion_prob = np.squeeze(lesion_prob)
+
     if mask.shape != ref.shape[:3]:
         raise ValueError(f"mask shape {mask.shape} != input {ref.shape[:3]}")
+
     out = Path(args.out); out.parent.mkdir(parents=True, exist_ok=True)
     hdr = ref.header.copy(); hdr.set_data_dtype(np.uint8); hdr.set_slope_inter(1, 0)
     img = nib.Nifti1Image(mask.astype(np.uint8), ref.affine, header=hdr)
     img.set_data_dtype(np.uint8); img.header.set_slope_inter(1, 0)
     nib.save(img, str(out))
     print(f"[done] lesion_voxels={int(mask.sum())} out={out}")
+
+    # Optionally save lesion probability map in same native space as the mask.
+    if args.save_prob:
+        if lesion_prob.shape != ref.shape[:3]:
+            raise ValueError(f"prob shape {lesion_prob.shape} != input {ref.shape[:3]}")
+        prob_path = Path(args.save_prob)
+        prob_path.parent.mkdir(parents=True, exist_ok=True)
+        prob_hdr = ref.header.copy()
+        prob_hdr.set_data_dtype(np.float32)
+        prob_hdr.set_slope_inter(1, 0)
+        prob_img = nib.Nifti1Image(lesion_prob.astype(np.float32), ref.affine, header=prob_hdr)
+        prob_img.set_data_dtype(np.float32)
+        prob_img.header.set_slope_inter(1, 0)
+        nib.save(prob_img, str(prob_path))
+        print(f"[done] lesion_prob saved to {prob_path}")
 
 
 if __name__ == "__main__":
