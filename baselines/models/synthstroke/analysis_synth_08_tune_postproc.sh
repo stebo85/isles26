@@ -29,6 +29,7 @@ export PYTHONNOUSERSITE=1
 
 NAME="${SYNTH_TRAIN_NAME:-isles26_fs_synth_mixreal}"
 CKPT="${SYNTH_CKPT:-$REPO/work/synthstroke/train/$NAME/checkpoint_best.pt}"
+N_CLASSES="${N_CLASSES:-34}"   # must match the trained checkpoint (Run D compact6 = 6)
 TAG="our_${NAME}"
 
 INFER_PY="$REPO/.venv-synthstroke/bin/python"
@@ -75,6 +76,7 @@ for c in "${VAL_CASES[@]}"; do
     --checkpoint "$CKPT" \
     --image "$IMG" \
     --out "$TMP_OUT" \
+    --n-classes "$N_CLASSES" \
     --prob-threshold 0.5 \
     --min-cc-voxels 0 \
     --save-prob "$OUT_PROB" \

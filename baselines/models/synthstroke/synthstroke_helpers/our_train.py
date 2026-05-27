@@ -103,7 +103,44 @@ class LesionMaskD(mn.transforms.MapTransform):
         return d
 
 
-def synth_transform(patch, n_classes, device, syn):
+class LesionFadeD(mn.transforms.MapTransform):
+    """Lesion intensity 'fade' (synth path only): multiply the synthesized image
+    inside the lesion region by a smooth low-frequency random field (~[lo, hi]),
+    so the lesion is not a single flat GMM intensity. Mirrors the repo's --fade
+    intent (penumbra / intensity inhomogeneity) for our integer-label cornucopia
+    pipeline. Applied AFTER SynthFromLabelD (needs the synthesized image + the
+    deformed integer label).
+    """
+
+    def __init__(self, lesion_idx, image_key="image", label_key="label",
+                 lo=0.5, hi=1.5, ctrl=4):
+        super().__init__([image_key])
+        self.lesion_idx = lesion_idx
+        self.ik = image_key
+        self.lk = label_key
+        self.lo, self.hi, self.ctrl = lo, hi, ctrl
+
+    def __call__(self, data):
+        d = dict(data)
+        img = d[self.ik]
+        lab = d[self.lk]
+        if not torch.is_tensor(img):
+            img = torch.as_tensor(img)
+        les = (lab == self.lesion_idx)
+        if bool(les.any()):
+            shp = tuple(int(s) for s in img.shape[-3:])
+            coarse = torch.rand((1, 1, self.ctrl, self.ctrl, self.ctrl),
+                                dtype=torch.float32, device=img.device)
+            field = torch.nn.functional.interpolate(
+                coarse, size=shp, mode="trilinear", align_corners=False)[0]
+            field = self.lo + (self.hi - self.lo) * field          # (1,H,W,D) in [lo,hi]
+            les_f = les.to(img.dtype)
+            img = img * (1.0 - les_f) + img * field * les_f
+            d[self.ik] = img
+        return d
+
+
+def synth_transform(patch, n_classes, device, syn, fade=False):
     """Synthetic transform: lesion-focused crop BEFORE synthesis for efficiency.
 
     Critical ordering:
@@ -113,10 +150,10 @@ def synth_transform(patch, n_classes, device, syn):
     SpatialPadD (pad up to patch if crop was smaller) ->
     DeleteItemsd (drop lesion key) ->
     SynthFromLabelD (synthesize image from cropped label) ->
-    flips -> NormalizeIntensity -> AsDiscrete(one-hot) -> ToTensor
+    [LesionFadeD if fade] -> flips -> NormalizeIntensity -> AsDiscrete -> ToTensor
     """
     lesion_idx = n_classes - 1
-    return mn.transforms.Compose([
+    tfms = [
         mn.transforms.LoadImageD(keys=["label"], image_only=True),
         mn.transforms.EnsureChannelFirstD(keys=["label"]),
         mn.transforms.SpacingD(keys=["label"], pixdim=1, mode="nearest"),
@@ -134,13 +171,18 @@ def synth_transform(patch, n_classes, device, syn):
         mn.transforms.SpatialPadD(keys=["label", "lesion"], spatial_size=(patch,) * 3),
         mn.transforms.DeleteItemsd(keys=["lesion"]),
         SynthFromLabelD(syn, label_key="label", image_key="image"),
+    ]
+    if fade:
+        tfms.append(LesionFadeD(lesion_idx, image_key="image", label_key="label"))
+    tfms += [
         mn.transforms.RandAxisFlipd(keys=["image", "label"], prob=0.8),
         mn.transforms.RandAxisFlipd(keys=["image", "label"], prob=0.8),
         mn.transforms.RandAxisFlipd(keys=["image", "label"], prob=0.8),
         mn.transforms.NormalizeIntensityD(keys="image", nonzero=False, channel_wise=True),
         mn.transforms.AsDiscreteD(keys="label", to_onehot=n_classes),
         mn.transforms.ToTensorD(keys=["image", "label"], dtype=torch.float32),
-    ])
+    ]
+    return mn.transforms.Compose(tfms)
 
 
 def real_transform(patch, n_classes, device, train=True):
@@ -239,6 +281,8 @@ def main():
     ap.add_argument("--l2", type=int, default=50)
     ap.add_argument("--lesion-weight", type=float, default=2.0)
     ap.add_argument("--mix-real", action="store_true")
+    ap.add_argument("--fade", action="store_true",
+                    help="apply smooth lesion intensity fade (penumbra/inhomogeneity) in the synth path")
     ap.add_argument("--synth-prob", type=float, default=0.33,
                     help="probability of drawing a synthetic batch each step "
                          "(default 0.33 = 67%% real, ATLAS-first); "
@@ -284,7 +328,7 @@ def main():
     real_dicts = [{"image": str(im / f"{c}_0000.nii.gz"), "label": str(lm / f"{c}.nii.gz")} for c in train_ids]
     val_dicts = [{"image": str(im / f"{c}_0000.nii.gz"), "label": str(lm / f"{c}.nii.gz")} for c in val_ids]
 
-    synth_loader = make_loader(synth_dicts, synth_transform(args.patch, n_classes, device, syn), True)
+    synth_loader = make_loader(synth_dicts, synth_transform(args.patch, n_classes, device, syn, fade=args.fade), True)
     real_loader = make_loader(real_dicts, real_transform(args.patch, n_classes, device, True), True) if args.mix_real else None
     val_loader = make_loader(val_dicts, val_transform(device), False)
 

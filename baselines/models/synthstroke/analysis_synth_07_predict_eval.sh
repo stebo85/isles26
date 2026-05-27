@@ -36,6 +36,7 @@ export PYTHONNOUSERSITE=1
 
 NAME="${SYNTH_TRAIN_NAME:-isles26_fs_synth_mixreal}"
 CKPT="${SYNTH_CKPT:-$REPO/work/synthstroke/train/$NAME/checkpoint_best.pt}"
+N_CLASSES="${N_CLASSES:-34}"   # must match the trained checkpoint (Run D compact6 = 6)
 TAG="our_${NAME}"
 
 INFER_PY="$REPO/.venv-synthstroke/bin/python"
@@ -64,6 +65,12 @@ else
   echo "[info] postproc defaults: prob_threshold=$THR min_cc_voxels=$CC"
 fi
 
+# Brain masking: default ON (removes hallucinated out-of-brain lesion; physically
+# correct and a clear win on skull-stripped ATLAS). Set BRAIN_MASK=0 to disable.
+BRAIN_MASK_FLAG="--brain-mask"
+case "${BRAIN_MASK:-1}" in 0|false|FALSE|no|NO) BRAIN_MASK_FLAG="";; esac
+echo "[info] brain_mask=${BRAIN_MASK:-1} flag='${BRAIN_MASK_FLAG}'"
+
 predict_one() { # image out
   local image="$1" out="$2"
   [[ -s "$out" ]] && { echo "[skip] $out"; return 0; }
@@ -72,8 +79,10 @@ predict_one() { # image out
     --checkpoint "$CKPT" \
     --image "$image" \
     --out "$out" \
+    --n-classes "$N_CLASSES" \
     --prob-threshold "$THR" \
     --min-cc-voxels "$CC" \
+    $BRAIN_MASK_FLAG \
     --device auto
 }
 

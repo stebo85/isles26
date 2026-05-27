@@ -42,10 +42,18 @@ source "$REPO/.venv-synthstroke/bin/activate"
 export PYTHONPATH="$REPO/work/synthstroke/repo:$REPO:${PYTHONPATH:-}"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
+# Scheme/recipe knobs (defaults preserve the original 34-class behavior).
+#   Run D recipe: LABELMAPS_DIR=$REPO/work/synthstroke/labelmaps_compact6 N_CLASSES=6 FADE=1 SYNTH_PROB=0.33
 NAME="${SYNTH_TRAIN_NAME:-isles26_fs_synth_mixreal}"
+LABELMAPS_DIR="${LABELMAPS_DIR:-$REPO/work/synthstroke/labelmaps}"
+N_CLASSES="${N_CLASSES:-34}"
+FADE_FLAG=""
+case "${FADE:-}" in 1|true|TRUE|yes|YES) FADE_FLAG="--fade";; esac
 
 python "$REPO/baselines/models/synthstroke/synthstroke_helpers/our_train.py" \
   --name "$NAME" \
+  --labelmaps-dir "$LABELMAPS_DIR" \
+  --n-classes "$N_CLASSES" \
   --epochs 500 \
   --epoch-length 200 \
   --val-interval 5 \
@@ -55,6 +63,7 @@ python "$REPO/baselines/models/synthstroke/synthstroke_helpers/our_train.py" \
   --lesion-weight 2 \
   --mix-real \
   --synth-prob "${SYNTH_PROB:-0.33}" \
+  $FADE_FLAG \
   --device auto &
 PY_PID=$!
 wait "$PY_PID"

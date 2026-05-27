@@ -113,6 +113,11 @@ def main():
     ap.add_argument("--save-prob", type=str, default=None,
                     help="if set, save lesion-channel probability map as float32 NIfTI "
                          "to this path (same native space/affine as the output mask)")
+    ap.add_argument("--brain-mask", action="store_true",
+                    help="restrict the lesion mask to the brain: brain=(input>0), "
+                         "hole-filled, largest 26-conn component. Removes hallucinated "
+                         "lesion in air. Effective for skull-stripped inputs (ATLAS); for "
+                         "non-stripped inputs it still removes pure-background false positives.")
     args = ap.parse_args()
 
     device = torch.device("cuda" if (args.device == "auto" and torch.cuda.is_available())
@@ -134,6 +139,26 @@ def main():
 
     if mask.shape != ref.shape[:3]:
         raise ValueError(f"mask shape {mask.shape} != input {ref.shape[:3]}")
+
+    # Optional brain masking: zero predicted lesion voxels outside the brain.
+    # brain = (input > 0), hole-filled, largest 26-connected component. The
+    # saved probability map (--save-prob) is left raw; only the binary mask is
+    # restricted. Effective for skull-stripped inputs (ATLAS bg==0); for raw
+    # inputs (e.g. DWI) it still strips pure-air false positives.
+    if args.brain_mask:
+        refdata = np.asanyarray(ref.dataobj)
+        while refdata.ndim > 3 and refdata.shape[-1] == 1:
+            refdata = refdata[..., 0]
+        refdata = np.squeeze(refdata)
+        brain = refdata > 0
+        brain = scipy.ndimage.binary_fill_holes(brain)
+        lab, n = scipy.ndimage.label(brain, structure=np.ones((3, 3, 3), dtype=np.uint8))
+        if n > 1:
+            sizes = np.bincount(lab.ravel()); sizes[0] = 0
+            brain = lab == int(sizes.argmax())
+        before = int(mask.sum())
+        mask = (mask.astype(bool) & brain).astype(np.uint8)
+        print(f"[brain-mask] removed {before - int(mask.sum())} out-of-brain voxels")
 
     out = Path(args.out); out.parent.mkdir(parents=True, exist_ok=True)
     hdr = ref.header.copy(); hdr.set_data_dtype(np.uint8); hdr.set_slope_inter(1, 0)

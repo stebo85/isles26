@@ -8,8 +8,10 @@
 #SBATCH -p owners
 
 # Phase B / Step 5: combine SynthSeg tissue labels with the real ATLAS lesion
-# masks into single integer label maps (tissue indices 0..32, lesion index 33)
-# that drive the cornucopia GMM image synthesis at training time. Light/CPU.
+# masks into single integer label maps that drive the cornucopia GMM image
+# synthesis at training time. Light/CPU.
+#   SCHEME=fs34     (default) -> 34 classes, lesion=33, out: work/synthstroke/labelmaps
+#   SCHEME=compact6           -> 6 classes,  lesion=5,  out: work/synthstroke/labelmaps_compact6
 
 set -euo pipefail
 
@@ -29,6 +31,7 @@ export LD_LIBRARY_PATH="/share/software/user/open/python/3.12.1/lib:${LD_LIBRARY
 export PYTHONNOUSERSITE=1
 source "$REPO/.venv-synthstroke/bin/activate"
 
-python "$REPO/baselines/models/synthstroke/synthstroke_helpers/build_labelmap.py"
+SCHEME="${SCHEME:-fs34}"
+python "$REPO/baselines/models/synthstroke/synthstroke_helpers/build_labelmap.py" --scheme "$SCHEME"
 
-echo "[done] label maps under work/synthstroke/labelmaps/"
+echo "[done] label maps built (scheme=$SCHEME)"
