@@ -1,5 +1,23 @@
 # SynthStroke synthetic-data phase — pipeline status
 
+> **Important update — 2026-05-27.** All Phase B "our model" numbers below
+> (Runs A `sp033`, C `sp020`, D `c6fade`) were produced by a **broken trainer**:
+> `DiceCEL2Loss.epoch` was never advanced, so the model trained on the L2
+> warmup objective for all 500 epochs and never on Dice+CE. The original
+> Phase A pretrained-synth-plus numbers are unaffected (different model).
+>
+> Brain-masking at inference is also a real, large win we missed: on Run A's
+> full 194-case ATLAS val, adding `(input>0)` brain-masking lifts Dice
+> **0.280 → 0.375** and lesion-F1 **0.109 → 0.202** — no retrain.
+>
+> Both fixes are in. The first valid from-scratch number will come from
+> **Run E `l2fix`** (corrected baseline; SLURM jobs 26331188 → 26331189 →
+> 26331195, eval pending). Treat the table immediately below as historical
+> only — see [docs/synthstroke_training_lessons.md](../../../docs/synthstroke_training_lessons.md)
+> for the full lineage and the corrected interpretation, and
+> [docs/problems_and_lessons.md](../../../docs/problems_and_lessons.md)
+> Problems 9–12 for the durable lessons.
+
 **COMPLETED 2026-05-21.** Two tracks: (A) benchmark the released pretrained
 SynthStroke weights, and (B) train a SynthStroke-style model on our own ATLAS
 data with self-contained FreeSurfer label maps. Both evaluated under the same

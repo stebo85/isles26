@@ -112,7 +112,101 @@ Action:
   browser and stage them on `/scratch`; do not burn cycles scripting around
   SharePoint/OneDrive auth.
 
-## What We Should Avoid
+## Problem 9: Adapted Loss Code Can Silently Stay In Warmup Forever
+
+The vendored SynthStroke `DiceCEL2Loss` switches from an L2 warmup to Dice+CE
+based on a stateful `self.epoch` attribute that must be advanced by the caller
+each epoch. Our adaptation `our_train.py` constructed the loss with
+`l2_epochs=50` but **never updated `crit.epoch`**, so every step of every run
+before 2026-05-27 trained on the L2 regression objective only — never on the
+segmentation objective. Symptoms: low train losses on the wrong scale, val
+lesion dice barely above zero until very late, and apparent plateau ~0.10–0.20.
+We initially misread this as "synth from-scratch can't compete with synth-plus."
+
+After the fix (`crit.epoch = epoch` each epoch) val lesion dice climbs roughly
+5× faster (0.28 by ~ep110 vs the broken trainer's 0.18 at ep400).
+
+Action:
+
+- Whenever you vendor or adapt a loss/transform that carries epoch- or
+  schedule-dependent state, write a one-line unit check that the state is
+  advanced during training.
+- Treat suspiciously-flat learning curves on a documented-good recipe as a
+  trainer bug first, model bug second.
+- Re-judge any "X doesn't work" conclusion that was made against a broken
+  trainer. Specifically: Run A / C / D in this repo (and their reports) are
+  confounded by this bug; do not cite their absolute numbers as evidence
+  about synth-prob, compact6, or fade.
+
+Full lineage: [docs/synthstroke_training_lessons.md](synthstroke_training_lessons.md).
+
+## Problem 10: Skull-Stripped Inputs Need A Brain Mask At Inference
+
+Diagnosis on the first SynthStroke runs showed the model **hallucinated lesion
+voxels out in the image background / air** on ATLAS T1w (which is curator
+skull-stripped, so background is exactly 0). On one probe case predicted
+lesion volume was 8× ground truth, much of it scattered FPs outside the head.
+Adding a simple post-hoc brain mask — `binary_fill_holes(input > 0)` reduced
+to the largest 26-connected component — lifts ATLAS Dice **0.280 → 0.375**
+and lesion-F1 **0.109 → 0.202** on the full 194 fold-0 val (single-checkpoint,
+no retrain).
+
+Action:
+
+- Apply a brain mask at inference whenever the training input is
+  skull-stripped and the model is allowed to emit a background-class
+  prediction in tissue space.
+- Keep the saved probability map *unmasked* so post-processing tuning still
+  sees the raw network output.
+- For non-stripped test inputs (raw DWI, soop_bench TRACE), `(input>0)` only
+  removes pure-air FPs; a real skull-strip (SynthStrip) is needed to do
+  better. Acceptable for now since the ATLAS gain dominates.
+
+Implementation: `--brain-mask` in
+[our_predict.py](../baselines/models/synthstroke/synthstroke_helpers/our_predict.py),
+default-on in
+[analysis_synth_07_predict_eval.sh](../baselines/models/synthstroke/analysis_synth_07_predict_eval.sh)
+via the `BRAIN_MASK` env.
+
+## Problem 11: Patch-Cropping Before Normalization Mismatches Inference Stats
+
+Our `real_transform` originally cropped to 128³ patches and *then* applied
+`HistogramNormalizeD` + `NormalizeIntensityD`, while `our_predict.py`
+normalizes the **full volume** before sliding-window inference. The training
+intensity statistics (per-patch percentiles, per-patch z-score) drifted from
+the test statistics (full-volume), creating a hidden distribution shift on
+the real-image path.
+
+Action:
+
+- Apply per-image / per-volume normalizers **before** spatial cropping in the
+  training pipeline so train and test see the same intensity distribution.
+- The synth path can keep post-synthesis normalization (synthesis is
+  inherently patch-based); only the real path matters here.
+- More generally: any test-time preprocessing that depends on global stats
+  must also be applied at training BEFORE the train-only crop / mosaic /
+  patch sampling.
+
+## Problem 12: SLURM Scripts Can Mask Failure Without `-e` And Wait Checks
+
+`analysis_synth_06_train.sh` used `set -uo pipefail` (no `-e`) and then
+`wait "$PY_PID"; echo "[done] ..."` — a non-zero Python exit was silently
+followed by a `[done]` line, making failed runs look successful in
+`logs/`/`squeue`. `analysis_synth_08_tune_postproc.sh` had the same shape.
+
+Action:
+
+- Use `set -euo pipefail` in batch scripts (Lmod `module load` exit codes are
+  fine in practice for these scripts), or at minimum capture `wait`'s exit
+  code and `exit "$RC"` on failure before any "done" line.
+- Wrap the terminal Python step in `if ! ...; then exit 1; fi` so the script
+  fails the SLURM job (and any `afterok` dependents) instead of printing
+  success.
+- For long-running trainers with `--requeue` and a USR1 trap, set
+  `PY_PID=""` before launch and guard the trap with `if [[ -n "$PY_PID" ]]`
+  to avoid trap-induced errors before the process starts.
+
+
 
 - Selecting models by Dice only.
 - Random k-fold validation that leaks center/chronicity structure.
