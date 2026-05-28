@@ -200,6 +200,12 @@ def real_transform(patch, n_classes, device, train=True):
         mn.transforms.SpacingD(keys=["image"], pixdim=1, mode="bilinear"),
         mn.transforms.SpacingD(keys=["label"], pixdim=1, mode="nearest"),
         mn.transforms.ToTensorD(keys=keys, device=device),
+        # Normalize the FULL volume before cropping so training intensity stats
+        # match inference (our_predict normalizes the whole volume, then sliding
+        # window). Previously normalization ran on the 128^3 crop -> train/test
+        # distribution mismatch.
+        mn.transforms.HistogramNormalizeD(keys="image"),
+        mn.transforms.NormalizeIntensityD(keys="image", nonzero=False, channel_wise=True),
     ]
     if train:
         tfms += [
@@ -220,8 +226,6 @@ def real_transform(patch, n_classes, device, train=True):
             mn.transforms.RandAxisFlipd(keys=keys, prob=0.8),
         ]
     tfms += [
-        mn.transforms.HistogramNormalizeD(keys="image"),
-        mn.transforms.NormalizeIntensityD(keys="image", nonzero=False, channel_wise=True),
         mn.transforms.AsDiscreteD(keys="label", to_onehot=n_classes),
         mn.transforms.ToTensorD(keys=keys, dtype=torch.float32),
     ]
@@ -289,7 +293,12 @@ def main():
                          "ignored when --mix-real is not set")
     ap.add_argument("--amp", action="store_true")
     ap.add_argument("--device", default="auto")
-    ap.add_argument("--max-val", type=int, default=32, help="cap in-training val cases for checkpoint selection")
+    ap.add_argument("--max-val", type=int, default=0,
+                    help="cap in-training val cases for checkpoint selection; 0 = use full fold")
+    ap.add_argument("--val-binarize", choices=("argmax", "threshold"), default="argmax",
+                    help="how to binarize lesion predictions for validation checkpoint selection")
+    ap.add_argument("--val-threshold", type=float, default=0.5,
+                    help="lesion softmax threshold used when --val-binarize=threshold")
     ap.add_argument("--smoke", action="store_true", help="few steps for a quick sanity run")
     ap.add_argument("--requeue", action="store_true", help="(no-op flag; requeue is handled by SIGUSR1 handler)")
     args = ap.parse_args()
@@ -379,6 +388,10 @@ def main():
 
     for epoch in range(start_epoch, epochs):
         cur_epoch = epoch
+        # CRITICAL: advance the loss's epoch so DiceCEL2Loss leaves the L2 warmup
+        # (epochs < l2_epochs use the L2 objective; >= switch to Dice+CE). Without
+        # this, crit.epoch stays 0 and the model trains on L2 forever.
+        crit.epoch = epoch
         model.train()
         running = 0.0
         n_ok = 0
@@ -424,12 +437,16 @@ def main():
                         images, (args.patch,) * 3, 1, model, overlap=0.5, mode="gaussian",
                         sw_device=device, device=torch.device("cpu"))
                     probs = torch.softmax(logits, dim=1)
-                    pred = (probs[:, lesion_idx] > 0.5).float()
+                    if args.val_binarize == "threshold":
+                        pred = (probs[:, lesion_idx] > args.val_threshold).float()
+                    else:
+                        pred = (probs.argmax(dim=1) == lesion_idx).float()
                     gt = (batch["label"][:, 0] == lesion_idx).float()
                     inter = (pred * gt).sum(); denom = pred.sum() + gt.sum()
                     dices.append(float((2 * inter / denom).cpu()) if denom > 0 else (1.0 if gt.sum() == 0 else 0.0))
             metric = float(np.nanmean(dices)) if dices else 0.0
-            print(f"[epoch {epoch}] val_lesion_dice={metric:.4f} (n={len(dices)})", flush=True)
+            print(f"[epoch {epoch}] val_lesion_dice={metric:.4f} "
+                  f"(n={len(dices)} binarize={args.val_binarize})", flush=True)
             ck = {"net": model.state_dict(), "opt": opt.state_dict(), "epoch": epoch, "metric": max(metric, metric_best)}
             torch.save(ck, str(ckpt_last))
             if metric > metric_best:

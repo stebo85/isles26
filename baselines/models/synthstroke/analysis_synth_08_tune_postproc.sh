@@ -13,7 +13,7 @@
 # then sweep (prob-threshold x min-cc-voxels) on CPU (Step 2) and write the
 # chosen operating point to baselines/reports/synthstroke/$TAG/postproc_tuning/.
 
-set -uo pipefail
+set -euo pipefail
 REPO=/scratch/users/sciget/isles26challenge
 cd "$REPO"
 mkdir -p "$REPO/logs"
@@ -67,12 +67,12 @@ for c in "${VAL_CASES[@]}"; do
   fi
   IMG="$REPO/work/nnunet/nnUNet_raw/Dataset501_ATLASR21/imagesTr/${c}_0000.nii.gz"
   if [[ ! -s "$IMG" ]]; then
-    echo "[warn] missing image for $c; skipping" >&2
-    continue
+    echo "[error] missing image for $c: $IMG" >&2
+    exit 2
   fi
   # --out is a throwaway binary mask (not used in tuning); prob goes to --save-prob
   TMP_OUT="$PROB_DIR/${c}_mask_tmp.nii.gz"
-  "$INFER_PY" "$PREDICT" \
+  if ! "$INFER_PY" "$PREDICT" \
     --checkpoint "$CKPT" \
     --image "$IMG" \
     --out "$TMP_OUT" \
@@ -80,7 +80,10 @@ for c in "${VAL_CASES[@]}"; do
     --prob-threshold 0.5 \
     --min-cc-voxels 0 \
     --save-prob "$OUT_PROB" \
-    --device auto || echo "[warn] predict failed for $c" >&2
+    --device auto; then
+    echo "[error] predict failed for $c" >&2
+    exit 1
+  fi
   # Clean up the throwaway mask to save disk
   rm -f "$TMP_OUT"
 done
@@ -93,14 +96,19 @@ OUT_TUNE="$REPO/baselines/reports/synthstroke/$TAG/postproc_tuning"
 mkdir -p "$OUT_TUNE"
 
 echo "[step2] running postproc sweep -> $OUT_TUNE"
-PYTHONPATH="$REPO:${PYTHONPATH:-}" "$EVAL_PY" "$TUNE" \
+# tune_postproc fails closed (SystemExit) if any fold-0 val prob map is missing;
+# propagate that as a hard job failure instead of printing a success line.
+if ! PYTHONPATH="$REPO:${PYTHONPATH:-}" "$EVAL_PY" "$TUNE" \
   --prob-dir "$PROB_DIR" \
   --splits "$REPO/work/nnunet/nnUNet_preprocessed/Dataset501_ATLASR21/splits_final.json" \
   --labels-dir "$REPO/work/nnunet/nnUNet_raw/Dataset501_ATLASR21/labelsTr" \
   --out-dir "$OUT_TUNE" \
   --thresholds "0.3,0.4,0.5,0.6" \
   --cc-voxels "0,5,10,20,50" \
-  --small-recall-tolerance 0.95
+  --small-recall-tolerance 0.95; then
+  echo "[error] tune_postproc failed (likely missing prob maps)" >&2
+  exit 1
+fi
 
 echo "[step2] done"
 echo ""

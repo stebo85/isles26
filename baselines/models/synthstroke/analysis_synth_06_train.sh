@@ -18,14 +18,22 @@
 # Preempt-safe: SIGUSR1 triggers checkpoint + scontrol requeue.
 # --time 24:00:00 covers ~21h; SLURM requeue handles overflow automatically.
 
-set -uo pipefail
+set -euo pipefail
 
 REPO=/scratch/users/sciget/isles26challenge
 cd "$REPO"
 mkdir -p "$REPO/logs"
 
 # Preempt handling: forward USR1 to the python process (it saves + requeues).
-trap 'echo "[warn] caught USR1; forwarding to trainer"; kill -USR1 "$PY_PID" 2>/dev/null; wait "$PY_PID"' USR1
+PY_PID=""
+on_usr1() {
+  echo "[warn] caught USR1; forwarding to trainer"
+  if [[ -n "$PY_PID" ]]; then
+    kill -USR1 "$PY_PID" 2>/dev/null || true
+    wait "$PY_PID" || true
+  fi
+}
+trap on_usr1 USR1
 
 module purge
 if [[ -n "${GROUP_HOME:-}" && -d "$GROUP_HOME/modules" ]]; then
@@ -66,5 +74,10 @@ python "$REPO/baselines/models/synthstroke/synthstroke_helpers/our_train.py" \
   $FADE_FLAG \
   --device auto &
 PY_PID=$!
-wait "$PY_PID"
+RC=0
+wait "$PY_PID" || RC=$?
+if [[ "$RC" -ne 0 ]]; then
+  echo "[error] trainer exited with code $RC for $NAME" >&2
+  exit "$RC"
+fi
 echo "[done] training finished for $NAME"
