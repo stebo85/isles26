@@ -10,13 +10,25 @@
 > full 194-case ATLAS val, adding `(input>0)` brain-masking lifts Dice
 > **0.280 → 0.375** and lesion-F1 **0.109 → 0.202** — no retrain.
 >
-> Both fixes are in. The first valid from-scratch number will come from
-> **Run E `l2fix`** (corrected baseline; SLURM jobs 26331188 → 26331189 →
-> 26331195, eval pending). Treat the table immediately below as historical
-> only — see [docs/synthstroke_training_lessons.md](../../../docs/synthstroke_training_lessons.md)
-> for the full lineage and the corrected interpretation, and
+> Both fixes are in. **Run E `l2fix`** (corrected baseline) is the first VALID
+> from-scratch result:
+>
+> | Run E (brain-masked, thr 0.3 / cc 10) | Dice | lesion-F1 | lesion-recall |
+> |---|--:|--:|--:|
+> | **ATLAS val** (T1w, in-dist, n=194) | **0.480** | 0.255 | 0.759 |
+> | soop_trace (DWI, OOD, n=12)         | 0.131 | 0.137 | 0.405 |
+> | soop_t1w (T1w-in-TRACE, n=12)       | 0.215 | 0.186 | 0.316 |
+>
+> **ATLAS Dice 0.480 beats pretrained synth-plus (0.458)** — the from-scratch
+> route works once the trainer is correct. BUT the cross-contrast goal is unmet:
+> soop_trace 0.131 ≪ synth-plus 0.447 (mixing 67% real T1w anchors the model to
+> T1w). lesion-F1 0.255 ≪ synth-plus 0.515 (over-segmentation: recall 0.76 /
+> precision 0.18). Run F (synth-only) and Run G (fade) are training to address
+> these. Full numbers, interpretation and next steps:
+> [docs/synthstroke_training_lessons.md](../../../docs/synthstroke_training_lessons.md)
+> ("Run E" section); durable lessons in
 > [docs/problems_and_lessons.md](../../../docs/problems_and_lessons.md)
-> Problems 9–12 for the durable lessons.
+> Problems 9–12. Treat the historical table below (Runs A/C/D) as L2-confounded.
 
 **COMPLETED 2026-05-21.** Two tracks: (A) benchmark the released pretrained
 SynthStroke weights, and (B) train a SynthStroke-style model on our own ATLAS

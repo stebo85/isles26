@@ -15,11 +15,19 @@ ATLAS metrics from before 2026-05-27 must be re-read through the caveats below.*
   default in [analysis_synth_07](../baselines/models/synthstroke/analysis_synth_07_predict_eval.sh)
   (`BRAIN_MASK=1`), driven by a new `--brain-mask` flag in
   [our_predict.py](../baselines/models/synthstroke/synthstroke_helpers/our_predict.py).
-- **Run E** (corrected baseline = Run A config + L2 fix + normalize-before-crop)
-  is hitting val dice **0.288 @ epoch 109** vs the broken Run A's *final* 0.198
-  @ epoch 404 — roughly **5× faster climb**, validating the fix.
-- Earlier conclusion "synth from-scratch can't beat synth-plus" was **premature**;
-  it was confounded by the L2 bug. Re-judge after Run E's official eval.
+- **Run E** (corrected baseline = Run A config + L2 fix + normalize-before-crop
+  + brain-mask) is the first VALID from-scratch result: **ATLAS Dice 0.480 —
+  beats pretrained synth-plus (0.458)**, confirming the fix and the from-scratch
+  route. (The broken Run A reached val 0.198 at epoch 404; Run E hit 0.288 by
+  epoch 109 — ~5× faster climb.)
+- **But the cross-contrast goal is NOT met by the mix-real recipe**: Run E
+  scores only **soop_trace Dice 0.131 vs synth-plus 0.447**. Mixing 67% real
+  T1w anchors the model to T1w and destroys the contrast-agnostic property.
+  Run F (synth-only) is the pivotal test of whether dropping real mixing
+  recovers it.
+- Earlier conclusion "synth from-scratch can't beat synth-plus" was **premature**
+  (confounded by the L2 bug) — Run E disproves it on ATLAS. The "works on soop"
+  half remains open.
 
 ## Why this matters / context
 
@@ -172,11 +180,48 @@ confounded by the L2 bug — they are NOT independently validated yet.**
 | A `sp033` | 34-class, synth-prob 0.33, l2=50, 500 ep | **L2-bug confounded** | Reported 0.280 ATLAS; with brain-mask 0.375. Trained on L2 only. |
 | C `sp020` | 34-class, synth-prob 0.20, l2=50, 500 ep | **L2-bug confounded** | Reported 0.169 ATLAS. Trained on L2 only. |
 | D `c6fade` | compact6 (6-class), synth-prob 0.33, fade, l2=50 | **L2-bug confounded; eval cancelled** | In-training val 0.022. compact6+fade *cannot* be judged from this run. |
-| **E `l2fix`** | 34-class, synth-prob 0.33, l2=50, **L2 fix + normalize fix + brain-mask** | training | First valid recipe test. Val dice 0.288 @ ep109 (vs broken A's 0.198 final). Eval chain queued (jobs 26331189 → 26331195). |
+| **E `l2fix`** | 34-class, synth-prob 0.33, l2=50, **L2 fix + normalize fix + brain-mask** | **DONE — VALID** | First valid result. See full numbers below. ATLAS Dice **0.480** (> synth-plus 0.458); soop_trace 0.131 (≪ synth-plus 0.447). |
+| F `sp100` | 34-class, **synth-prob 1.0 (synth-only)**, l2=50, fixes | training | Tests whether dropping real-mixing recovers cross-contrast. ATLAS in-domain weak by design (val ~0.11). |
+| G `fade` | 34-class, synth-prob 0.33, **`--fade`**, l2=50, fixes | training | Isolates fade on a correct trainer (Run D's fade verdict was L2-confounded). |
 
 References to compare against:
 - nnU-Net v2 3D fullres (real ATLAS T1w only): **ATLAS 0.640 / lesion-F1 0.654** ; soop_t1w 0.188 / 0.201
 - pretrained synth-plus (Chalcroft, 6-class, multi-dataset): ATLAS 0.458 / 0.515 ; soop_trace **0.447 / 0.478** ; soop_t1w 0.217
+
+## Run E — first valid from-scratch result (2026-05-27)
+
+Corrected baseline (= Run A config + the three fixes). Brain-masked, tuned
+operating point thr=0.3 / min_cc=10 (tuned on ATLAS val only). 500 epochs,
+fold 0, synth-prob 0.33, 34-class, no requeues.
+
+| Eval set | n | Dice | lesion-F1 | lesion-recall | lesion-prec | surf-Dice 3mm | HD95 | AVD mL | |abs lesion-count diff| |
+|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+| **ATLAS val** (T1w, in-dist) | 194 | **0.480** | 0.255 | 0.759 | 0.181 | 0.561 | 40.2 | 10.8 | 12.0 |
+| soop_trace (DWI, OOD)        | 12  | 0.131 | 0.137 | 0.405 | 0.095 | 0.124 | 88.3 | 200.3 | 17.8 |
+| soop_t1w (T1w-in-TRACE)      | 12  | 0.215 | 0.186 | 0.316 | 0.156 | 0.247 | 53.8 | 33.4 | 11.3 |
+
+**Reading it:**
+
+1. **ATLAS Dice 0.480 beats pretrained synth-plus (0.458)** and the broken
+   Run A (0.375 brain-masked) — the from-scratch route works once the trainer
+   is correct. Still below nnU-Net's 0.640 (a real-data specialist).
+2. **lesion-F1 0.255 ≪ synth-plus's 0.515.** High recall (0.76) but low
+   precision (0.18) → the model finds lesions but emits **too many spurious
+   components**. Over-segmentation/fragmentation is now the dominant weakness,
+   not localization. (`|abs lesion-count diff|` 12 is far better than broken
+   Run A's ~29, but precision is still the bottleneck.)
+3. **Cross-contrast NOT recovered: soop_trace 0.131 vs synth-plus 0.447.** AVD
+   200 mL on soop_trace shows gross volume miscalibration on DWI. Training with
+   67% real T1w anchored the model to T1w appearance; the GMM-synthetic fraction
+   (33%) was not enough to keep it contrast-agnostic. soop_t1w (0.215) does
+   match synth-plus (0.217) and beats nnU-Net (0.188), so the T1w-input story is
+   fine — it's specifically DWI generalization that's lost.
+
+**Net:** a strong *in-domain T1w* model (ATLAS Dice > synth-plus), but the
+"works on soop_bench (acute/DWI)" half of the goal is unmet with mix-real.
+Two levers to test: (a) **less real / synth-only** (Run F) to recover
+contrast-agnosticism; (b) **precision-aware loss / lesion_weight=1** to fix
+the F1 over-segmentation on top of the L2-fixed pipeline.
 
 ## Recipe knobs (current state)
 
@@ -204,21 +249,30 @@ BRAIN_MASK         # 1 default; 0 disables --brain-mask
 
 ## What to verify next (open items)
 
-1. **Final Run E eval** (ATLAS val / soop_trace / soop_t1w) — chained to fire
-   when training completes (job 26331195). The first valid number for the
-   from-scratch route.
-2. **Whether compact6 helps or hurts.** Run D's negative result is invalid
-   (L2 bug). Re-test as `Run F = Run E + compact6` (single variable) only
-   after Run E lands.
-3. **Whether `--fade` helps or hurts.** Same caveat — re-test as one variable
-   on top of the best so far.
-4. **In-brain over-fill** (the remaining named failure after brain-mask). Try
-   precision-aware loss (Tversky / Focal-Tversky) and/or `lesion_weight=1`
-   on top of the L2-fixed pipeline.
-5. **Codex adversarial review.** All trainer fixes (L2, normalize, fail-hard,
-   brain-mask, compact6, fade, N_CLASSES) bypassed `/codex:adversarial-review`
-   because the Codex runtime was sandbox-blocked. Route them back through
-   review when the environment is reset.
+1. ~~Final Run E eval~~ **DONE** — see the Run E table above. ATLAS Dice
+   **0.480** (> synth-plus 0.458), soop_trace 0.131 (≪ synth-plus 0.447).
+   From-scratch beats the pretrained weights in-domain but not cross-contrast.
+2. **Run F (synth-only, synth-prob 1.0)** — IN PROGRESS (job 26630839). Pivotal
+   test of whether dropping real-T1w mixing recovers synth-plus-like
+   cross-contrast on soop_trace (~0.447). ATLAS in-domain will drop (real
+   anchor removed) — the question is the soop trade.
+3. **Run G (Run E + `--fade`)** — IN PROGRESS (job 26630843). Isolates fade on a
+   correct trainer (Run D's fade verdict was L2-confounded, invalid).
+4. **lesion-F1 / over-segmentation** — the dominant weakness after the L2 fix
+   (ATLAS precision 0.18 vs recall 0.76). Try a precision-aware loss
+   (Tversky / Focal-Tversky) and/or `lesion_weight=1`; post-hoc CC tuning helps
+   but precision is loss-limited.
+5. **real-image intensity augmentation** (`--real-aug`, added 2026-05-27: bias
+   field + Gaussian noise + gamma + intensity shift on the real path) —
+   implemented, gated default-off, **not yet run**. Candidate to harden the
+   real path's cross-contrast robustness.
+6. **compact6 scheme** — Run D's negative result is invalid (L2 bug). Re-test as
+   `Run E + compact6` (single variable) if still wanted.
+7. **Codex adversarial review.** All trainer fixes (L2, normalize, fail-hard,
+   brain-mask, compact6, fade, N_CLASSES, real-aug) bypassed
+   `/codex:adversarial-review` because the Codex runtime was sandbox-blocked
+   (bwrap namespace exhaustion; persisted across retries, needs a full
+   environment reset). Route them back through review when Codex recovers.
 
 ## Sources / pointers
 
