@@ -52,11 +52,22 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 # Scheme/recipe knobs (defaults preserve the original 34-class behavior).
 #   Run D recipe: LABELMAPS_DIR=$REPO/work/synthstroke/labelmaps_compact6 N_CLASSES=6 FADE=1 SYNTH_PROB=0.33
+#   REAL_AUG=1 enables real-image intensity augmentation (bias field + noise + gamma + intensity shift); default off.
+# Validation checkpoint-selection knobs default to the deployment defaults used
+# by analysis_synth_07_predict_eval.sh when no tuned operating point exists.
 NAME="${SYNTH_TRAIN_NAME:-isles26_fs_synth_mixreal}"
 LABELMAPS_DIR="${LABELMAPS_DIR:-$REPO/work/synthstroke/labelmaps}"
 N_CLASSES="${N_CLASSES:-34}"
 FADE_FLAG=""
 case "${FADE:-}" in 1|true|TRUE|yes|YES) FADE_FLAG="--fade";; esac
+REAL_AUG_FLAG=""
+case "${REAL_AUG:-}" in 1|true|TRUE|yes|YES) REAL_AUG_FLAG="--real-aug";; esac
+VAL_BINARIZE="${VAL_BINARIZE:-threshold}"
+VAL_THRESHOLD="${VAL_THRESHOLD:-${PROB_THRESHOLD:-0.5}}"
+VAL_MIN_CC_VOXELS="${VAL_MIN_CC_VOXELS:-${MIN_CC_VOXELS:-0}}"
+VAL_BRAIN_MASK="${VAL_BRAIN_MASK:-${BRAIN_MASK:-1}}"
+VAL_BRAIN_MASK_FLAG=""
+case "$VAL_BRAIN_MASK" in 0|false|FALSE|no|NO) VAL_BRAIN_MASK_FLAG="--no-val-brain-mask";; esac
 
 python "$REPO/baselines/models/synthstroke/synthstroke_helpers/our_train.py" \
   --name "$NAME" \
@@ -71,7 +82,11 @@ python "$REPO/baselines/models/synthstroke/synthstroke_helpers/our_train.py" \
   --lesion-weight 2 \
   --mix-real \
   --synth-prob "${SYNTH_PROB:-0.33}" \
-  $FADE_FLAG \
+  --val-binarize "$VAL_BINARIZE" \
+  --val-threshold "$VAL_THRESHOLD" \
+  --val-min-cc-voxels "$VAL_MIN_CC_VOXELS" \
+  $FADE_FLAG $REAL_AUG_FLAG \
+  $VAL_BRAIN_MASK_FLAG \
   --device auto &
 PY_PID=$!
 RC=0
