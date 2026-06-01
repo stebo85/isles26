@@ -1,6 +1,6 @@
 # Model leaderboard
 
-generated 2026-05-29 20:42:19 UTC by compare_models.py
+generated 2026-06-01 16:52:42 UTC by compare_models.py
 
 ## eval set: soop_bench
 

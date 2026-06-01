@@ -181,8 +181,8 @@ confounded by the L2 bug — they are NOT independently validated yet.**
 | C `sp020` | 34-class, synth-prob 0.20, l2=50, 500 ep | **L2-bug confounded** | Reported 0.169 ATLAS. Trained on L2 only. |
 | D `c6fade` | compact6 (6-class), synth-prob 0.33, fade, l2=50 | **L2-bug confounded; eval cancelled** | In-training val 0.022. compact6+fade *cannot* be judged from this run. |
 | **E `l2fix`** | 34-class, synth-prob 0.33, l2=50, **L2 fix + normalize fix + brain-mask** | **DONE — VALID** | First valid result. See full numbers below. ATLAS Dice **0.480** (> synth-plus 0.458); soop_trace 0.131 (≪ synth-plus 0.447). |
-| F `sp100` | 34-class, **synth-prob 1.0 (synth-only)**, l2=50, fixes | training | Tests whether dropping real-mixing recovers cross-contrast. ATLAS in-domain weak by design (val ~0.11). |
-| G `fade` | 34-class, synth-prob 0.33, **`--fade`**, l2=50, fixes | training | Isolates fade on a correct trainer (Run D's fade verdict was L2-confounded). |
+| F `sp100` | 34-class, **synth-prob 1.0 (synth-only)**, l2=50, fixes | **DONE** | Cross-contrast NOT recovered: soop_trace 0.155 (≪ synth-plus 0.447); ATLAS collapsed to 0.139. The ratio knob is not the cross-contrast lever. |
+| **G `fade`** | 34-class, synth-prob 0.33, **`--fade`**, l2=50, fixes | **DONE — best ATLAS** | `--fade` helps in-domain: **ATLAS 0.504** (> E 0.480 > synth-plus 0.458). Keep fade. soop_trace 0.114 (no cross-contrast gain). |
 
 References to compare against:
 - nnU-Net v2 3D fullres (real ATLAS T1w only): **ATLAS 0.640 / lesion-F1 0.654** ; soop_t1w 0.188 / 0.201
@@ -222,6 +222,59 @@ fold 0, synth-prob 0.33, 34-class, no requeues.
 Two levers to test: (a) **less real / synth-only** (Run F) to recover
 contrast-agnosticism; (b) **precision-aware loss / lesion_weight=1** to fix
 the F1 over-segmentation on top of the L2-fixed pipeline.
+
+## Runs F & G — synth-only and fade (2026-05-28)
+
+Both are single-variable changes on top of Run E, fully evaluated (brain-masked,
+each with its own tuned operating point). Headline comparison:
+
+| Run (op-point) | ATLAS Dice / F1 | soop_trace Dice / F1 | soop_t1w Dice / F1 |
+|---|---|---|---|
+| E baseline sp0.33 (thr0.3/cc10) | 0.480 / 0.255 | 0.131 / 0.137 | 0.215 / 0.186 |
+| **G fade sp0.33 (thr0.4/cc5)** | **0.504 / 0.268** | 0.114 / 0.101 | 0.225 / 0.150 |
+| F synth-only sp1.0 (thr0.3/cc50) | 0.139 / 0.242 | **0.155 / 0.187** | 0.130 / 0.335 |
+| *synth-plus (pretrained)* | *0.458 / 0.515* | ***0.447 / 0.478*** | *0.217 / 0.231* |
+| *nnU-Net (real T1w)* | ***0.640 / 0.654*** | *—* | *0.188 / 0.201* |
+
+**Two clear findings:**
+
+1. **`--fade` helps in-domain — Run G is our best ATLAS model (Dice 0.504),
+   beating Run E (0.480) and pretrained synth-plus (0.458).** Small but
+   consistent lift on Dice, F1, recall, precision, and AVD (8.3 vs 10.8 mL).
+   Fade's penumbra/inhomogeneity simulation makes the lesion class easier to
+   learn. This vindicates re-testing it on a correct trainer (Run D's negative
+   fade verdict was L2-confounded and wrong). **Fade should be kept.**
+
+2. **Synth-only (Run F) did NOT recover cross-contrast — the key negative
+   result.** The whole point of F was to drop the real-T1w anchor and regain
+   synth-plus-like DWI generalization. soop_trace went 0.131 → only 0.155 (vs
+   synth-plus's 0.447) while ATLAS collapsed to 0.139. So **the synth:real ratio
+   is NOT the lever for cross-contrast** — every from-scratch variant we have
+   sits at soop_trace ≈ 0.11–0.16, an order of magnitude short of synth-plus on
+   DWI, with gross over-segmentation (AVD 107–200 mL). (One curiosity: F's
+   soop_t1w lesion-F1 0.335 / precision 0.360 is the highest of any run —
+   synth-only emits far fewer false-positive components on T1w, just at low
+   Dice.)
+
+**Why the cross-contrast gap persists (hypotheses, unproven):** our cornucopia
+`SynthFromLabelTransform` is driven by **ATLAS-only label maps** and our default
+synthesis parameters; pretrained synth-plus is "synth **+ real multi-dataset**"
+and a tuned 6-class recipe. The contrast-agnostic property that lets synth-plus
+hit 0.447 on DWI likely comes from (a) training label/intensity diversity we
+don't reproduce, and/or (b) more aggressive synthesis. Our GMM synthesis is
+evidently not covering DWI-like acute-lesion appearance well enough to transfer.
+
+**Strategic readout.** The "**very strong on ATLAS**" goal is essentially met:
+Run G (0.504) is our best single model and beats the pretrained weights
+in-domain. The "**works on soop_bench (acute DWI)**" goal is **not** met by any
+from-scratch synth variant — synth-plus (0.447) remains the only thing that
+works cross-contrast, and the ratio knob doesn't close it. Realistic paths
+forward: (i) **ship Run G for ATLAS/T1w** and use **synth-plus for DWI** (two
+specialists, or ensemble→distill); (ii) attack cross-contrast at its likely
+root — **multi-dataset synthesis and/or more aggressive cornucopia params**,
+not the mix ratio; (iii) fix the persistent **lesion-F1/over-segmentation**
+(precision ≈ 0.18–0.19) with a precision-aware loss. The mix-ratio lever is
+spent.
 
 ## Recipe knobs (current state)
 

@@ -20,13 +20,24 @@
 > | soop_t1w (T1w-in-TRACE, n=12)       | 0.215 | 0.186 | 0.316 |
 >
 > **ATLAS Dice 0.480 beats pretrained synth-plus (0.458)** — the from-scratch
-> route works once the trainer is correct. BUT the cross-contrast goal is unmet:
-> soop_trace 0.131 ≪ synth-plus 0.447 (mixing 67% real T1w anchors the model to
-> T1w). lesion-F1 0.255 ≪ synth-plus 0.515 (over-segmentation: recall 0.76 /
-> precision 0.18). Run F (synth-only) and Run G (fade) are training to address
-> these. Full numbers, interpretation and next steps:
+> route works once the trainer is correct. Follow-up runs F (synth-only) and G
+> (fade) are now also done:
+>
+> | Run (brain-masked, tuned) | ATLAS Dice/F1 | soop_trace Dice/F1 | soop_t1w Dice/F1 |
+> |---|---|---|---|
+> | E baseline sp0.33 | 0.480 / 0.255 | 0.131 / 0.137 | 0.215 / 0.186 |
+> | **G fade** (best ATLAS) | **0.504 / 0.268** | 0.114 / 0.101 | 0.225 / 0.150 |
+> | F synth-only sp1.0 | 0.139 / 0.242 | 0.155 / 0.187 | 0.130 / 0.335 |
+> | synth-plus (pretrained) | 0.458 / 0.515 | **0.447 / 0.478** | 0.217 / 0.231 |
+>
+> **Findings:** (1) **`--fade` helps — Run G (0.504) is our best ATLAS model,
+> beating synth-plus.** (2) **Synth-only did NOT recover cross-contrast**:
+> soop_trace stays ≈ 0.11–0.16 across ALL our runs vs synth-plus's 0.447 — the
+> synth:real ratio is not the lever. The "strong on ATLAS" goal is met; the
+> "works on soop (DWI)" goal is not met by any from-scratch synth variant. Full
+> numbers, hypotheses and next steps:
 > [docs/synthstroke_training_lessons.md](../../../docs/synthstroke_training_lessons.md)
-> ("Run E" section); durable lessons in
+> (Runs E and "F & G" sections); durable lessons in
 > [docs/problems_and_lessons.md](../../../docs/problems_and_lessons.md)
 > Problems 9–12. Treat the historical table below (Runs A/C/D) as L2-confounded.
 
