@@ -312,20 +312,88 @@ BRAIN_MASK         # 1 default; 0 disables --brain-mask
 3. **Run G (Run E + `--fade`)** — IN PROGRESS (job 26630843). Isolates fade on a
    correct trainer (Run D's fade verdict was L2-confounded, invalid).
 4. **lesion-F1 / over-segmentation** — the dominant weakness after the L2 fix
-   (ATLAS precision 0.18 vs recall 0.76). Try a precision-aware loss
-   (Tversky / Focal-Tversky) and/or `lesion_weight=1`; post-hoc CC tuning helps
-   but precision is loss-limited.
+   (ATLAS precision 0.18 vs recall 0.76). **IN PROGRESS: Run H** adds a
+   lesion-targeted precision-aware loss (`--loss tverskycel2`, a soft Tversky on
+   the lesion channel with `alpha=0.7` FP-weight / `beta=0.3` FN-weight, CE term
+   unchanged). Single-variable change from Run G (fade, sp0.33, mix-real). See
+   the "Run H" note below.
 5. **real-image intensity augmentation** (`--real-aug`, added 2026-05-27: bias
    field + Gaussian noise + gamma + intensity shift on the real path) —
    implemented, gated default-off, **not yet run**. Candidate to harden the
    real path's cross-contrast robustness.
 6. **compact6 scheme** — Run D's negative result is invalid (L2 bug). Re-test as
    `Run E + compact6` (single variable) if still wanted.
-7. **Codex adversarial review.** All trainer fixes (L2, normalize, fail-hard,
-   brain-mask, compact6, fade, N_CLASSES, real-aug) bypassed
-   `/codex:adversarial-review` because the Codex runtime was sandbox-blocked
-   (bwrap namespace exhaustion; persisted across retries, needs a full
-   environment reset). Route them back through review when Codex recovers.
+7. **Codex adversarial review — NOW UNBLOCKED (2026-06-01).** The earlier
+   "sandbox-blocked" state was not transient namespace exhaustion: this is a
+   RHEL7 / kernel-3.10 login node (no Landlock), and the cluster sets
+   `max_net_namespaces=0` / `max_uts_namespaces=0`, so Codex's bwrap read-only
+   sandbox can never `--unshare-net`/`--unshare-uts` (the misleading ENOSPC).
+   Fix (user-authorized): an env-gated `CODEX_FORCE_SANDBOX=danger-full-access`
+   override patched into the codex plugin's `runAppServerTurn` (both marketplace
+   and cache copies). With it, `/codex:adversarial-review` runs here. The
+   previously-bypassed trainer fixes (L2/normalize/fade/brain-mask/real-aug) were
+   reviewed 2026-06-01 against base `6190485` — **no correctness faults in the
+   fixes themselves**; the review instead surfaced three eval-pipeline issues
+   (items 8–10 below).
+
+## Eval-pipeline review findings (2026-06-01, `/codex:adversarial-review`)
+
+These came out of reviewing the committed trainer/eval scripts. They affect the
+**absolute** numbers and **re-run hygiene**, not the relative Run-G-vs-Run-H
+comparison (kept apples-to-apples by identical methodology). Fix before any
+final/absolute claim.
+
+8. **[F1] Prediction cache is config-blind**
+   ([analysis_synth_07_predict_eval.sh](../baselines/models/synthstroke/analysis_synth_07_predict_eval.sh)).
+   `predict_one` skips any existing `<case>.nii.gz`, but the cache path is keyed
+   only by `TAG`/case — not by checkpoint SHA, `N_CLASSES`, threshold, `min_cc`,
+   or brain-mask. Re-running the same `SYNTH_TRAIN_NAME` after changing any of
+   those silently reuses stale masks. Mitigation in use: every run uses a fresh
+   `SYNTH_TRAIN_NAME`. Proper fix: checkpoint-SHA + config sidecars like the
+   nnU-Net pipeline already has.
+9. **[F2] Tuning optimizes a different pipeline than deployment**
+   ([tune_postproc.py](../baselines/models/synthstroke/synthstroke_helpers/tune_postproc.py)).
+   `analysis_synth_08` sweeps (thr, cc) on the **raw, unmasked** saved prob maps,
+   but `analysis_synth_07` deploys with **brain-masking on** by default. The
+   selected operating point can therefore be slightly off the masked pipeline it
+   is applied to. Consistent across all runs, so relative comparisons hold; fix:
+   apply the same brain mask during tuning and persist `brain_mask` in the
+   operating-point JSON.
+10. **[F3] Requeue resume is not bit-deterministic**
+    ([our_train.py](../baselines/models/synthstroke/synthstroke_helpers/our_train.py)).
+    The checkpoint restores global Python/NumPy/Torch/CUDA RNG + the synth/real
+    mixing RNG, but **not** MONAI `Randomizable` transform states or the
+    DataLoader sampler position. A preempted+requeued run resumes with different
+    crops/flips/case-order than an uninterrupted one. This is best-effort
+    continuation, not reproducible resume — it adds noise to an interrupted run
+    but does not change the training objective (now guarded by `objective_config`
+    on resume). Downgrade expectations or persist transform RNG + sampler offset.
+
+## Run H — lesion-targeted precision-aware loss (IN PROGRESS, 2026-06-01)
+
+Single-variable change from Run G (best ATLAS, Dice 0.504): swap the region term
+of the loss from class-averaged Dice to a **lesion-channel soft Tversky**
+(`--loss tverskycel2`, `alpha=0.7` penalizes false positives, `beta=0.3`),
+keeping the L2 warmup, the full multi-class CE (`ce_weight[lesion]=2`), `--fade`,
+`synth-prob 0.33`, and `--mix-real`. Rationale: Run G's dominant weakness is
+lesion over-segmentation (precision ~0.18 / recall ~0.76); an FP-weighted Tversky
+on the lesion channel should trade some recall for precision and lift lesion-F1.
+
+Implementation notes (all via Codex + `/codex:adversarial-review`, 2026-06-01):
+- The Tversky is computed **only on the lesion channel** (`softmax(logits)[:,lesion]`
+  vs the lesion one-hot), not MONAI's class-averaged `TverskyLoss` — otherwise the
+  FP penalty would be diluted ~1/33 across foreground classes and barely move
+  lesion precision (review finding).
+- Resume is guarded by an `objective_config` (loss/alpha/beta/lesion_weight/l2) in
+  the checkpoint: a requeue that finds a mismatching objective aborts with a clear
+  message instead of silently continuing a different objective (review finding).
+- Per-epoch logs now print `region=` / `ce=` components so CE-vs-Tversky dominance
+  is visible.
+- Validated end-to-end with a GPU `--smoke` run (`--l2 0` to exercise the Tversky
+  branch): `region=0.98 ce=2.71`, no NaN, checkpoint written.
+- Default `--loss dicecel2` path is byte-identical to Run G.
+- Knobs: `LOSS=tverskycel2 TVERSKY_ALPHA=0.7 TVERSKY_BETA=0.3` in
+  [analysis_synth_06_train.sh](../baselines/models/synthstroke/analysis_synth_06_train.sh).
 
 ## Sources / pointers
 

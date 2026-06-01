@@ -336,6 +336,16 @@ def validation_config(args):
     }
 
 
+def objective_config(args):
+    return {
+        "loss": args.loss,
+        "tversky_alpha": args.tversky_alpha,
+        "tversky_beta": args.tversky_beta,
+        "lesion_weight": args.lesion_weight,
+        "l2_epochs": args.l2,
+    }
+
+
 def lesion_prediction_from_probs(probs, batch, lesion_idx, args):
     if args.val_binarize == "threshold":
         pred = probs[:, lesion_idx] > args.val_threshold
@@ -366,6 +376,11 @@ def main():
     ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument("--l2", type=int, default=50)
     ap.add_argument("--lesion-weight", type=float, default=2.0)
+    ap.add_argument("--loss", choices=("dicecel2", "tverskycel2"), default="dicecel2")
+    ap.add_argument("--tversky-alpha", type=float, default=0.7,
+                    help="false-positive weight for --loss=tverskycel2; higher favors precision")
+    ap.add_argument("--tversky-beta", type=float, default=0.3,
+                    help="false-negative weight for --loss=tverskycel2")
     ap.add_argument("--mix-real", action="store_true")
     ap.add_argument("--real-aug", action="store_true",
                     help="enable real-image intensity augmentation in the real-path train branch "
@@ -397,6 +412,58 @@ def main():
     repo = _add_repo(args.repo)
     import cornucopia as cc
     from custom import DiceCEL2Loss
+
+    class TverskyCEL2Loss(DiceCEL2Loss):
+        def __init__(self, *args, **kwargs):
+            lesion_idx = kwargs.pop("lesion_idx")
+            tversky_alpha = kwargs.pop("tversky_alpha", 0.7)
+            tversky_beta = kwargs.pop("tversky_beta", 0.3)
+            super().__init__(*args, **kwargs)
+            self.lesion_idx = int(lesion_idx)
+            self.tversky_alpha = float(tversky_alpha)
+            self.tversky_beta = float(tversky_beta)
+            self.tversky_smooth = float(kwargs.get("smooth_nr", 1e-5))
+            self.last_region = None
+            self.last_ce = None
+
+        def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+            """
+            Args:
+                input: the shape should be BNH[WD].
+                target: the shape should be BNH[WD] or B1H[WD].
+
+            Raises:
+                ValueError: When number of dimensions for input and target are different.
+                ValueError: When number of channels for target is neither 1 nor the same as input.
+
+            """
+            if len(input.shape) != len(target.shape):
+                raise ValueError(
+                    "the number of dimensions for input and target should be the same, "
+                    f"got shape {input.shape} and {target.shape}."
+                )
+            if input.shape[1] != target.shape[1] and target.shape[1] == 2:
+                input = input[:, [0, -1]]  # extract background + lesion
+            if self.epoch < self.l2_epochs:
+                total_loss: torch.Tensor = self.l2(input, target)
+            else:
+                lesion_channel = self.lesion_idx if input.shape[1] > self.lesion_idx else -1
+                p = torch.softmax(input, dim=1)
+                p_les = p[:, lesion_channel]
+                t_les = target[:, lesion_channel]
+                tp = torch.sum(p_les * t_les)
+                fp = torch.sum(p_les * (1 - t_les))
+                fn = torch.sum((1 - p_les) * t_les)
+                region_loss = 1 - (tp + self.tversky_smooth) / (
+                    tp + self.tversky_alpha * fp + self.tversky_beta * fn + self.tversky_smooth
+                )
+                ce_loss = self.ce(input, target)
+                self.last_region = float(region_loss.detach())
+                self.last_ce = float(ce_loss.detach())
+                total_loss: torch.Tensor = self.lambda_dice * region_loss + self.lambda_ce * ce_loss
+
+            return total_loss
+
     syn = cc.SynthFromLabelTransform()
 
     device = torch.device("cuda" if (args.device == "auto" and torch.cuda.is_available())
@@ -404,10 +471,12 @@ def main():
     n_classes = args.n_classes
     lesion_idx = n_classes - 1
     val_cfg = validation_config(args)
+    obj_cfg = objective_config(args)
     outdir = Path(args.logdir) / args.name
     outdir.mkdir(parents=True, exist_ok=True)
     print(f"[info] device={device} n_classes={n_classes} mix_real={args.mix_real} "
           f"synth_prob={args.synth_prob:.2f} fade={args.fade} real_aug={args.real_aug} "
+          f"loss={args.loss} tversky_alpha={args.tversky_alpha:.2f} tversky_beta={args.tversky_beta:.2f} "
           f"epochs={args.epochs} outdir={outdir}")
     print(f"[info] validation checkpoint selection={val_cfg}")
 
@@ -442,9 +511,16 @@ def main():
 
     ce_weight = torch.ones(n_classes, device=device)
     ce_weight[lesion_idx] = args.lesion_weight
-    crit = DiceCEL2Loss(include_background=False, to_onehot_y=False, softmax=True,
-                        reduction="mean", smooth_nr=1e-5, smooth_dr=1e-5, batch=True,
-                        lambda_dice=1.0, lambda_ce=1.0, ce_weight=ce_weight, l2_epochs=args.l2)
+    if args.loss == "tverskycel2":
+        crit = TverskyCEL2Loss(include_background=False, to_onehot_y=False, softmax=True,
+                               reduction="mean", smooth_nr=1e-5, smooth_dr=1e-5, batch=True,
+                               lambda_dice=1.0, lambda_ce=1.0, ce_weight=ce_weight, l2_epochs=args.l2,
+                               lesion_idx=lesion_idx,
+                               tversky_alpha=args.tversky_alpha, tversky_beta=args.tversky_beta)
+    else:
+        crit = DiceCEL2Loss(include_background=False, to_onehot_y=False, softmax=True,
+                            reduction="mean", smooth_nr=1e-5, smooth_dr=1e-5, batch=True,
+                            lambda_dice=1.0, lambda_ce=1.0, ce_weight=ce_weight, l2_epochs=args.l2)
     opt = torch.optim.AdamW(model.parameters(), args.lr)
 
     # resume
@@ -453,6 +529,14 @@ def main():
     ckpt_last = outdir / "checkpoint.pt"
     if ckpt_last.exists():
         resume_ckpt = torch.load(str(ckpt_last), map_location="cpu")
+        old_obj_cfg = resume_ckpt.get("objective_config")
+        if old_obj_cfg is None:
+            print("[warn] checkpoint has no objective_config; proceeding with current objective settings", flush=True)
+        elif old_obj_cfg != obj_cfg:
+            raise SystemExit(
+                f"checkpoint objective_config {old_obj_cfg} != current {obj_cfg}; "
+                "use a new --name to start a run with a different objective"
+            )
         model.load_state_dict(resume_ckpt["net"]); opt.load_state_dict(resume_ckpt["opt"])
         start_epoch = resume_ckpt["epoch"] + 1
         if resume_ckpt.get("val_config") == val_cfg:
@@ -510,6 +594,7 @@ def main():
             "epoch": epoch,
             "metric": metric,
             "val_config": val_cfg,
+            "objective_config": obj_cfg,
             "mix_rng_state": _mix_rng.getstate(),
             "python_rng_state": random.getstate(),
             "numpy_rng_state": np.random.get_state(),
@@ -528,6 +613,9 @@ def main():
         crit.epoch = epoch
         model.train()
         running = 0.0
+        region_running = 0.0
+        ce_running = 0.0
+        n_components = 0
         n_ok = 0
         n_nan = 0
         for step in range(epoch_len):
@@ -554,10 +642,20 @@ def main():
             torch.nn.utils.clip_grad_norm_(model.parameters(), 12)
             scaler.step(opt); scaler.update()
             running += float(loss.detach())
+            if getattr(crit, "last_region", None) is not None and getattr(crit, "last_ce", None) is not None:
+                region_running += crit.last_region
+                ce_running += crit.last_ce
+                n_components += 1
             n_ok += 1
         sched.step()
-        print(f"[epoch {epoch}] train_loss={running/max(n_ok,1):.4f} lr={opt.param_groups[0]['lr']:.2e} "
-              f"steps_ok={n_ok} nan_skipped={n_nan}", flush=True)
+        component_log = ""
+        if n_components:
+            component_log = (
+                f" region={region_running/n_components:.4f}"
+                f" ce={ce_running/n_components:.4f}"
+            )
+        print(f"[epoch {epoch}] train_loss={running/max(n_ok,1):.4f}{component_log} "
+              f"lr={opt.param_groups[0]['lr']:.2e} steps_ok={n_ok} nan_skipped={n_nan}", flush=True)
         # checkpoint.pt always represents a completed epoch. If preempted later,
         # resume starts at epoch+1 and never skips a partially trained epoch.
         save_last(epoch, metric_best)

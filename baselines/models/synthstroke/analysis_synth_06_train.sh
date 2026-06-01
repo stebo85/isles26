@@ -58,6 +58,14 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 NAME="${SYNTH_TRAIN_NAME:-isles26_fs_synth_mixreal}"
 LABELMAPS_DIR="${LABELMAPS_DIR:-$REPO/work/synthstroke/labelmaps}"
 N_CLASSES="${N_CLASSES:-34}"
+LOSS_FLAG=""
+TVERSKY_FLAG=""
+TVERSKY_ALPHA="${TVERSKY_ALPHA:-0.7}"
+TVERSKY_BETA="${TVERSKY_BETA:-0.3}"
+if [[ -n "${LOSS:-}" ]]; then
+  LOSS_FLAG="--loss $LOSS"
+  TVERSKY_FLAG="--tversky-alpha $TVERSKY_ALPHA --tversky-beta $TVERSKY_BETA"
+fi
 FADE_FLAG=""
 case "${FADE:-}" in 1|true|TRUE|yes|YES) FADE_FLAG="--fade";; esac
 REAL_AUG_FLAG=""
@@ -80,6 +88,7 @@ python "$REPO/baselines/models/synthstroke/synthstroke_helpers/our_train.py" \
   --lr 0.001 \
   --l2 50 \
   --lesion-weight 2 \
+  $LOSS_FLAG $TVERSKY_FLAG \
   --mix-real \
   --synth-prob "${SYNTH_PROB:-0.33}" \
   --val-binarize "$VAL_BINARIZE" \
