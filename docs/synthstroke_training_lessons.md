@@ -182,7 +182,9 @@ confounded by the L2 bug — they are NOT independently validated yet.**
 | D `c6fade` | compact6 (6-class), synth-prob 0.33, fade, l2=50 | **L2-bug confounded; eval cancelled** | In-training val 0.022. compact6+fade *cannot* be judged from this run. |
 | **E `l2fix`** | 34-class, synth-prob 0.33, l2=50, **L2 fix + normalize fix + brain-mask** | **DONE — VALID** | First valid result. See full numbers below. ATLAS Dice **0.480** (> synth-plus 0.458); soop_trace 0.131 (≪ synth-plus 0.447). |
 | F `sp100` | 34-class, **synth-prob 1.0 (synth-only)**, l2=50, fixes | **DONE** | Cross-contrast NOT recovered: soop_trace 0.155 (≪ synth-plus 0.447); ATLAS collapsed to 0.139. The ratio knob is not the cross-contrast lever. |
-| **G `fade`** | 34-class, synth-prob 0.33, **`--fade`**, l2=50, fixes | **DONE — best ATLAS** | `--fade` helps in-domain: **ATLAS 0.504** (> E 0.480 > synth-plus 0.458). Keep fade. soop_trace 0.114 (no cross-contrast gain). |
+| **G `fade`** | 34-class, synth-prob 0.33, **`--fade`**, l2=50, fixes | **DONE** | `--fade` helps in-domain: **ATLAS 0.504** (> E 0.480 > synth-plus 0.458). Keep fade. soop_trace 0.114 (no cross-contrast gain). |
+| **H `tversky`** | Run G + **lesion-targeted Tversky** (`--loss tverskycel2` α0.7/β0.3) | **DONE — best ATLAS** | Precision-aware loss works: **ATLAS Dice 0.566 / lesion-F1 0.450** (vs G 0.504/0.268), **lesion-precision 0.18→0.41** at held recall 0.76. Best synth model in-domain. soop_trace 0.146 (cross-contrast still unsolved). See "Run H" section. |
+| I `tversky_a08` | Run H + **α0.8/β0.2** (more FP penalty) | IN PROGRESS (job 27657662) | α-sweep to push precision further; tune/eval chained (27657663/27657664). |
 
 References to compare against:
 - nnU-Net v2 3D fullres (real ATLAS T1w only): **ATLAS 0.640 / lesion-F1 0.654** ; soop_t1w 0.188 / 0.201
@@ -311,12 +313,12 @@ BRAIN_MASK         # 1 default; 0 disables --brain-mask
    anchor removed) — the question is the soop trade.
 3. **Run G (Run E + `--fade`)** — IN PROGRESS (job 26630843). Isolates fade on a
    correct trainer (Run D's fade verdict was L2-confounded, invalid).
-4. **lesion-F1 / over-segmentation** — the dominant weakness after the L2 fix
-   (ATLAS precision 0.18 vs recall 0.76). **IN PROGRESS: Run H** adds a
-   lesion-targeted precision-aware loss (`--loss tverskycel2`, a soft Tversky on
-   the lesion channel with `alpha=0.7` FP-weight / `beta=0.3` FN-weight, CE term
-   unchanged). Single-variable change from Run G (fade, sp0.33, mix-real). See
-   the "Run H" note below.
+4. **lesion-F1 / over-segmentation** — was the dominant weakness after the L2 fix
+   (ATLAS precision 0.18 vs recall 0.76). **SOLVED by Run H** (lesion-targeted
+   Tversky `--loss tverskycel2` α0.7/β0.3): precision 0.18 → 0.41 at held recall
+   0.76, lesion-F1 0.268 → 0.450, Dice 0.504 → 0.566. See the "Run H" section.
+   **Run I** (IN PROGRESS, job 27657662) sweeps α0.8/β0.2 to push precision
+   further; if recall holds, F1 may climb more.
 5. **real-image intensity augmentation** (`--real-aug`, added 2026-05-27: bias
    field + Gaussian noise + gamma + intensity shift on the real path) —
    implemented, gated default-off, **not yet run**. Candidate to harden the
@@ -369,9 +371,31 @@ final/absolute claim.
     but does not change the training objective (now guarded by `objective_config`
     on resume). Downgrade expectations or persist transform RNG + sampler offset.
 
-## Run H — lesion-targeted precision-aware loss (IN PROGRESS, 2026-06-01)
+## Run H — lesion-targeted precision-aware loss (DONE — best ATLAS, 2026-06-03)
 
-Single-variable change from Run G (best ATLAS, Dice 0.504): swap the region term
+**RESULT (tuned op-point thr 0.3 / cc 10, brain-masked):**
+
+| Eval set | n | Dice | lesion-F1 | lesion-prec | lesion-recall | surf-Dice 3mm | AVD mL | |Δlesion-count| |
+|---|--:|--:|--:|--:|--:|--:|--:|--:|
+| **ATLAS val** (T1w, in-dist) | 194 | **0.566** | **0.450** | **0.407** | 0.763 | 0.691 | 6.1 | 4.6 |
+| soop_trace (DWI, OOD) | 12 | 0.146 | 0.123 | 0.082 | 0.347 | 0.143 | 58.1 | 25.8 |
+| soop_t1w (T1w-in-TRACE) | 12 | 0.219 | 0.237 | 0.209 | 0.330 | 0.254 | 27.6 | 6.1 |
+
+**The precision-aware loss worked, exactly as hypothesized.** vs Run G
+(0.504 / 0.268, precision ~0.18): lesion **precision 0.18 → 0.407 (2.3×) at held
+recall 0.76** — the intended recall-for-precision trade — lifting **lesion-F1
+0.268 → 0.450 (+68%)** and Dice 0.504 → 0.566. The false-positive-component
+problem is largely fixed (|Δlesion-count| ~4.6 vs Run E's ~12; AVD 6.1 mL). Run H
+is now **our strongest from-scratch synth model in-domain** — beats pretrained
+synth-plus on Dice (0.566 > 0.458) and closes most of the F1 gap (synth-plus
+0.515). Still below the real-data nnU-Net (0.640 / 0.654).
+
+**Cross-contrast unchanged (expected):** soop_trace 0.114 → 0.146 (still ≪
+synth-plus 0.447) — a loss tweak can't fix the modality gap; that remains the
+separate, unsolved problem. soop_t1w F1 improved (0.150 → 0.237) via the same
+precision gain.
+
+**Recipe** — single-variable change from Run G: swap the region term
 of the loss from class-averaged Dice to a **lesion-channel soft Tversky**
 (`--loss tverskycel2`, `alpha=0.7` penalizes false positives, `beta=0.3`),
 keeping the L2 warmup, the full multi-class CE (`ce_weight[lesion]=2`), `--fade`,
