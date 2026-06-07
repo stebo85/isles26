@@ -184,7 +184,7 @@ confounded by the L2 bug — they are NOT independently validated yet.**
 | F `sp100` | 34-class, **synth-prob 1.0 (synth-only)**, l2=50, fixes | **DONE** | Cross-contrast NOT recovered: soop_trace 0.155 (≪ synth-plus 0.447); ATLAS collapsed to 0.139. The ratio knob is not the cross-contrast lever. |
 | **G `fade`** | 34-class, synth-prob 0.33, **`--fade`**, l2=50, fixes | **DONE** | `--fade` helps in-domain: **ATLAS 0.504** (> E 0.480 > synth-plus 0.458). Keep fade. soop_trace 0.114 (no cross-contrast gain). |
 | **H `tversky`** | Run G + **lesion-targeted Tversky** (`--loss tverskycel2` α0.7/β0.3) | **DONE — best ATLAS** | Precision-aware loss works: **ATLAS Dice 0.566 / lesion-F1 0.450** (vs G 0.504/0.268), **lesion-precision 0.18→0.41** at held recall 0.76. Best synth model in-domain. soop_trace 0.146 (cross-contrast still unsolved). See "Run H" section. |
-| I `tversky_a08` | Run H + **α0.8/β0.2** (more FP penalty) | IN PROGRESS (job 27657662) | α-sweep to push precision further; tune/eval chained (27657663/27657664). |
+| **I `tversky_a08`** | Run H + **α0.8/β0.2** (more FP penalty) | **DONE — best F1** | α-sweep result: precision 0.41→**0.45**, lesion-F1 0.450→**0.479** (best yet), recall held 0.75, small Dice cost 0.566→0.553. Cross-contrast slightly worse (soop_trace 0.090). Monotonic precision lever; sweet spot ~α0.7–0.8, stop here. |
 
 References to compare against:
 - nnU-Net v2 3D fullres (real ATLAS T1w only): **ATLAS 0.640 / lesion-F1 0.654** ; soop_t1w 0.188 / 0.201
@@ -317,8 +317,11 @@ BRAIN_MASK         # 1 default; 0 disables --brain-mask
    (ATLAS precision 0.18 vs recall 0.76). **SOLVED by Run H** (lesion-targeted
    Tversky `--loss tverskycel2` α0.7/β0.3): precision 0.18 → 0.41 at held recall
    0.76, lesion-F1 0.268 → 0.450, Dice 0.504 → 0.566. See the "Run H" section.
-   **Run I** (IN PROGRESS, job 27657662) sweeps α0.8/β0.2 to push precision
-   further; if recall holds, F1 may climb more.
+   **Run I (α0.8/β0.2, DONE)** confirmed the lever is monotonic: precision
+   0.41→0.45, lesion-F1 0.450→**0.479** (best), recall held 0.75, Dice 0.566→0.553.
+   Sweet spot ≈ α0.7–0.8; further α gives diminishing returns and starts costing
+   Dice/recall — **lever considered tapped**. Ship choice: Run H for Dice (0.566),
+   Run I for lesion-F1 (0.479).
 5. **real-image intensity augmentation** (`--real-aug`, added 2026-05-27: bias
    field + Gaussian noise + gamma + intensity shift on the real path) —
    implemented, gated default-off, **not yet run**. Candidate to harden the
