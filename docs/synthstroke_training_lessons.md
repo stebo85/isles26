@@ -185,6 +185,7 @@ confounded by the L2 bug — they are NOT independently validated yet.**
 | **G `fade`** | 34-class, synth-prob 0.33, **`--fade`**, l2=50, fixes | **DONE** | `--fade` helps in-domain: **ATLAS 0.504** (> E 0.480 > synth-plus 0.458). Keep fade. soop_trace 0.114 (no cross-contrast gain). |
 | **H `tversky`** | Run G + **lesion-targeted Tversky** (`--loss tverskycel2` α0.7/β0.3) | **DONE — best ATLAS** | Precision-aware loss works: **ATLAS Dice 0.566 / lesion-F1 0.450** (vs G 0.504/0.268), **lesion-precision 0.18→0.41** at held recall 0.76. Best synth model in-domain. soop_trace 0.146 (cross-contrast still unsolved). See "Run H" section. |
 | **I `tversky_a08`** | Run H + **α0.8/β0.2** (more FP penalty) | **DONE — best F1** | α-sweep result: precision 0.41→**0.45**, lesion-F1 0.450→**0.479** (best yet), recall held 0.75, small Dice cost 0.566→0.553. Cross-contrast slightly worse (soop_trace 0.090). Monotonic precision lever; sweet spot ~α0.7–0.8, stop here. |
+| J `compact6` | Run H + **compact6 (6-class)** label scheme | IN PROGRESS (job 28022337) | **Cross-contrast root attack.** Single-variable swap to the 6-class scheme that matches synth-plus's structure (aggressive-synthesis ruled out — repo used same defaults; multi-dataset infeasible w/o data). Tests if compact6 helps DWI generalization (soop_trace). tune/eval chained (28022338/39). |
 
 References to compare against:
 - nnU-Net v2 3D fullres (real ATLAS T1w only): **ATLAS 0.640 / lesion-F1 0.654** ; soop_t1w 0.188 / 0.201
