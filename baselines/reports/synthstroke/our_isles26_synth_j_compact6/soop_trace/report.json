@@ -1,0 +1,495 @@
+{
+  "n_cases": 12,
+  "overall": [
+    {
+      "metric": "dice",
+      "n_valid": 12,
+      "mean": 0.07805872284646163,
+      "median": 0.0038869863801721002,
+      "std": 0.11107125595483948,
+      "min": 0.0,
+      "max": 0.3246378109675541
+    },
+    {
+      "metric": "iou",
+      "n_valid": 12,
+      "mean": 0.04435867291987891,
+      "median": 0.0019490829632950765,
+      "std": 0.06484708400030101,
+      "min": 0.0,
+      "max": 0.1937717187917669
+    },
+    {
+      "metric": "sensitivity",
+      "n_valid": 12,
+      "mean": 0.10733183050386207,
+      "median": 0.03616557734204793,
+      "std": 0.12713122310678354,
+      "min": 0.0,
+      "max": 0.34612997182829586
+    },
+    {
+      "metric": "precision",
+      "n_valid": 12,
+      "mean": 0.0673062351564538,
+      "median": 0.002116864607322032,
+      "std": 0.10157510871963037,
+      "min": 0.0,
+      "max": 0.30565862708719854
+    },
+    {
+      "metric": "specificity",
+      "n_valid": 12,
+      "mean": 0.9735886716493284,
+      "median": 0.9783493196806696,
+      "std": 0.01457520141376921,
+      "min": 0.9371987549255456,
+      "max": 0.9896832372746801
+    },
+    {
+      "metric": "hd95_mm",
+      "n_valid": 12,
+      "mean": 91.08751700883653,
+      "median": 90.3895160156975,
+      "std": 21.489649046847674,
+      "min": 65.89672935628465,
+      "max": 124.09101697018008
+    },
+    {
+      "metric": "assd_mm",
+      "n_valid": 12,
+      "mean": 52.37899828523391,
+      "median": 62.22909398402251,
+      "std": 23.82746114282532,
+      "min": 19.53490660305593,
+      "max": 88.82823418026057
+    },
+    {
+      "metric": "surface_dice_3mm",
+      "n_valid": 12,
+      "mean": 0.08084984360621518,
+      "median": 0.0159047896292812,
+      "std": 0.09960538552056804,
+      "min": 0.0,
+      "max": 0.26782279779458906
+    },
+    {
+      "metric": "abs_volume_diff_ml",
+      "n_valid": 12,
+      "mean": 125.78158737546208,
+      "median": 90.96810654059254,
+      "std": 110.74760972117606,
+      "min": 14.623241490208926,
+      "max": 424.24618020172636
+    },
+    {
+      "metric": "rel_abs_volume_diff",
+      "n_valid": 12,
+      "mean": 66.98188852169369,
+      "median": 9.309376881396748,
+      "std": 103.16389521901554,
+      "min": 0.13240700950198153,
+      "max": 346.95081967213116
+    },
+    {
+      "metric": "lesion_f1",
+      "n_valid": 12,
+      "mean": 0.0893227606045846,
+      "median": 0.057480748074807485,
+      "std": 0.0953242272788249,
+      "min": 0.0,
+      "max": 0.27667984189723316
+    },
+    {
+      "metric": "lesion_precision",
+      "n_valid": 12,
+      "mean": 0.05601087876829843,
+      "median": 0.03393665158371041,
+      "std": 0.06303762231808342,
+      "min": 0.0,
+      "max": 0.18421052631578946
+    },
+    {
+      "metric": "lesion_recall",
+      "n_valid": 12,
+      "mean": 0.35423280423280423,
+      "median": 0.38095238095238093,
+      "std": 0.292560598440209,
+      "min": 0.0,
+      "max": 1.0
+    },
+    {
+      "metric": "abs_lesion_count_diff",
+      "n_valid": 12,
+      "mean": 42.5,
+      "median": 42.0,
+      "std": 14.390390312056631,
+      "min": 24.0,
+      "max": 66.0
+    }
+  ],
+  "size_bins_voxels_pooled": {
+    "tiny_<10": {
+      "n_gt": 5,
+      "n_detected": 0,
+      "recall": 0.0
+    },
+    "small_10-100": {
+      "n_gt": 19,
+      "n_detected": 2,
+      "recall": 0.10526315789473684
+    },
+    "medium_100-1k": {
+      "n_gt": 11,
+      "n_detected": 4,
+      "recall": 0.36363636363636365
+    },
+    "large_1k-10k": {
+      "n_gt": 9,
+      "n_detected": 7,
+      "recall": 0.7777777777777778
+    },
+    "huge_>=10k": {
+      "n_gt": 4,
+      "n_detected": 4,
+      "recall": 1.0
+    }
+  },
+  "size_bins_ml_pooled": {
+    "vsmall_<0.1mL": {
+      "n_gt": 11,
+      "n_detected": 0,
+      "recall": 0.0
+    },
+    "small_0.1-1mL": {
+      "n_gt": 18,
+      "n_detected": 2,
+      "recall": 0.1111111111111111
+    },
+    "med_1-10mL": {
+      "n_gt": 11,
+      "n_detected": 8,
+      "recall": 0.7272727272727273
+    },
+    "large_10-50mL": {
+      "n_gt": 4,
+      "n_detected": 3,
+      "recall": 0.75
+    },
+    "vlarge_>=50mL": {
+      "n_gt": 4,
+      "n_detected": 4,
+      "recall": 1.0
+    }
+  },
+  "by_chronicity": {
+    "mixed": {
+      "n": 2,
+      "dice_mean": 0.2538924020119635,
+      "dice_median": 0.2538924020119635,
+      "lesion_f1_mean": 0.15476190476190477,
+      "lesion_recall_mean": 0.425,
+      "hd95_mm_mean": 66.0389901943791,
+      "abs_volume_diff_ml_mean": 53.07926312737163
+    },
+    "acute": {
+      "n": 9,
+      "dice_mean": 0.04755871728556968,
+      "dice_median": 0.001207625291123954,
+      "lesion_f1_mean": 0.07676897181140381,
+      "lesion_recall_mean": 0.322310405643739,
+      "hd95_mm_mean": 95.0148099188086,
+      "abs_volume_diff_ml_mean": 127.80051509718477
+    },
+    "chronic": {
+      "n": 1,
+      "dice_mean": 0.0008914145634854309,
+      "dice_median": 0.0008914145634854309,
+      "lesion_f1_mean": 0.07142857142857144,
+      "lesion_recall_mean": 0.5,
+      "hd95_mm_mean": 105.83893444800266,
+      "abs_volume_diff_ml_mean": 253.0158863761388
+    }
+  },
+  "by_center": {
+    "Philips|Intera": {
+      "n": 2,
+      "dice_mean": 0.16292271812933903,
+      "dice_median": 0.16292271812933903,
+      "lesion_f1_mean": 0.03598484848484849,
+      "lesion_recall_mean": 0.29166666666666663,
+      "hd95_mm_mean": 89.25385016715485,
+      "abs_volume_diff_ml_mean": 39.39798606220476
+    },
+    "Philips|Ingenia Ambition X": {
+      "n": 6,
+      "dice_mean": 0.00944794722377782,
+      "dice_median": 0.000699334145900167,
+      "lesion_f1_mean": 0.08125239231997733,
+      "lesion_recall_mean": 0.35648148148148145,
+      "hd95_mm_mean": 97.18332726579725,
+      "abs_volume_diff_ml_mean": 178.16813216268156
+    },
+    "Philips|Ingenia Elition X": {
+      "n": 2,
+      "dice_mean": 0.18551228074991089,
+      "dice_median": 0.18551228074991089,
+      "lesion_f1_mean": 0.12226596675415574,
+      "lesion_recall_mean": 0.4642857142857143,
+      "hd95_mm_mean": 70.58513608714568,
+      "abs_volume_diff_ml_mean": 54.502318634496376
+    },
+    "Philips|Achieva": {
+      "n": 2,
+      "dice_mean": 0.09157349652818642,
+      "dice_median": 0.09157349652818642,
+      "lesion_f1_mean": 0.13392857142857142,
+      "lesion_recall_mean": 0.3,
+      "hd95_mm_mean": 95.13613400132681,
+      "abs_volume_diff_ml_mean": 126.28482306802671
+    }
+  },
+  "per_case": [
+    {
+      "subject_id": "sub-1",
+      "chronicity": "mixed",
+      "center": "Philips|Intera",
+      "dice": 0.3246378109675541,
+      "iou": 0.1937717187917669,
+      "sensitivity": 0.34612997182829586,
+      "precision": 0.30565862708719854,
+      "lesion_f1": 0.04166666666666667,
+      "lesion_recall": 0.25,
+      "lesion_precision": 0.022727272727272728,
+      "hd95_mm": 65.89672935628465,
+      "assd_mm": 23.517861859810445,
+      "surface_dice_3mm": 0.21915419270454875,
+      "abs_volume_diff_ml": 14.623241490208926,
+      "pred_vol_ml": 125.06483778643886,
+      "gt_vol_ml": 110.44159629622993,
+      "gt_lesion_count": 4,
+      "pred_lesion_count": 44
+    },
+    {
+      "subject_id": "sub-10",
+      "chronicity": "acute",
+      "center": "Philips|Ingenia Ambition X",
+      "dice": 0.0005072537283149031,
+      "iou": 0.0002536912070627632,
+      "sensitivity": 0.0030102347983142685,
+      "precision": 0.00027696227773777213,
+      "lesion_f1": 0.07999999999999999,
+      "lesion_recall": 1.0,
+      "lesion_precision": 0.041666666666666664,
+      "hd95_mm": 119.34024073345913,
+      "assd_mm": 64.35822860187635,
+      "surface_dice_3mm": 0.004794885455514118,
+      "abs_volume_diff_ml": 120.25752351904327,
+      "pred_vol_ml": 132.44320839978576,
+      "gt_vol_ml": 12.185684880742489,
+      "gt_lesion_count": 1,
+      "pred_lesion_count": 48
+    },
+    {
+      "subject_id": "sub-11",
+      "chronicity": "chronic",
+      "center": "Philips|Ingenia Ambition X",
+      "dice": 0.0008914145634854309,
+      "iou": 0.00044590602530516696,
+      "sensitivity": 0.02269503546099291,
+      "precision": 0.00045463586508680704,
+      "lesion_f1": 0.07142857142857144,
+      "lesion_recall": 0.5,
+      "lesion_precision": 0.038461538461538464,
+      "hd95_mm": 105.83893444800266,
+      "assd_mm": 62.1392116182214,
+      "surface_dice_3mm": 0.003072689750057326,
+      "abs_volume_diff_ml": 253.0158863761388,
+      "pred_vol_ml": 258.1880100103066,
+      "gt_vol_ml": 5.172123634167765,
+      "gt_lesion_count": 2,
+      "pred_lesion_count": 26
+    },
+    {
+      "subject_id": "sub-13",
+      "chronicity": "acute",
+      "center": "Philips|Intera",
+      "dice": 0.001207625291123954,
+      "iou": 0.0006041774555498015,
+      "sensitivity": 0.037037037037037035,
+      "precision": 0.0006138197123816205,
+      "lesion_f1": 0.030303030303030304,
+      "lesion_recall": 0.3333333333333333,
+      "lesion_precision": 0.015873015873015872,
+      "hd95_mm": 112.61097097802505,
+      "assd_mm": 80.60109054701981,
+      "surface_dice_3mm": 0.004154549231408392,
+      "abs_volume_diff_ml": 64.17273063420059,
+      "pred_vol_ml": 65.2541970711033,
+      "gt_vol_ml": 1.0814664369027118,
+      "gt_lesion_count": 3,
+      "pred_lesion_count": 63
+    },
+    {
+      "subject_id": "sub-14",
+      "chronicity": "acute",
+      "center": "Philips|Ingenia Ambition X",
+      "dice": 0.0,
+      "iou": 0.0,
+      "sensitivity": 0.0,
+      "precision": 0.0,
+      "lesion_f1": 0.0,
+      "lesion_recall": 0.0,
+      "lesion_precision": 0.0,
+      "hd95_mm": 94.43380945108805,
+      "assd_mm": 72.69105347465512,
+      "surface_dice_3mm": 0.0,
+      "abs_volume_diff_ml": 155.26657473547743,
+      "pred_vol_ml": 155.7140922680263,
+      "gt_vol_ml": 0.44751753254886234,
+      "gt_lesion_count": 1,
+      "pred_lesion_count": 45
+    },
+    {
+      "subject_id": "sub-2",
+      "chronicity": "acute",
+      "center": "Philips|Ingenia Elition X",
+      "dice": 0.2596007069976701,
+      "iou": 0.14916157920854925,
+      "sensitivity": 0.28873003462526525,
+      "precision": 0.2358103300432395,
+      "lesion_f1": 0.18897637795275593,
+      "lesion_recall": 0.42857142857142855,
+      "lesion_precision": 0.12121212121212122,
+      "hd95_mm": 72.0432893314421,
+      "assd_mm": 23.59110681664431,
+      "surface_dice_3mm": 0.26782279779458906,
+      "abs_volume_diff_ml": 18.60370895234199,
+      "pred_vol_ml": 101.50188048843486,
+      "gt_vol_ml": 82.89817153609287,
+      "gt_lesion_count": 7,
+      "pred_lesion_count": 66
+    },
+    {
+      "subject_id": "sub-3",
+      "chronicity": "mixed",
+      "center": "Philips|Achieva",
+      "dice": 0.18314699305637283,
+      "iou": 0.10080451877858244,
+      "sensitivity": 0.23553806568790678,
+      "precision": 0.14982189275055358,
+      "lesion_f1": 0.26785714285714285,
+      "lesion_recall": 0.6,
+      "lesion_precision": 0.1724137931034483,
+      "hd95_mm": 66.18125103247355,
+      "assd_mm": 19.53490660305593,
+      "surface_dice_3mm": 0.22863414288748848,
+      "abs_volume_diff_ml": 91.53528476453434,
+      "pred_vol_ml": 251.5283076320683,
+      "gt_vol_ml": 159.99302286753397,
+      "gt_lesion_count": 5,
+      "pred_lesion_count": 29
+    },
+    {
+      "subject_id": "sub-4",
+      "chronicity": "acute",
+      "center": "Philips|Ingenia Ambition X",
+      "dice": 0.0,
+      "iou": 0.0,
+      "sensitivity": 0.0,
+      "precision": 0.0,
+      "lesion_f1": 0.0,
+      "lesion_recall": 0.0,
+      "lesion_precision": 0.0,
+      "hd95_mm": 86.34522258030694,
+      "assd_mm": 68.98779846544822,
+      "surface_dice_3mm": 0.0,
+      "abs_volume_diff_ml": 424.24618020172636,
+      "pred_vol_ml": 427.4741721656324,
+      "gt_vol_ml": 3.2279919639060592,
+      "gt_lesion_count": 1,
+      "pred_lesion_count": 25
+    },
+    {
+      "subject_id": "sub-5",
+      "chronicity": "acute",
+      "center": "Philips|Achieva",
+      "dice": 0.0,
+      "iou": 0.0,
+      "sensitivity": 0.0,
+      "precision": 0.0,
+      "lesion_f1": 0.0,
+      "lesion_recall": 0.0,
+      "lesion_precision": 0.0,
+      "hd95_mm": 124.09101697018008,
+      "assd_mm": 88.82823418026057,
+      "surface_dice_3mm": 0.0,
+      "abs_volume_diff_ml": 161.03436137151908,
+      "pred_vol_ml": 161.86253808714403,
+      "gt_vol_ml": 0.8281767156249553,
+      "gt_lesion_count": 1,
+      "pred_lesion_count": 41
+    },
+    {
+      "subject_id": "sub-7",
+      "chronicity": "acute",
+      "center": "Philips|Ingenia Ambition X",
+      "dice": 0.006566347469220246,
+      "iou": 0.0032939884710403516,
+      "sensitivity": 0.03529411764705882,
+      "precision": 0.0036199095022624436,
+      "lesion_f1": 0.05940594059405942,
+      "lesion_recall": 0.08333333333333333,
+      "lesion_precision": 0.046153846153846156,
+      "hd95_mm": 108.90742032001265,
+      "assd_mm": 62.318976349823615,
+      "surface_dice_3mm": 0.02701469380304828,
+      "abs_volume_diff_ml": 74.63432969644359,
+      "pred_vol_ml": 83.16396737603714,
+      "gt_vol_ml": 8.529637679593552,
+      "gt_lesion_count": 12,
+      "pred_lesion_count": 65
+    },
+    {
+      "subject_id": "sub-8",
+      "chronicity": "acute",
+      "center": "Philips|Ingenia Ambition X",
+      "dice": 0.04872266758164634,
+      "iou": 0.02496962721401624,
+      "sensitivity": 0.06142834670442032,
+      "precision": 0.040372189196174725,
+      "lesion_f1": 0.27667984189723316,
+      "lesion_recall": 0.5555555555555556,
+      "lesion_precision": 0.18421052631578946,
+      "hd95_mm": 68.23433606191404,
+      "assd_mm": 29.186816011108775,
+      "surface_dice_3mm": 0.0808162896744774,
+      "abs_volume_diff_ml": 41.58829844725973,
+      "pred_vol_ml": 121.32794954942533,
+      "gt_vol_ml": 79.7396511021656,
+      "gt_lesion_count": 9,
+      "pred_lesion_count": 38
+    },
+    {
+      "subject_id": "sub-9",
+      "chronicity": "acute",
+      "center": "Philips|Ingenia Elition X",
+      "dice": 0.11142385450215161,
+      "iou": 0.05899886788667402,
+      "sensitivity": 0.2581191222570533,
+      "precision": 0.0710464554428108,
+      "lesion_f1": 0.05555555555555555,
+      "lesion_recall": 0.5,
+      "lesion_precision": 0.029411764705882353,
+      "hd95_mm": 69.12698284284926,
+      "assd_mm": 32.792694894882345,
+      "surface_dice_3mm": 0.13473388197345024,
+      "abs_volume_diff_ml": 90.40092831665076,
+      "pred_vol_ml": 124.73339192564595,
+      "gt_vol_ml": 34.332463608995184,
+      "gt_lesion_count": 2,
+      "pred_lesion_count": 68
+    }
+  ],
+  "n_missing_predictions": 0
+}

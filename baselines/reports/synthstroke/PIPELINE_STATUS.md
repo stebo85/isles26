@@ -30,6 +30,7 @@
 > | F synth-only sp1.0 | 0.139 / 0.242 | 0.155 / 0.187 | 0.130 / 0.335 |
 > | **H lesion-Tversky α0.7** (best Dice) | **0.566** / 0.450 | 0.146 / 0.123 | 0.219 / 0.237 |
 > | **I lesion-Tversky α0.8** (best F1) | 0.553 / **0.479** | 0.090 / 0.119 | 0.166 / 0.185 |
+> | J compact6 (6-class scheme) | 0.559 / 0.392 | 0.078 / 0.089 | 0.195 / 0.151 |
 > | synth-plus (pretrained) | 0.458 / 0.515 | **0.447 / 0.478** | 0.217 / 0.231 |
 >
 > **Findings:** (1) **`--fade` helps** (Run G 0.504 > E 0.480). (2) **Synth-only
@@ -38,9 +39,16 @@
 > lesion-targeted precision-aware Tversky (α0.7/β0.2) is the biggest single win:
 > ATLAS Dice 0.504→0.566, lesion-F1 0.268→0.450, lesion-precision 0.18→0.41 at
 > held recall 0.76** — over-segmentation fixed; now our best synth model and >
-> synth-plus on Dice. The "strong on ATLAS" goal is met; the "works on soop
-> (DWI)" goal is still not met by any from-scratch synth variant (a loss tweak
-> can't close the modality gap). Run I sweeps α0.8. Full numbers and next steps:
+> synth-plus on Dice. (4) **Run J: the compact6 (6-class) label scheme did NOT
+> help cross-contrast** — soop_trace *dropped* to 0.078 (worst yet, < H's 0.146)
+> and ATLAS lesion-F1 fell to 0.392; matching synth-plus's class count is not the
+> DWI lever. The "strong on ATLAS" goal is met (best = H/I); the "works on soop
+> (DWI)" goal is still not met by any from-scratch synth variant — neither a loss
+> tweak (H/I), the synth:real ratio (F), nor the label scheme (J) closes the
+> modality gap. **Next: attack the gap at its source — DWI-aware synthesis /
+> contrast augmentation** (teach the GMM pipeline the restricted-diffusion
+> bright-lesion / DWI tissue-contrast prior during training). Full numbers and
+> next steps:
 > [docs/synthstroke_training_lessons.md](../../../docs/synthstroke_training_lessons.md)
 > (Runs E and "F & G" sections); durable lessons in
 > [docs/problems_and_lessons.md](../../../docs/problems_and_lessons.md)
