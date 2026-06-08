@@ -182,7 +182,10 @@ confounded by the L2 bug — they are NOT independently validated yet.**
 | D `c6fade` | compact6 (6-class), synth-prob 0.33, fade, l2=50 | **L2-bug confounded; eval cancelled** | In-training val 0.022. compact6+fade *cannot* be judged from this run. |
 | **E `l2fix`** | 34-class, synth-prob 0.33, l2=50, **L2 fix + normalize fix + brain-mask** | **DONE — VALID** | First valid result. See full numbers below. ATLAS Dice **0.480** (> synth-plus 0.458); soop_trace 0.131 (≪ synth-plus 0.447). |
 | F `sp100` | 34-class, **synth-prob 1.0 (synth-only)**, l2=50, fixes | **DONE** | Cross-contrast NOT recovered: soop_trace 0.155 (≪ synth-plus 0.447); ATLAS collapsed to 0.139. The ratio knob is not the cross-contrast lever. |
-| **G `fade`** | 34-class, synth-prob 0.33, **`--fade`**, l2=50, fixes | **DONE — best ATLAS** | `--fade` helps in-domain: **ATLAS 0.504** (> E 0.480 > synth-plus 0.458). Keep fade. soop_trace 0.114 (no cross-contrast gain). |
+| **G `fade`** | 34-class, synth-prob 0.33, **`--fade`**, l2=50, fixes | **DONE** | `--fade` helps in-domain: **ATLAS 0.504** (> E 0.480 > synth-plus 0.458). Keep fade. soop_trace 0.114 (no cross-contrast gain). |
+| **H `tversky`** | Run G + **lesion-targeted Tversky** (`--loss tverskycel2` α0.7/β0.3) | **DONE — best ATLAS** | Precision-aware loss works: **ATLAS Dice 0.566 / lesion-F1 0.450** (vs G 0.504/0.268), **lesion-precision 0.18→0.41** at held recall 0.76. Best synth model in-domain. soop_trace 0.146 (cross-contrast still unsolved). See "Run H" section. |
+| **I `tversky_a08`** | Run H + **α0.8/β0.2** (more FP penalty) | **DONE — best F1** | α-sweep result: precision 0.41→**0.45**, lesion-F1 0.450→**0.479** (best yet), recall held 0.75, small Dice cost 0.566→0.553. Cross-contrast slightly worse (soop_trace 0.090). Monotonic precision lever; sweet spot ~α0.7–0.8, stop here. |
+| J `compact6` | Run H + **compact6 (6-class)** label scheme | **DONE — negative** | Single-variable swap to the 6-class scheme that matches synth-plus's structure. **compact6 did NOT help cross-contrast:** soop_trace **0.078** (worst of all valid runs, < H's 0.146), ATLAS Dice 0.559 (≈ H/I) but lesion-F1 **0.392** (< H 0.450, I 0.479). Matching synth-plus's class count is not the DWI lever. See "Run J" section. |
 
 References to compare against:
 - nnU-Net v2 3D fullres (real ATLAS T1w only): **ATLAS 0.640 / lesion-F1 0.654** ; soop_t1w 0.188 / 0.201
@@ -311,18 +314,27 @@ BRAIN_MASK         # 1 default; 0 disables --brain-mask
    anchor removed) — the question is the soop trade.
 3. **Run G (Run E + `--fade`)** — IN PROGRESS (job 26630843). Isolates fade on a
    correct trainer (Run D's fade verdict was L2-confounded, invalid).
-4. **lesion-F1 / over-segmentation** — the dominant weakness after the L2 fix
-   (ATLAS precision 0.18 vs recall 0.76). **IN PROGRESS: Run H** adds a
-   lesion-targeted precision-aware loss (`--loss tverskycel2`, a soft Tversky on
-   the lesion channel with `alpha=0.7` FP-weight / `beta=0.3` FN-weight, CE term
-   unchanged). Single-variable change from Run G (fade, sp0.33, mix-real). See
-   the "Run H" note below.
+4. **lesion-F1 / over-segmentation** — was the dominant weakness after the L2 fix
+   (ATLAS precision 0.18 vs recall 0.76). **SOLVED by Run H** (lesion-targeted
+   Tversky `--loss tverskycel2` α0.7/β0.3): precision 0.18 → 0.41 at held recall
+   0.76, lesion-F1 0.268 → 0.450, Dice 0.504 → 0.566. See the "Run H" section.
+   **Run I (α0.8/β0.2, DONE)** confirmed the lever is monotonic: precision
+   0.41→0.45, lesion-F1 0.450→**0.479** (best), recall held 0.75, Dice 0.566→0.553.
+   Sweet spot ≈ α0.7–0.8; further α gives diminishing returns and starts costing
+   Dice/recall — **lever considered tapped**. Ship choice: Run H for Dice (0.566),
+   Run I for lesion-F1 (0.479).
 5. **real-image intensity augmentation** (`--real-aug`, added 2026-05-27: bias
    field + Gaussian noise + gamma + intensity shift on the real path) —
    implemented, gated default-off, **not yet run**. Candidate to harden the
    real path's cross-contrast robustness.
-6. **compact6 scheme** — Run D's negative result is invalid (L2 bug). Re-test as
-   `Run E + compact6` (single variable) if still wanted.
+6. **compact6 scheme** — ~~Re-test on a correct trainer~~ **DONE (Run J, negative)**.
+   `Run H + compact6` made cross-contrast worse (soop_trace 0.078) and regressed
+   in-domain lesion-F1 (0.392). Class count is not the DWI lever. See "Run J".
+8. **DWI-aware synthesis / contrast augmentation** — NEXT. Every cheap lever (loss,
+   synth:real ratio, label scheme) has failed to close the modality gap. Attack the
+   synthesis: bias a fraction of synthetic samples toward a DWI-like appearance
+   (restricted-diffusion *hyperintense* lesion, DWI tissue contrast) so the model
+   learns the bright-blob prior that DWI inference relies on.
 7. **Codex adversarial review — NOW UNBLOCKED (2026-06-01).** The earlier
    "sandbox-blocked" state was not transient namespace exhaustion: this is a
    RHEL7 / kernel-3.10 login node (no Landlock), and the cluster sets
@@ -369,9 +381,31 @@ final/absolute claim.
     but does not change the training objective (now guarded by `objective_config`
     on resume). Downgrade expectations or persist transform RNG + sampler offset.
 
-## Run H — lesion-targeted precision-aware loss (IN PROGRESS, 2026-06-01)
+## Run H — lesion-targeted precision-aware loss (DONE — best ATLAS, 2026-06-03)
 
-Single-variable change from Run G (best ATLAS, Dice 0.504): swap the region term
+**RESULT (tuned op-point thr 0.3 / cc 10, brain-masked):**
+
+| Eval set | n | Dice | lesion-F1 | lesion-prec | lesion-recall | surf-Dice 3mm | AVD mL | |Δlesion-count| |
+|---|--:|--:|--:|--:|--:|--:|--:|--:|
+| **ATLAS val** (T1w, in-dist) | 194 | **0.566** | **0.450** | **0.407** | 0.763 | 0.691 | 6.1 | 4.6 |
+| soop_trace (DWI, OOD) | 12 | 0.146 | 0.123 | 0.082 | 0.347 | 0.143 | 58.1 | 25.8 |
+| soop_t1w (T1w-in-TRACE) | 12 | 0.219 | 0.237 | 0.209 | 0.330 | 0.254 | 27.6 | 6.1 |
+
+**The precision-aware loss worked, exactly as hypothesized.** vs Run G
+(0.504 / 0.268, precision ~0.18): lesion **precision 0.18 → 0.407 (2.3×) at held
+recall 0.76** — the intended recall-for-precision trade — lifting **lesion-F1
+0.268 → 0.450 (+68%)** and Dice 0.504 → 0.566. The false-positive-component
+problem is largely fixed (|Δlesion-count| ~4.6 vs Run E's ~12; AVD 6.1 mL). Run H
+is now **our strongest from-scratch synth model in-domain** — beats pretrained
+synth-plus on Dice (0.566 > 0.458) and closes most of the F1 gap (synth-plus
+0.515). Still below the real-data nnU-Net (0.640 / 0.654).
+
+**Cross-contrast unchanged (expected):** soop_trace 0.114 → 0.146 (still ≪
+synth-plus 0.447) — a loss tweak can't fix the modality gap; that remains the
+separate, unsolved problem. soop_t1w F1 improved (0.150 → 0.237) via the same
+precision gain.
+
+**Recipe** — single-variable change from Run G: swap the region term
 of the loss from class-averaged Dice to a **lesion-channel soft Tversky**
 (`--loss tverskycel2`, `alpha=0.7` penalizes false positives, `beta=0.3`),
 keeping the L2 warmup, the full multi-class CE (`ce_weight[lesion]=2`), `--fade`,
@@ -394,6 +428,48 @@ Implementation notes (all via Codex + `/codex:adversarial-review`, 2026-06-01):
 - Default `--loss dicecel2` path is byte-identical to Run G.
 - Knobs: `LOSS=tverskycel2 TVERSKY_ALPHA=0.7 TVERSKY_BETA=0.3` in
   [analysis_synth_06_train.sh](../baselines/models/synthstroke/analysis_synth_06_train.sh).
+
+## Run J — compact6 label scheme (DONE — negative on cross-contrast, 2026-06-08)
+
+**Hypothesis:** synth-plus generalizes to DWI (soop_trace 0.447) while our
+from-scratch synth does not (~0.08–0.15). One structural difference is the label
+scheme — synth-plus uses a ~6-class grouping, we use the 34-class FreeSurfer
+scheme. Run J is the single-variable test: **Run H recipe + compact6 (6-class)
+label maps** (`--scheme compact6`, `N_CLASSES=6`, lesion idx 5). If the coarse
+class structure is what lets the GMM pipeline stay contrast-agnostic, compact6
+should lift soop_trace.
+
+**RESULT (tuned op-point thr 0.5 / cc 5, brain-masked):**
+
+| Eval set | n | Dice | lesion-F1 | lesion-prec | lesion-recall | surf-Dice 3mm | AVD mL | |Δlesion-count| |
+|---|--:|--:|--:|--:|--:|--:|--:|--:|
+| **ATLAS val** (T1w, in-dist) | 194 | 0.559 | 0.392 | 0.325 | 0.767 | 0.671 | 6.0 | 6.4 |
+| soop_trace (DWI, OOD) | 12 | **0.078** | 0.089 | 0.056 | 0.354 | 0.081 | 125.8 | 42.5 |
+| soop_t1w (T1w-in-TRACE) | 12 | 0.195 | 0.151 | 0.120 | 0.338 | 0.222 | 28.2 | 11.4 |
+
+**Reading it — the hypothesis failed:**
+
+1. **Cross-contrast got WORSE, not better.** soop_trace Dice **0.078** is the
+   lowest of any valid run (E 0.131, G 0.114, H 0.146, I 0.090), and AVD blew up
+   to 126 mL. Collapsing 34 → 6 classes did not make the model contrast-agnostic;
+   the class count is **not** the DWI lever. Synth-plus's cross-contrast strength
+   must come from something else (its multi-dataset, multi-contrast training corpus
+   — which we cannot replicate without that data).
+2. **In-domain roughly held but lesion-F1 regressed.** ATLAS Dice 0.559 ≈ H/I,
+   but lesion-F1 0.392 < H 0.450 and I 0.479, and precision dropped to 0.325 (vs
+   H 0.41) — the op-point landed at thr 0.5 / cc 5 (less aggressive FP pruning
+   than H's thr 0.3 / cc 10), and the coarse scheme gives the lesion channel a
+   less distinctive context. **No reason to prefer compact6.**
+
+**Verdict:** compact6 is a dead end for the cross-contrast goal and a mild
+regression in-domain. **Keep the 34-class scheme; ship H (Dice) / I (F1).** The
+modality gap is now confirmed to survive every cheap from-scratch lever we have
+tried — loss (H/I), synth:real ratio (F), and label scheme (J). The remaining
+untried lever is the **synthesis itself**: the GMM contrast model never sees a
+DWI-like appearance (restricted-diffusion *bright* lesion, distinct CSF/tissue
+DWI contrast), so the model has no reason to recognize one. **Next run attacks
+this directly — see "Run K (DWI-aware synthesis)" / the contrast-augmentation
+work below.**
 
 ## Sources / pointers
 

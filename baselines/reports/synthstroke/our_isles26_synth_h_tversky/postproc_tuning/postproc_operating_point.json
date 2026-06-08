@@ -1,0 +1,12 @@
+{
+  "prob_threshold": 0.3,
+  "min_cc_voxels": 10,
+  "mean_lesion_f1": 0.4502087429565545,
+  "mean_dice": 0.5661330620545874,
+  "pooled_small_recall_0_1ml": 0.47103274559193953,
+  "n_cases": 194,
+  "small_recall_tolerance": 0.95,
+  "fixed_ref_small_recall": 0.473551637279597,
+  "selected_small_recall": 0.47103274559193953,
+  "note": "Tuned on ATLAS fold-0 val only (never soop) to avoid leaderboard overfit. fixed_ref_small_recall is the pooled small-lesion recall at thr=0.5, cc=0 (deployment default); selected (thr, cc) must retain >= 0.95 x fixed_ref_small_recall."
+}
