@@ -186,6 +186,7 @@ confounded by the L2 bug — they are NOT independently validated yet.**
 | **H `tversky`** | Run G + **lesion-targeted Tversky** (`--loss tverskycel2` α0.7/β0.3) | **DONE — best ATLAS** | Precision-aware loss works: **ATLAS Dice 0.566 / lesion-F1 0.450** (vs G 0.504/0.268), **lesion-precision 0.18→0.41** at held recall 0.76. Best synth model in-domain. soop_trace 0.146 (cross-contrast still unsolved). See "Run H" section. |
 | **I `tversky_a08`** | Run H + **α0.8/β0.2** (more FP penalty) | **DONE — best F1** | α-sweep result: precision 0.41→**0.45**, lesion-F1 0.450→**0.479** (best yet), recall held 0.75, small Dice cost 0.566→0.553. Cross-contrast slightly worse (soop_trace 0.090). Monotonic precision lever; sweet spot ~α0.7–0.8, stop here. |
 | J `compact6` | Run H + **compact6 (6-class)** label scheme | **DONE — negative** | Single-variable swap to the 6-class scheme that matches synth-plus's structure. **compact6 did NOT help cross-contrast:** soop_trace **0.078** (worst of all valid runs, < H's 0.146), ATLAS Dice 0.559 (≈ H/I) but lesion-F1 **0.392** (< H 0.450, I 0.479). Matching synth-plus's class count is not the DWI lever. See "Run J" section. |
+| K `dwi` | Run H + **DWI-aware synth aug** (`--dwi-prob`, lesion forced hyperintense in a fraction of synth samples) | **CODE READY — to run** | First attack on the synthesis itself rather than loss/ratio/scheme. New `DWIContrastD` transform overrides the random GMM lesion intensity with a restricted-diffusion *bright* blob (tissue-p95 × U(1.5,3) + smooth texture) for a `--dwi-prob` fraction of synthetic patches. Hypothesis: teaching the bright-lesion DWI cue lifts soop_trace without hurting ATLAS (default-off, single-variable on top of best in-domain model H). |
 
 References to compare against:
 - nnU-Net v2 3D fullres (real ATLAS T1w only): **ATLAS 0.640 / lesion-F1 0.654** ; soop_t1w 0.188 / 0.201
@@ -290,6 +291,9 @@ LABELMAPS_DIR      # work/synthstroke/labelmaps (fs34) | labelmaps_compact6
 N_CLASSES          # 34 (fs34) | 6 (compact6)
 SYNTH_PROB         # synth fraction per step (default 0.33 = 67% real)
 FADE               # 1 to enable LesionFadeD in synth path
+DWI_PROB           # 0..1: fraction of synth samples rendered DWI-style
+                   #   (lesion forced hyperintense, restricted-diffusion cue).
+                   #   Unset/0 = off, byte-identical to prior behaviour.
 ```
 
 `analysis_synth_07_predict_eval.sh` and `analysis_synth_08_tune_postproc.sh`
@@ -330,11 +334,23 @@ BRAIN_MASK         # 1 default; 0 disables --brain-mask
 6. **compact6 scheme** — ~~Re-test on a correct trainer~~ **DONE (Run J, negative)**.
    `Run H + compact6` made cross-contrast worse (soop_trace 0.078) and regressed
    in-domain lesion-F1 (0.392). Class count is not the DWI lever. See "Run J".
-8. **DWI-aware synthesis / contrast augmentation** — NEXT. Every cheap lever (loss,
-   synth:real ratio, label scheme) has failed to close the modality gap. Attack the
-   synthesis: bias a fraction of synthetic samples toward a DWI-like appearance
-   (restricted-diffusion *hyperintense* lesion, DWI tissue contrast) so the model
-   learns the bright-blob prior that DWI inference relies on.
+8. **DWI-aware synthesis / contrast augmentation** — **CODE READY (Run K, to run)**.
+   Every cheap lever (loss, synth:real ratio, label scheme) has failed to close the
+   modality gap. Attack the synthesis: `DWIContrastD` (`--dwi-prob p`,
+   [our_train.py](../baselines/models/synthstroke/synthstroke_helpers/our_train.py))
+   forces the lesion hyperintense (tissue-p95 × U(1.5,3) × smooth texture, overriding
+   the random GMM draw) on a fraction `p` of synthetic patches, so the model learns
+   the restricted-diffusion bright-blob prior that DWI inference relies on. Synth-path
+   only; default `p=0` is byte-identical (transform not appended to the Compose).
+   Implemented via Codex + `/codex:adversarial-review`; review fixes applied
+   (NaN/non-positive tissue reference is filtered and bails out no-op rather than
+   corrupting the lesion; the texture field is drawn from the transform's `self.R`
+   so seeded replay is deterministic) and validated by a CPU functional test
+   (hyperintensity, NaN-safety, no-lesion no-op, seeded determinism, p=0 no-op).
+   **Caveat (same as `--fade`/`--synth-prob`):** `dwi_prob` is *not* in the resume
+   `objective_config` guard — toggling `DWI_PROB` on a requeue under the same
+   `--name` silently mixes policies; always use a fresh run name (the SLURM recipe
+   does). First run: `Run H recipe + DWI_PROB≈0.5`, sweep `p` after.
 7. **Codex adversarial review — NOW UNBLOCKED (2026-06-01).** The earlier
    "sandbox-blocked" state was not transient namespace exhaustion: this is a
    RHEL7 / kernel-3.10 login node (no Landlock), and the cluster sets

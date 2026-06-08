@@ -165,7 +165,86 @@ class LesionFadeD(mn.transforms.MapTransform):
         return d
 
 
-def synth_transform(patch, n_classes, device, syn, fade=False):
+class DWIContrastD(mn.transforms.RandomizableTransform, mn.transforms.MapTransform):
+    """DWI-style lesion contrast (synth path only): force the lesion region
+    hyperintense relative to brain tissue with smooth low-frequency texture.
+    Applied AFTER SynthFromLabelD so it overrides the random per-label GMM draw.
+    """
+
+    def __init__(self, lesion_idx, image_key="image", label_key="label",
+                 prob=0.0, bright_lo=1.5, bright_hi=3.0, ctrl=4,
+                 tex_lo=0.8, tex_hi=1.2):
+        mn.transforms.RandomizableTransform.__init__(self, prob)
+        mn.transforms.MapTransform.__init__(self, [image_key])
+        self.lesion_idx = lesion_idx
+        self.ik = image_key
+        self.lk = label_key
+        self.bright_lo = bright_lo
+        self.bright_hi = bright_hi
+        self.ctrl = ctrl
+        self.tex_lo = tex_lo
+        self.tex_hi = tex_hi
+
+    def randomize(self, data=None):
+        super().randomize(None)
+
+    def __call__(self, data):
+        d = dict(data)
+        self.randomize(None)
+        if not self._do_transform:
+            return d
+
+        img = d[self.ik]
+        lab = d[self.lk]
+        if not torch.is_tensor(img):
+            img = torch.as_tensor(img)
+        img = img.float()
+        if not torch.is_tensor(lab):
+            lab = torch.as_tensor(lab, device=img.device)
+        elif lab.device != img.device:
+            lab = lab.to(img.device)
+
+        les = (lab == self.lesion_idx)
+        if not bool(les.any()):
+            return d
+
+        tissue = (lab > 0) & (lab != self.lesion_idx)
+        if int(tissue.sum().item()) < 8:
+            tissue = (lab > 0)
+        # Establish a finite, positive tissue reference. Filter non-finite voxels
+        # and bail out (no-op) if the patch has no usable brain statistic, rather
+        # than emit a NaN or non-hyperintense lesion that would violate the cue.
+        ref = img[tissue]
+        ref = ref[torch.isfinite(ref)]
+        if ref.numel() == 0:
+            brain = img[lab > 0]
+            ref = brain[torch.isfinite(brain)]
+        if ref.numel() == 0:
+            return d
+        hi = torch.quantile(ref, 0.95)
+        if (not bool(torch.isfinite(hi).item())) or bool((hi <= 0).item()):
+            hi = ref.max()
+        if (not bool(torch.isfinite(hi).item())) or bool((hi <= 0).item()):
+            return d
+
+        f = self.R.uniform(self.bright_lo, self.bright_hi)
+        target_level = float(hi) * float(f)
+        # Smooth low-frequency texture in [tex_lo, tex_hi], drawn from self.R so the
+        # whole transform is controlled by its MONAI random state (seedable replay).
+        shp = tuple(int(s) for s in img.shape[-3:])
+        coarse = torch.as_tensor(
+            self.R.uniform(0.0, 1.0, size=(1, 1, self.ctrl, self.ctrl, self.ctrl)),
+            dtype=img.dtype, device=img.device)
+        field = torch.nn.functional.interpolate(
+            coarse, size=shp, mode="trilinear", align_corners=False)[0]
+        field = self.tex_lo + (self.tex_hi - self.tex_lo) * field
+        les_f = les.to(img.dtype)
+        img = img * (1.0 - les_f) + (target_level * field) * les_f
+        d[self.ik] = img
+        return d
+
+
+def synth_transform(patch, n_classes, device, syn, fade=False, dwi_prob=0.0):
     """Synthetic transform: lesion-focused crop BEFORE synthesis for efficiency.
 
     Critical ordering:
@@ -175,7 +254,8 @@ def synth_transform(patch, n_classes, device, syn, fade=False):
     SpatialPadD (pad up to patch if crop was smaller) ->
     DeleteItemsd (drop lesion key) ->
     SynthFromLabelD (synthesize image from cropped label) ->
-    [LesionFadeD if fade] -> flips -> NormalizeIntensity -> AsDiscrete -> ToTensor
+    [LesionFadeD if fade] -> [DWIContrastD if dwi_prob>0] ->
+    flips -> NormalizeIntensity -> AsDiscrete -> ToTensor
     """
     lesion_idx = n_classes - 1
     tfms = [
@@ -199,6 +279,8 @@ def synth_transform(patch, n_classes, device, syn, fade=False):
     ]
     if fade:
         tfms.append(LesionFadeD(lesion_idx, image_key="image", label_key="label"))
+    if dwi_prob and dwi_prob > 0:
+        tfms.append(DWIContrastD(lesion_idx, image_key="image", label_key="label", prob=dwi_prob))
     tfms += [
         mn.transforms.RandAxisFlipd(keys=["image", "label"], prob=0.8),
         mn.transforms.RandAxisFlipd(keys=["image", "label"], prob=0.8),
@@ -388,6 +470,11 @@ def main():
                          "Opt-in; default off preserves the corrected-baseline (Run E) behavior.")
     ap.add_argument("--fade", action="store_true",
                     help="apply smooth lesion intensity fade (penumbra/inhomogeneity) in the synth path")
+    ap.add_argument("--dwi-prob", type=float, default=0.0,
+                    help="probability that a synthetic sample is rendered DWI-style: lesion forced hyperintense "
+                         "(restricted-diffusion cue) relative to brain tissue. Synth path only. Default 0.0 = off "
+                         "(no change). Independent of --fade; when both fire on the same sample, DWI overrides fade "
+                         "on the lesion.")
     ap.add_argument("--synth-prob", type=float, default=0.33,
                     help="probability of drawing a synthetic batch each step "
                          "(default 0.33 = 67%% real, ATLAS-first); "
@@ -475,7 +562,8 @@ def main():
     outdir = Path(args.logdir) / args.name
     outdir.mkdir(parents=True, exist_ok=True)
     print(f"[info] device={device} n_classes={n_classes} mix_real={args.mix_real} "
-          f"synth_prob={args.synth_prob:.2f} fade={args.fade} real_aug={args.real_aug} "
+          f"synth_prob={args.synth_prob:.2f} fade={args.fade} dwi_prob={args.dwi_prob:.2f} "
+          f"real_aug={args.real_aug} "
           f"loss={args.loss} tversky_alpha={args.tversky_alpha:.2f} tversky_beta={args.tversky_beta:.2f} "
           f"epochs={args.epochs} outdir={outdir}")
     print(f"[info] validation checkpoint selection={val_cfg}")
@@ -500,7 +588,11 @@ def main():
     real_dicts = [{"image": str(im / f"{c}_0000.nii.gz"), "label": str(lm / f"{c}.nii.gz")} for c in train_ids]
     val_dicts = [{"image": str(im / f"{c}_0000.nii.gz"), "label": str(lm / f"{c}.nii.gz")} for c in val_ids]
 
-    synth_loader = make_loader(synth_dicts, synth_transform(args.patch, n_classes, device, syn, fade=args.fade), True)
+    synth_loader = make_loader(
+        synth_dicts,
+        synth_transform(args.patch, n_classes, device, syn, fade=args.fade, dwi_prob=args.dwi_prob),
+        True,
+    )
     real_loader = make_loader(real_dicts, real_transform(args.patch, n_classes, device, True, real_aug=args.real_aug), True) if args.mix_real else None
     val_loader = make_loader(val_dicts, val_transform(device), False)
 
