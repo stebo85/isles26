@@ -71,21 +71,28 @@ def resolve_spatial_axes(probs: np.ndarray, seg_shape: tuple[int, ...], seg: np.
     if not candidates:
         raise ValueError(f"no spatial axis permutation maps probability shape {spatial_shape} to seg shape {seg_shape}")
 
-    validated = []
-    mismatch_by_axes = {}
-    for axes in candidates:
-        mismatch = mismatch_fraction(probs, seg, axes)
-        mismatch_by_axes[axes] = mismatch
-        if mismatch < MAX_MISMATCH_FRACTION:
-            validated.append(axes)
-
-    if len(validated) != 1:
-        details = ", ".join(f"{axes}: {mismatch_by_axes[axes]:.6g}" for axes in candidates)
+    # When two spatial dims are equal, multiple permutations match the shape and a
+    # WRONG transpose still agrees on ~99.9% of voxels (background dominates), so a
+    # loose threshold admits several. The CORRECT permutation aligns with nnU-Net's
+    # own seg, giving the (uniquely) minimal mismatch -- essentially 0. Pick the
+    # argmin and require it to be both ~0 and strictly better than any runner-up.
+    mismatch_by_axes = {axes: mismatch_fraction(probs, seg, axes) for axes in candidates}
+    ordered = sorted(candidates, key=lambda axes: mismatch_by_axes[axes])
+    best = ordered[0]
+    best_mismatch = mismatch_by_axes[best]
+    if best_mismatch > MAX_MISMATCH_FRACTION:
+        details = ", ".join(f"{axes}: {mismatch_by_axes[axes]:.6g}" for axes in ordered)
         raise ValueError(
-            f"expected exactly one validated spatial axis permutation, got {len(validated)} "
-            f"from {len(candidates)} shape candidate(s); mismatch fractions: {details}"
+            f"no spatial axis permutation matches nnU-Net seg within {MAX_MISMATCH_FRACTION:g}; "
+            f"mismatch fractions: {details}"
         )
-    return validated[0]
+    if len(ordered) > 1 and mismatch_by_axes[ordered[1]] <= best_mismatch:
+        details = ", ".join(f"{axes}: {mismatch_by_axes[axes]:.6g}" for axes in ordered)
+        raise ValueError(
+            f"ambiguous spatial axis permutation (tie at minimal mismatch); "
+            f"mismatch fractions: {details}"
+        )
+    return best
 
 
 def convert_case(
