@@ -1,0 +1,172 @@
+{
+  "candidates": [
+    {
+      "name": "nnunet",
+      "kind": "single",
+      "members": [
+        "nnunet"
+      ],
+      "mean_dice": 0.6370343820081891,
+      "lesion_f1": 0.6786876346455476,
+      "best_threshold": 0.4,
+      "best_min_cc": 10,
+      "n_cases": 183
+    },
+    {
+      "name": "ens_mean_h+nnunet",
+      "kind": "pair_mean",
+      "members": [
+        "h",
+        "nnunet"
+      ],
+      "mean_dice": 0.625918977536114,
+      "lesion_f1": 0.6280378762225092,
+      "best_threshold": 0.5,
+      "best_min_cc": 10,
+      "n_cases": 183
+    },
+    {
+      "name": "ens_mean_synthplus+nnunet",
+      "kind": "pair_mean",
+      "members": [
+        "synthplus",
+        "nnunet"
+      ],
+      "mean_dice": 0.6116497035434019,
+      "lesion_f1": 0.6483744184951278,
+      "best_threshold": 0.4,
+      "best_min_cc": 10,
+      "n_cases": 183
+    },
+    {
+      "name": "ens_mean_all",
+      "kind": "mean_all",
+      "members": [
+        "h",
+        "synthplus",
+        "nnunet"
+      ],
+      "mean_dice": 0.6105283716636266,
+      "lesion_f1": 0.6485250853945886,
+      "best_threshold": 0.4,
+      "best_min_cc": 10,
+      "n_cases": 183
+    },
+    {
+      "name": "h",
+      "kind": "single",
+      "members": [
+        "h"
+      ],
+      "mean_dice": 0.5629954661408131,
+      "lesion_f1": 0.4597121758255588,
+      "best_threshold": 0.4,
+      "best_min_cc": 10,
+      "n_cases": 183
+    },
+    {
+      "name": "ens_mean_h+synthplus",
+      "kind": "pair_mean",
+      "members": [
+        "h",
+        "synthplus"
+      ],
+      "mean_dice": 0.5544448425110687,
+      "lesion_f1": 0.5983576729479254,
+      "best_threshold": 0.5,
+      "best_min_cc": 10,
+      "n_cases": 183
+    },
+    {
+      "name": "synthplus",
+      "kind": "single",
+      "members": [
+        "synthplus"
+      ],
+      "mean_dice": 0.45662377275180505,
+      "lesion_f1": 0.5626131946713494,
+      "best_threshold": 0.3,
+      "best_min_cc": 10,
+      "n_cases": 183
+    }
+  ],
+  "oracle": {
+    "oracle_best_per_case_dice": 0.6572516906455123,
+    "best_single_name": "nnunet",
+    "best_single_mean_dice": 0.6370343820081891,
+    "ens_mean_all_mean_dice": 0.6105283716636266,
+    "delta_vs_best_single": 0.020217308637323184,
+    "delta_vs_ens_mean_all": 0.04672331898188564,
+    "ens_mean_all_delta_vs_best_single": -0.02650601034456246
+  },
+  "pairwise": [
+    {
+      "model_a": "h",
+      "model_b": "synthplus",
+      "fraction_a_strictly_exceeds_b": 0.7595628415300546,
+      "mean_abs_dice_diff": 0.14203785385793835,
+      "pearson_r": 0.8260055421296189,
+      "n_cases": 183
+    },
+    {
+      "model_a": "h",
+      "model_b": "nnunet",
+      "fraction_a_strictly_exceeds_b": 0.20765027322404372,
+      "mean_abs_dice_diff": 0.10698580675829382,
+      "pearson_r": 0.8544615086964696,
+      "n_cases": 183
+    },
+    {
+      "model_a": "synthplus",
+      "model_b": "nnunet",
+      "fraction_a_strictly_exceeds_b": 0.09836065573770492,
+      "mean_abs_dice_diff": 0.19392543648801874,
+      "pearson_r": 0.7769732018685547,
+      "n_cases": 183
+    }
+  ],
+  "n_cases": 183,
+  "skipped_cases": {
+    "ATLAS_0081": "affine mismatch for nnunet: max_abs_diff=3.28951e-08",
+    "ATLAS_0465": "affine mismatch for nnunet: max_abs_diff=7.17118e-08",
+    "ATLAS_0585": "affine mismatch for nnunet: max_abs_diff=5.96046e-08",
+    "ATLAS_0663": "affine mismatch for nnunet: max_abs_diff=1.31549e-08",
+    "ATLAS_0665": "affine mismatch for nnunet: max_abs_diff=1.31549e-08",
+    "ATLAS_0667": "affine mismatch for nnunet: max_abs_diff=5.96046e-08",
+    "ATLAS_0669": "affine mismatch for nnunet: max_abs_diff=5.96046e-08",
+    "ATLAS_0807": "affine mismatch for nnunet: max_abs_diff=5.96046e-08",
+    "ATLAS_0823": "affine mismatch for nnunet: max_abs_diff=5.96046e-08",
+    "ATLAS_0825": "affine mismatch for nnunet: max_abs_diff=2.28829e-08",
+    "ATLAS_0840": "affine mismatch for nnunet: max_abs_diff=1.19209e-07"
+  },
+  "config": {
+    "prob_dirs": [
+      {
+        "name": "h",
+        "dir": "work/synthstroke/pred/atlas_val_prob/our_isles26_synth_h_tversky"
+      },
+      {
+        "name": "synthplus",
+        "dir": "work/synthstroke/pred/atlas_val_prob/synthplus"
+      },
+      {
+        "name": "nnunet",
+        "dir": "work/synthstroke/pred/atlas_val_prob/nnunet"
+      }
+    ],
+    "labels_dir": "work/nnunet/nnUNet_raw/Dataset501_ATLASR21/labelsTr",
+    "cases_file": null,
+    "case_source": "intersection_prob_dirs_and_gt",
+    "n_requested_cases": 194,
+    "thresholds": [
+      0.3,
+      0.4,
+      0.5,
+      0.6
+    ],
+    "min_cc": [
+      10
+    ],
+    "pairs": true
+  }
+}
