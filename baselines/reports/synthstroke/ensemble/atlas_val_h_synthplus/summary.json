@@ -1,0 +1,88 @@
+{
+  "candidates": [
+    {
+      "name": "h",
+      "kind": "single",
+      "members": [
+        "h"
+      ],
+      "mean_dice": 0.5661330620545874,
+      "lesion_f1": 0.4502087429565545,
+      "best_threshold": 0.3,
+      "best_min_cc": 10,
+      "n_cases": 194
+    },
+    {
+      "name": "ens_mean_all",
+      "kind": "mean_all",
+      "members": [
+        "h",
+        "synthplus"
+      ],
+      "mean_dice": 0.5560447845137937,
+      "lesion_f1": 0.4987468301877813,
+      "best_threshold": 0.4,
+      "best_min_cc": 10,
+      "n_cases": 194
+    },
+    {
+      "name": "synthplus",
+      "kind": "single",
+      "members": [
+        "synthplus"
+      ],
+      "mean_dice": 0.45886580671967897,
+      "lesion_f1": 0.5655185339032882,
+      "best_threshold": 0.3,
+      "best_min_cc": 10,
+      "n_cases": 194
+    }
+  ],
+  "oracle": {
+    "oracle_best_per_case_dice": 0.5832847478142014,
+    "best_single_name": "h",
+    "best_single_mean_dice": 0.5661330620545874,
+    "ens_mean_all_mean_dice": 0.5560447845137937,
+    "delta_vs_best_single": 0.01715168575961401,
+    "delta_vs_ens_mean_all": 0.027239963300407677,
+    "ens_mean_all_delta_vs_best_single": -0.010088277540793666
+  },
+  "pairwise": [
+    {
+      "model_a": "h",
+      "model_b": "synthplus",
+      "fraction_a_strictly_exceeds_b": 0.7628865979381443,
+      "mean_abs_dice_diff": 0.14157062685413624,
+      "pearson_r": 0.828074220542413,
+      "n_cases": 194
+    }
+  ],
+  "n_cases": 194,
+  "skipped_cases": {},
+  "config": {
+    "prob_dirs": [
+      {
+        "name": "h",
+        "dir": "work/synthstroke/pred/atlas_val_prob/our_isles26_synth_h_tversky"
+      },
+      {
+        "name": "synthplus",
+        "dir": "work/synthstroke/pred/atlas_val_prob/synthplus"
+      }
+    ],
+    "labels_dir": "work/nnunet/nnUNet_raw/Dataset501_ATLASR21/labelsTr",
+    "cases_file": null,
+    "case_source": "intersection_prob_dirs_and_gt",
+    "n_requested_cases": 194,
+    "thresholds": [
+      0.3,
+      0.4,
+      0.5,
+      0.6
+    ],
+    "min_cc": [
+      10
+    ],
+    "pairs": false
+  }
+}

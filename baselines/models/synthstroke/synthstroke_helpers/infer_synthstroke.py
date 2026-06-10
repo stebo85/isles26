@@ -5,7 +5,7 @@ import argparse
 import os
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple, Union
 
 import nibabel as nib
 import monai as mn
@@ -59,6 +59,15 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--from-hub", action="store_true", help="Load --weights as a HuggingFace Hub model id.")
     parser.add_argument("--image", required=True, help="Input .nii.gz image.")
     parser.add_argument("--out", required=True, help="Output .nii.gz lesion mask.")
+    parser.add_argument(
+        "--save-prob",
+        type=str,
+        default=None,
+        help=(
+            "if set, also save the native-space lesion-channel softmax probability "
+            "as a float32 NIfTI at this path (same geometry as --image)"
+        ),
+    )
     parser.add_argument("--tta", action="store_true", help="Enable test-time augmentation.")
     parser.add_argument("--patch", type=int, default=128, help="Sliding-window patch size.")
     parser.add_argument("--device", default="auto", help="Device to use: auto, cuda, cuda:0, or cpu.")
@@ -96,7 +105,8 @@ def _run_inference(
     device: torch.device,
     patch: int,
     use_tta: bool,
-) -> np.ndarray:
+    return_prob: bool = False,
+) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
     lesion_cls = 5 if model.config.out_channels == 6 else 1
 
     load = mn.transforms.Compose(
@@ -150,7 +160,13 @@ def _run_inference(
     disc = postproc(inv)
 
     label_map = np.asarray(disc.detach().cpu())[0]
-    return (label_map == lesion_cls).astype(np.uint8)
+    lesion_mask = (label_map == lesion_cls).astype(np.uint8)
+    if not return_prob:
+        return lesion_mask
+
+    probs = mn.transforms.Activations(softmax=True)(inv)
+    lesion_prob = np.asarray(probs[lesion_cls].detach().cpu(), dtype=np.float32)
+    return lesion_mask, lesion_prob
 
 
 def main() -> int:
@@ -165,7 +181,20 @@ def main() -> int:
     out_path = Path(args.out).expanduser()
 
     ref_img = nib.load(str(image_path))
-    lesion_mask = np.squeeze(_run_inference(model, image_path, device, args.patch, args.tta))
+    result = _run_inference(
+        model,
+        image_path,
+        device,
+        args.patch,
+        args.tta,
+        return_prob=bool(args.save_prob),
+    )
+    if args.save_prob:
+        lesion_mask, lesion_prob = result
+        lesion_prob = np.squeeze(lesion_prob)
+    else:
+        lesion_mask = result
+    lesion_mask = np.squeeze(lesion_mask)
     expected_shape = ref_img.shape[:3]
     if lesion_mask.shape != expected_shape:
         raise ValueError(
@@ -183,6 +212,20 @@ def main() -> int:
 
     lesion_voxels = int(np.count_nonzero(lesion_mask))
     print(f"[done] lesion_voxels={lesion_voxels} out={out_path}")
+
+    if args.save_prob:
+        if lesion_prob.shape != ref_img.shape[:3]:
+            raise ValueError(f"prob shape {lesion_prob.shape} != input {ref_img.shape[:3]}")
+        prob_path = Path(args.save_prob).expanduser()
+        prob_path.parent.mkdir(parents=True, exist_ok=True)
+        prob_hdr = ref_img.header.copy()
+        prob_hdr.set_data_dtype(np.float32)
+        prob_hdr.set_slope_inter(1, 0)
+        prob_img = nib.Nifti1Image(lesion_prob.astype(np.float32), ref_img.affine, header=prob_hdr)
+        prob_img.set_data_dtype(np.float32)
+        prob_img.header.set_slope_inter(1, 0)
+        nib.save(prob_img, str(prob_path))
+        print(f"[done] lesion_prob saved to {prob_path}")
     return 0
 
 

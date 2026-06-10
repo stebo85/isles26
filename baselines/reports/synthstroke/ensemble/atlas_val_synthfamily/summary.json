@@ -1,0 +1,240 @@
+{
+  "candidates": [
+    {
+      "name": "ens_mean_all",
+      "kind": "mean_all",
+      "members": [
+        "h",
+        "i",
+        "g",
+        "e"
+      ],
+      "mean_dice": 0.5717904429096371,
+      "lesion_f1": 0.5137525855381964,
+      "best_threshold": 0.4,
+      "best_min_cc": 10,
+      "n_cases": 194
+    },
+    {
+      "name": "ens_mean_h+i",
+      "kind": "pair_mean",
+      "members": [
+        "h",
+        "i"
+      ],
+      "mean_dice": 0.5698668267390802,
+      "lesion_f1": 0.4722507020489233,
+      "best_threshold": 0.3,
+      "best_min_cc": 10,
+      "n_cases": 194
+    },
+    {
+      "name": "ens_mean_h+g",
+      "kind": "pair_mean",
+      "members": [
+        "h",
+        "g"
+      ],
+      "mean_dice": 0.5693053523629678,
+      "lesion_f1": 0.5177150664195739,
+      "best_threshold": 0.5,
+      "best_min_cc": 10,
+      "n_cases": 194
+    },
+    {
+      "name": "ens_mean_h+e",
+      "kind": "pair_mean",
+      "members": [
+        "h",
+        "e"
+      ],
+      "mean_dice": 0.5688735592299841,
+      "lesion_f1": 0.5194618367836642,
+      "best_threshold": 0.5,
+      "best_min_cc": 10,
+      "n_cases": 194
+    },
+    {
+      "name": "h",
+      "kind": "single",
+      "members": [
+        "h"
+      ],
+      "mean_dice": 0.5661330620545874,
+      "lesion_f1": 0.4502087429565545,
+      "best_threshold": 0.3,
+      "best_min_cc": 10,
+      "n_cases": 194
+    },
+    {
+      "name": "ens_mean_i+g",
+      "kind": "pair_mean",
+      "members": [
+        "i",
+        "g"
+      ],
+      "mean_dice": 0.5627122213726812,
+      "lesion_f1": 0.47126099080496126,
+      "best_threshold": 0.4,
+      "best_min_cc": 10,
+      "n_cases": 194
+    },
+    {
+      "name": "ens_mean_i+e",
+      "kind": "pair_mean",
+      "members": [
+        "i",
+        "e"
+      ],
+      "mean_dice": 0.5578868715137318,
+      "lesion_f1": 0.4576852168592606,
+      "best_threshold": 0.4,
+      "best_min_cc": 10,
+      "n_cases": 194
+    },
+    {
+      "name": "i",
+      "kind": "single",
+      "members": [
+        "i"
+      ],
+      "mean_dice": 0.5568365968948321,
+      "lesion_f1": 0.49044704024797453,
+      "best_threshold": 0.3,
+      "best_min_cc": 10,
+      "n_cases": 194
+    },
+    {
+      "name": "ens_mean_g+e",
+      "kind": "pair_mean",
+      "members": [
+        "g",
+        "e"
+      ],
+      "mean_dice": 0.5251318133065701,
+      "lesion_f1": 0.44939051978671596,
+      "best_threshold": 0.5,
+      "best_min_cc": 10,
+      "n_cases": 194
+    },
+    {
+      "name": "g",
+      "kind": "single",
+      "members": [
+        "g"
+      ],
+      "mean_dice": 0.5173806966430999,
+      "lesion_f1": 0.4017647665737427,
+      "best_threshold": 0.6,
+      "best_min_cc": 10,
+      "n_cases": 194
+    },
+    {
+      "name": "e",
+      "kind": "single",
+      "members": [
+        "e"
+      ],
+      "mean_dice": 0.4991618114253556,
+      "lesion_f1": 0.4137761293642485,
+      "best_threshold": 0.6,
+      "best_min_cc": 10,
+      "n_cases": 194
+    }
+  ],
+  "oracle": {
+    "oracle_best_per_case_dice": 0.5954550748618996,
+    "best_single_name": "h",
+    "best_single_mean_dice": 0.5661330620545874,
+    "ens_mean_all_mean_dice": 0.5717904429096371,
+    "delta_vs_best_single": 0.02932201280731228,
+    "delta_vs_ens_mean_all": 0.023664631952262538,
+    "ens_mean_all_delta_vs_best_single": 0.005657380855049743
+  },
+  "pairwise": [
+    {
+      "model_a": "h",
+      "model_b": "i",
+      "fraction_a_strictly_exceeds_b": 0.5309278350515464,
+      "mean_abs_dice_diff": 0.04511347236019174,
+      "pearson_r": 0.9747292323820126,
+      "n_cases": 194
+    },
+    {
+      "model_a": "h",
+      "model_b": "g",
+      "fraction_a_strictly_exceeds_b": 0.7164948453608248,
+      "mean_abs_dice_diff": 0.0722354974927702,
+      "pearson_r": 0.9342134263242843,
+      "n_cases": 194
+    },
+    {
+      "model_a": "h",
+      "model_b": "e",
+      "fraction_a_strictly_exceeds_b": 0.7010309278350515,
+      "mean_abs_dice_diff": 0.08385601842709109,
+      "pearson_r": 0.9197912174817412,
+      "n_cases": 194
+    },
+    {
+      "model_a": "i",
+      "model_b": "g",
+      "fraction_a_strictly_exceeds_b": 0.6494845360824743,
+      "mean_abs_dice_diff": 0.08335685638493975,
+      "pearson_r": 0.9168138264280398,
+      "n_cases": 194
+    },
+    {
+      "model_a": "i",
+      "model_b": "e",
+      "fraction_a_strictly_exceeds_b": 0.6185567010309279,
+      "mean_abs_dice_diff": 0.09720849702007232,
+      "pearson_r": 0.8906954746095984,
+      "n_cases": 194
+    },
+    {
+      "model_a": "g",
+      "model_b": "e",
+      "fraction_a_strictly_exceeds_b": 0.5515463917525774,
+      "mean_abs_dice_diff": 0.04530201420482679,
+      "pearson_r": 0.9671463920384324,
+      "n_cases": 194
+    }
+  ],
+  "n_cases": 194,
+  "skipped_cases": {},
+  "config": {
+    "prob_dirs": [
+      {
+        "name": "h",
+        "dir": "work/synthstroke/pred/atlas_val_prob/our_isles26_synth_h_tversky"
+      },
+      {
+        "name": "i",
+        "dir": "work/synthstroke/pred/atlas_val_prob/our_isles26_synth_i_tversky_a08"
+      },
+      {
+        "name": "g",
+        "dir": "work/synthstroke/pred/atlas_val_prob/our_isles26_synth_g_fade"
+      },
+      {
+        "name": "e",
+        "dir": "work/synthstroke/pred/atlas_val_prob/our_isles26_synth_e_l2fix"
+      }
+    ],
+    "labels_dir": "work/nnunet/nnUNet_raw/Dataset501_ATLASR21/labelsTr",
+    "cases_file": null,
+    "case_source": "intersection_prob_dirs_and_gt",
+    "n_requested_cases": 194,
+    "thresholds": [
+      0.3,
+      0.4,
+      0.5,
+      0.6
+    ],
+    "min_cc": [
+      10
+    ],
+    "pairs": true
+  }
+}
