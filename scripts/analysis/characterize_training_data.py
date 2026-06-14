@@ -45,7 +45,12 @@ FIELDS = [
 def find_sessions(root: Path):
     """Yield (site, subject, session, t1_path, lesion_path, metadata_csv) tuples."""
     for site_dir in sorted(root.iterdir()):
-        if not site_dir.is_dir() or not site_dir.name.startswith("R"):
+        # ATLAS site dirs are R0xx; ATLAS R3.0 adds a "SOOP" cohort dir with the
+        # identical sub-*/ses-*/anat layout. Include both; skip stray files
+        # (e.g. .DS_Store).
+        if not site_dir.is_dir() or not (
+            site_dir.name.startswith("R") or site_dir.name == "SOOP"
+        ):
             continue
         site = site_dir.name
         for sub_dir in sorted(site_dir.iterdir()):
