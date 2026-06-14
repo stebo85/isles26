@@ -186,7 +186,7 @@ confounded by the L2 bug — they are NOT independently validated yet.**
 | **H `tversky`** | Run G + **lesion-targeted Tversky** (`--loss tverskycel2` α0.7/β0.3) | **DONE — best ATLAS** | Precision-aware loss works: **ATLAS Dice 0.566 / lesion-F1 0.450** (vs G 0.504/0.268), **lesion-precision 0.18→0.41** at held recall 0.76. Best synth model in-domain. soop_trace 0.146 (cross-contrast still unsolved). See "Run H" section. |
 | **I `tversky_a08`** | Run H + **α0.8/β0.2** (more FP penalty) | **DONE — best F1** | α-sweep result: precision 0.41→**0.45**, lesion-F1 0.450→**0.479** (best yet), recall held 0.75, small Dice cost 0.566→0.553. Cross-contrast slightly worse (soop_trace 0.090). Monotonic precision lever; sweet spot ~α0.7–0.8, stop here. |
 | J `compact6` | Run H + **compact6 (6-class)** label scheme | **DONE — negative** | Single-variable swap to the 6-class scheme that matches synth-plus's structure. **compact6 did NOT help cross-contrast:** soop_trace **0.078** (worst of all valid runs, < H's 0.146), ATLAS Dice 0.559 (≈ H/I) but lesion-F1 **0.392** (< H 0.450, I 0.479). Matching synth-plus's class count is not the DWI lever. See "Run J" section. |
-| K `dwi` | Run H + **DWI-aware synth aug** (`--dwi-prob`, lesion forced hyperintense in a fraction of synth samples) | **CODE READY — to run** | First attack on the synthesis itself rather than loss/ratio/scheme. New `DWIContrastD` transform overrides the random GMM lesion intensity with a restricted-diffusion *bright* blob (tissue-p95 × U(1.5,3) + smooth texture) for a `--dwi-prob` fraction of synthetic patches. Hypothesis: teaching the bright-lesion DWI cue lifts soop_trace without hurting ATLAS (default-off, single-variable on top of best in-domain model H). |
+| K `dwi` | Run H + **DWI-aware synth aug** (`--dwi-prob 0.5`, lesion forced hyperintense in half the synth samples) | **DONE — negative (worse on DWI)** | First attack on the synthesis itself. **In-domain held** (ATLAS 0.560 / F1 0.482 ≈ H/I) but **soop_trace DROPPED to 0.047** (worst of any run, < H 0.146; recall collapsed 0.40→0.20). Teaching "lesion=bright blob" without DWI's *global* tissue contrast did not transfer to real DWI. See "Run K" section. |
 
 References to compare against:
 - nnU-Net v2 3D fullres (real ATLAS T1w only): **ATLAS 0.640 / lesion-F1 0.654** ; soop_t1w 0.188 / 0.201
@@ -334,9 +334,9 @@ BRAIN_MASK         # 1 default; 0 disables --brain-mask
 6. **compact6 scheme** — ~~Re-test on a correct trainer~~ **DONE (Run J, negative)**.
    `Run H + compact6` made cross-contrast worse (soop_trace 0.078) and regressed
    in-domain lesion-F1 (0.392). Class count is not the DWI lever. See "Run J".
-8. **DWI-aware synthesis / contrast augmentation** — **CODE READY (Run K, to run)**.
+8. **DWI-aware synthesis / contrast augmentation** — **DONE (Run K, negative — DWI got worse).**
    Every cheap lever (loss, synth:real ratio, label scheme) has failed to close the
-   modality gap. Attack the synthesis: `DWIContrastD` (`--dwi-prob p`,
+   modality gap. This one attacks the synthesis: `DWIContrastD` (`--dwi-prob p`,
    [our_train.py](../baselines/models/synthstroke/synthstroke_helpers/our_train.py))
    forces the lesion hyperintense (tissue-p95 × U(1.5,3) × smooth texture, overriding
    the random GMM draw) on a fraction `p` of synthetic patches, so the model learns
@@ -484,8 +484,84 @@ tried — loss (H/I), synth:real ratio (F), and label scheme (J). The remaining
 untried lever is the **synthesis itself**: the GMM contrast model never sees a
 DWI-like appearance (restricted-diffusion *bright* lesion, distinct CSF/tissue
 DWI contrast), so the model has no reason to recognize one. **Next run attacks
-this directly — see "Run K (DWI-aware synthesis)" / the contrast-augmentation
-work below.**
+this directly — see "Run K (DWI-aware synthesis)" below.**
+
+## Run K — DWI-aware synthesis (DONE — negative, made DWI worse, 2026-06-10)
+
+**Hypothesis:** the GMM assigns a *random* mean per label, so the lesion has no
+consistent intensity and the model never learns the "bright blob = lesion" prior
+that DWI (restricted diffusion) relies on. `DWIContrastD` (`--dwi-prob 0.5`,
+single-variable on top of best in-domain model H) forces the lesion hyperintense
+(tissue-p95 × U(1.5,3) × smooth texture, overriding the GMM draw) on half the
+synthetic patches.
+
+**RESULT (tuned op-point thr 0.3 / cc 10, brain-masked):**
+
+| Eval set | n | Dice | lesion-F1 | lesion-prec | lesion-recall |
+|---|--:|--:|--:|--:|--:|
+| **ATLAS val** (T1w, in-dist) | 194 | 0.560 | 0.482 | 0.454 | 0.739 |
+| soop_trace (DWI, OOD) | 12 | **0.047** | 0.083 | 0.059 | 0.196 |
+| soop_t1w (T1w-in-TRACE) | 12 | 0.241 | 0.196 | 0.255 | 0.256 |
+
+**Reading it — the hypothesis backfired:**
+
+1. **In-domain held.** ATLAS Dice 0.560 ≈ H (0.566); lesion-F1 0.482 ≈ I's best
+   (0.479). The bright-lesion augmentation on half the samples did not hurt T1w,
+   and training was stable (`nan_skipped` ≈ 0 throughout — the review's NaN-safe
+   tissue reference held in production).
+2. **DWI got WORSE, not better.** soop_trace Dice **0.047** is the lowest of any
+   valid run (E 0.131, G 0.114, H 0.146, I 0.090, J 0.078), and lesion-recall
+   *collapsed* to 0.196 (vs ~0.40 at Run E). Forcing a specific lesion brightness
+   profile during training made the model *more* conservative / mis-calibrated on
+   real DWI, not more sensitive.
+3. **Why it failed:** we changed only the *lesion* intensity, not DWI's *global*
+   tissue contrast (CSF/GM/WM appearance, the diffusion-weighting that makes the
+   whole image look unlike T1w). Teaching "lesion = bright blob" in an otherwise
+   T1w-statistics image does not transfer to a genuinely different-contrast DWI
+   volume; the model keys on the full appearance, which it still never saw.
+
+**Verdict:** DWI-aware lesion-contrast augmentation is a dead end for the
+cross-contrast goal (and slightly *hurts* DWI). **Keep H (Dice) / I (F1).** This
+closes the from-scratch lever search: loss (H/I), synth:real ratio (F), label
+scheme (J), and synthesis contrast (K) have *all* failed to move soop_trace off
+~0.05–0.15 vs synth-plus's 0.447. **The modality gap is structural** — synth-plus's
+cross-contrast strength comes from its multi-dataset/multi-contrast *training
+corpus*, which we cannot reproduce by tweaking our ATLAS-only GMM pipeline. To get
+DWI capability we need either (a) real multi-contrast training data, or (b) a true
+DWI-appearance forward model (global diffusion contrast simulation), not a
+lesion-only intensity override.
+
+## Ensemble complementarity (DONE — 2026-06-10)
+
+Separate line of work: rather than build one better model, measure whether
+*combining* the models we already have beats the best single one. Tool:
+[ensemble_complementarity.py](../baselines/models/synthstroke/synthstroke_helpers/ensemble_complementarity.py);
+reports under
+[baselines/reports/synthstroke/ensemble/](../baselines/reports/synthstroke/ensemble/).
+It combines per-case native-space lesion-prob maps, tunes every candidate on the
+same (thr × cc) grid, and reports the per-case **oracle** ceiling (perfect model
+routing) + pairwise complementarity. All numbers are ATLAS fold-0 val (the scored
+in-distribution T1w metric), tuned-on-val (relative comparison, not deployment).
+
+| Combination | best single | ens (mean) | oracle | conclusion |
+|---|--:|--:|--:|---|
+| synth family H/I/G/E | H 0.566 | 0.572 | 0.595 | r 0.92–0.97 (near-identical); ens +0.6% Dice, +14% F1 only |
+| H + synth-plus | H 0.566 | 0.556 | 0.583 | r 0.83 (diverse) but mean *hurts* Dice; oracle +0.017 |
+| **H + synth-plus + nnU-Net** | **nnU-Net 0.637** | 0.611 | 0.657 | nnU-Net dominates; *every* mean ensemble is **below** it |
+
+**Findings:** (1) **Naive probability-averaging does not help and usually hurts**
+— it dilutes the strongest model (nnU-Net 0.637 → 0.61 in every blend). (2) The
+synth family is **too correlated** (r 0.92–0.97; same data + pipeline) to ensemble
+usefully. (3) Cross-paradigm models *are* genuinely complementary (synth-plus
+r 0.78–0.83 with the others, the most diverse) **but** the oracle ceiling is only
+**+0.020 over nnU-Net** — even perfect per-case routing barely beats the specialist
+in-distribution. **On the scored ATLAS T1w metric: ship nnU-Net alone; don't
+ensemble.** **Caveat — the real case for ensembling is cross-contrast robustness
+(soop/DWI), where synth-plus (0.447) ≫ nnU-Net; that eval was not run and is the
+natural follow-up** before discarding ensembling for the final submission.
+(Minor tool nit: the triple run skipped 11/194 cases on a too-strict affine
+`atol`=1e-8 vs nnU-Net's ~3e-8 resample rounding; n=183 is robust, conclusion
+unchanged; loosen to ~1e-4 to recover them.)
 
 ## Sources / pointers
 

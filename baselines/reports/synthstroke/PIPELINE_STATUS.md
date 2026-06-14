@@ -31,6 +31,7 @@
 > | **H lesion-Tversky α0.7** (best Dice) | **0.566** / 0.450 | 0.146 / 0.123 | 0.219 / 0.237 |
 > | **I lesion-Tversky α0.8** (best F1) | 0.553 / **0.479** | 0.090 / 0.119 | 0.166 / 0.185 |
 > | J compact6 (6-class scheme) | 0.559 / 0.392 | 0.078 / 0.089 | 0.195 / 0.151 |
+> | K dwi-aware synth (dwi-prob 0.5) | 0.560 / 0.482 | 0.047 / 0.083 | 0.241 / 0.196 |
 > | synth-plus (pretrained) | 0.458 / 0.515 | **0.447 / 0.478** | 0.217 / 0.231 |
 >
 > **Findings:** (1) **`--fade` helps** (Run G 0.504 > E 0.480). (2) **Synth-only
@@ -40,15 +41,21 @@
 > ATLAS Dice 0.504→0.566, lesion-F1 0.268→0.450, lesion-precision 0.18→0.41 at
 > held recall 0.76** — over-segmentation fixed; now our best synth model and >
 > synth-plus on Dice. (4) **Run J: the compact6 (6-class) label scheme did NOT
-> help cross-contrast** — soop_trace *dropped* to 0.078 (worst yet, < H's 0.146)
-> and ATLAS lesion-F1 fell to 0.392; matching synth-plus's class count is not the
-> DWI lever. The "strong on ATLAS" goal is met (best = H/I); the "works on soop
-> (DWI)" goal is still not met by any from-scratch synth variant — neither a loss
-> tweak (H/I), the synth:real ratio (F), nor the label scheme (J) closes the
-> modality gap. **Next: attack the gap at its source — DWI-aware synthesis /
-> contrast augmentation** (teach the GMM pipeline the restricted-diffusion
-> bright-lesion / DWI tissue-contrast prior during training). Full numbers and
-> next steps:
+> help cross-contrast** — soop_trace *dropped* to 0.078. (5) **Run K: DWI-aware
+> synthesis (force lesion hyperintense in half the synth samples) made DWI
+> WORSE** — soop_trace 0.047 (lowest of any run; recall collapsed 0.40→0.20),
+> while ATLAS held (0.560 / 0.482). Changing only the lesion intensity, not DWI's
+> global tissue contrast, does not transfer. **The from-scratch lever search is
+> now closed: loss (H/I), synth:real ratio (F), label scheme (J), and synthesis
+> contrast (K) ALL fail to move soop_trace off ~0.05–0.15 vs synth-plus 0.447.
+> The modality gap is structural** (synth-plus's strength = its multi-dataset /
+> multi-contrast training corpus, not reproducible from ATLAS-only synthesis).
+> The "strong on ATLAS" goal is met (best = H/I). **Ensemble study (2026-06-10):**
+> naive probability-averaging does NOT beat the best single model — on ATLAS T1w,
+> nnU-Net (0.637) dominates and every {H/synth-plus/nnU-Net} mean blend is below
+> it (oracle ceiling only +0.020); ship nnU-Net alone in-distribution. The
+> remaining open ensembling question is cross-contrast (soop/DWI), not run yet.
+> Full numbers (Run K + ensemble sections) and next steps:
 > [docs/synthstroke_training_lessons.md](../../../docs/synthstroke_training_lessons.md)
 > (Runs E and "F & G" sections); durable lessons in
 > [docs/problems_and_lessons.md](../../../docs/problems_and_lessons.md)
