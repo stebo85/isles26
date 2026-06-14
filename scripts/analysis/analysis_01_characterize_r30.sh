@@ -3,7 +3,7 @@
 #SBATCH --output=logs/%x_%j.out
 #SBATCH --error=logs/%x_%j.err
 #SBATCH --time=04:00:00
-#SBATCH --mem=8G
+#SBATCH --mem=32G
 #SBATCH --cpus-per-task=2
 #SBATCH -p owners
 
