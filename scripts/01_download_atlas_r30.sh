@@ -24,29 +24,41 @@ cd "$REPO"
 mkdir -p "$REPO/logs" "$REPO/data"
 
 URL="https://fcp-indi.s3.us-east-1.amazonaws.com/data/Projects/INDI/ATLAS/R3.0/atlas3_training_raw.tar.gz"
-TARBALL="$REPO/data/atlas3_training_raw.tar.gz"
+ENC="$REPO/data/atlas3_training_raw.tar.gz"          # AES-256-CBC, base64-armored (NOT gzip)
+DEC="$REPO/data/ATLAS_R3.0_raw.tar.gz"               # decrypted real gzip tarball
+KEY="$REPO/data/key.txt"                             # ATLAS decryption password (gitignored secret)
 EXPECTED_BYTES=8244197870
 EXTRACT_DIR="$REPO/data"
 
-echo "[info] downloading ATLAS R3.0 training-raw -> $TARBALL"
-# -c resumes a partial download; retry transient network errors.
-wget -c --tries=5 --timeout=60 -O "$TARBALL" "$URL"
+# 1) Download (encrypted). -c resumes a partial download; skips if already complete.
+echo "[info] downloading ATLAS R3.0 (encrypted) -> $ENC"
+wget -c --tries=5 --timeout=60 -O "$ENC" "$URL"
 
-ACTUAL_BYTES="$(stat -c %s "$TARBALL")"
-echo "[info] downloaded bytes=$ACTUAL_BYTES (expected $EXPECTED_BYTES)"
+ACTUAL_BYTES="$(stat -c %s "$ENC")"
+echo "[info] encrypted bytes=$ACTUAL_BYTES (expected $EXPECTED_BYTES)"
 if [[ "$ACTUAL_BYTES" -ne "$EXPECTED_BYTES" ]]; then
   echo "[error] size mismatch; download incomplete/corrupt" >&2
   exit 2
 fi
 
-echo "[info] verifying gzip integrity"
-gzip -t "$TARBALL"
+# 2) Decrypt with the ATLAS key (same recipe as R2.1: openssl aes-256-cbc -md sha256 -d -a).
+#    -pass file: keeps the password out of the process args (never echo the key).
+if [[ ! -s "$KEY" ]]; then
+  echo "[error] missing decryption key: $KEY" >&2
+  exit 2
+fi
+echo "[info] decrypting -> $DEC"
+openssl aes-256-cbc -md sha256 -d -a -in "$ENC" -out "$DEC" -pass "file:$KEY"
 
+echo "[info] verifying gzip integrity of decrypted tarball"
+gzip -t "$DEC"
+
+# 3) Extract.
 echo "[info] extracting into $EXTRACT_DIR"
-tar -xzf "$TARBALL" -C "$EXTRACT_DIR"
+tar -xzf "$DEC" -C "$EXTRACT_DIR"
 
 echo "[info] top-level entries created under $EXTRACT_DIR:"
-tar -tzf "$TARBALL" | awk -F/ '{print $1}' | sort -u | head
+tar -tzf "$DEC" | awk -F/ '{print $1}' | sort -u | head
 
-echo "[done] ATLAS R3.0 downloaded + extracted. Inspect the new dir, then wire it"
-echo "       into the characterizer + nnU-Net converter (docs/isles26_data_status.md)."
+echo "[done] ATLAS R3.0 downloaded + decrypted + extracted. Inspect the new dir, then"
+echo "       wire it into the characterizer + nnU-Net converter (docs/isles26_data_status.md)."
