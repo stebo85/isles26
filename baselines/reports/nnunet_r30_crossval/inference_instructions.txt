@@ -1,0 +1,7 @@
+***Run inference like this:***
+
+nnUNetv2_predict -d Dataset502_ATLASR30 -i INPUT_FOLDER -o OUTPUT_FOLDER -f  0 1 2 3 4 -tr nnUNetTrainer_250epochs -c 3d_fullres -p nnUNetPlans
+
+***Once inference is completed, run postprocessing like this:***
+
+nnUNetv2_apply_postprocessing -i OUTPUT_FOLDER -o OUTPUT_FOLDER_PP -pp_pkl_file /scratch/users/sciget/isles26challenge/work/nnunet/nnUNet_results/Dataset502_ATLASR30/nnUNetTrainer_250epochs__nnUNetPlans__3d_fullres/crossval_results_folds_0_1_2_3_4/postprocessing.pkl -np 8 -plans_json /scratch/users/sciget/isles26challenge/work/nnunet/nnUNet_results/Dataset502_ATLASR30/nnUNetTrainer_250epochs__nnUNetPlans__3d_fullres/crossval_results_folds_0_1_2_3_4/plans.json
