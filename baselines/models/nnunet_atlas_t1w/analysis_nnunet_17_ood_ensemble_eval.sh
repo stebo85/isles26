@@ -49,8 +49,15 @@ OUT.mkdir(parents=True, exist_ok=True)
 subjects = discover_soop_bench(REPO / "data/soop_bench")
 
 
-def load(p):
-    d = np.asanyarray(nib.load(str(p)).dataobj).astype(np.float32)
+def load(p, canonical=False):
+    img = nib.load(str(p))
+    if canonical:
+        # The warped prob maps live on TRACE_REF3D = as_closest_canonical(TRACE)
+        # (RAS), while the GT masks are stored in original TRACE orientation
+        # (e.g. LAS). Canonicalizing the GT the same way aligns them voxel-wise
+        # (pure axis flips, no interpolation), matching what eval.run_eval does.
+        img = nib.as_closest_canonical(img)
+    d = np.asanyarray(img.dataobj).astype(np.float32)
     while d.ndim > 3 and d.shape[-1] == 1:
         d = d[..., 0]
     return d
@@ -64,7 +71,7 @@ for s in subjects:
     if not (nn_p.is_file() and sp_p.is_file()):
         print(f"[warn] skipping {sid}: missing prob map(s)")
         continue
-    gt = load(s.lesion_mask) > 0.5
+    gt = load(s.lesion_mask, canonical=True) > 0.5
     nn = load(nn_p)
     sp = load(sp_p)
     if nn.shape != gt.shape or sp.shape != gt.shape:

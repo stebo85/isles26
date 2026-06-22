@@ -82,7 +82,8 @@ def main() -> int:
             hist[c] += int((relabeled == c).sum())
         out = nib.Nifti1Image(relabeled, img.affine, img.header.copy())
         out.set_data_dtype(np.uint8)
-        tmp = dst_labels / (lab_path.name + ".tmp")
+        # nibabel infers the format from the suffix, so the temp must end .nii.gz.
+        tmp = dst_labels / lab_path.name.replace(".nii.gz", ".tmp.nii.gz")
         nib.save(out, str(tmp))
         os.replace(tmp, dst_labels / lab_path.name)
 
