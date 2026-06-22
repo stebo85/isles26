@@ -40,10 +40,12 @@ import nibabel as nib
 from eval.loader import discover_soop_bench
 from eval.metrics import overlap_metrics
 
+import os
 REPO = Path("/scratch/users/sciget/isles26challenge")
-NN_DIR = REPO / "work/predictions_ood_ens/nn_prob_trace"
-SP_DIR = REPO / "work/predictions_ood_ens/sp_prob_trace"
-OUT = REPO / "baselines/reports/ood_ensemble"
+PROB_ROOT = REPO / os.environ.get("OOD_PROB_DIR", "work/predictions_ood_ens")
+NN_DIR = PROB_ROOT / "nn_prob_trace"
+SP_DIR = PROB_ROOT / "sp_prob_trace"
+OUT = REPO / os.environ.get("OOD_REPORT_DIR", "baselines/reports/ood_ensemble")
 OUT.mkdir(parents=True, exist_ok=True)
 
 subjects = discover_soop_bench(REPO / "data/soop_bench")

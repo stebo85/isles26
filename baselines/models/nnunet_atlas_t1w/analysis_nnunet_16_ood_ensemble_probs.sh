@@ -79,7 +79,7 @@ for f in "$BRAIN_T1" "$AFFINE_MAT" "$TRACE_REF3D"; do
   fi
 done
 
-WORK="$REPO/work/predictions_ood_ens"
+WORK="$REPO/work/predictions_ood_ens${OOD_TAG:+_$OOD_TAG}"
 NN_PROB_TRACE="$WORK/nn_prob_trace"; SP_PROB_TRACE="$WORK/sp_prob_trace"
 TMP="$WORK/tmp/$SUB"
 mkdir -p "$NN_PROB_TRACE" "$SP_PROB_TRACE" "$TMP"
@@ -91,8 +91,9 @@ cp "$BRAIN_T1" "$NN_IN/${SUB}_0000.nii.gz"
 
 source "$NN_VENV/bin/activate"
 python "$REPO/baselines/models/nnunet_atlas_t1w/nnunet_helpers/install_trainer_variant.py"
+NN_TRAINER="${NN_TRAINER:-nnUNetTrainer_250epochs}"
 nnUNetv2_predict -i "$NN_IN" -o "$NN_OUT" -d 502 -c 3d_fullres -f 0 1 2 3 4 \
-  -tr nnUNetTrainer_250epochs --save_probabilities
+  -tr "$NN_TRAINER" --save_probabilities
 if [[ ! -s "$NN_OUT/${SUB}.npz" ]]; then
   echo "[error] nnU-Net did not write $NN_OUT/${SUB}.npz" >&2; exit 2
 fi
