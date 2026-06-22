@@ -35,7 +35,15 @@ Metrics:
 - **ResEnc-L: no gain** (0.6389 vs 0.6376 — within noise).
 - **Connected-component postprocessing: none chosen** (no CV gain; ATLAS
   lesions are multifocal so pruning hurts).
-- **MSL (size-stratified labels): in progress** (fold-0 hypothesis test).
+- **MSL (size-stratified labels): qualified result** (fold-0). Substantially
+  raises small/medium-lesion recall — small (10-100 vox) **0.339 → 0.486**
+  (+14.7%), medium (100-1k) 0.589 → 0.641 — but costs ~0.8% Dice (0.6374 →
+  0.6298, a precision tradeoff from extra small-lesion false positives). Tiny
+  (<10 vox) unchanged (~0.18). Adopt only if the challenge's lesion-wise
+  detection metric outweighs the small Dice cost.
+- **1000ep OOD blend: same as 250ep** — blending 1000ep nnU-Net + synth-plus on
+  T1w gives soop 0.2884 (w_nn=0.5), i.e. the longer schedule helps in-dist but
+  not OOD; the blend value comes from synth-plus, not the nnU-Net schedule.
 
 ## Production recommendation (current)
 
@@ -44,19 +52,14 @@ Metrics:
 - **For OOD robustness:** add synth-plus and blend probabilities in native T1w
   space (w_nn≈0.4, thr≈0.30) before warping. Improves soop without DWI.
 
-## In flight (jobs)
-
-- 1000ep find_best postprocessing pick (job 30596908) — consolidated 0.6528.
-- 1000ep OOD ensemble refresh (30596963→30596964) — rebuild blend on the
-  stronger 1000ep nnU-Net probs.
-- MSL fold-0 (30582935 → eval 30582936) — small-lesion recall test.
-
 ## Next levers (priority)
 
-1. Finish MSL fold-0 eval; scale to 5-fold only if small-lesion recall rises
-   without Dice loss.
-2. 1000ep soop binary eval + 1000ep-based OOD blend (refresh underway).
-3. nnU-Net ResEnc-L at 1000 epochs (only if 1000ep default keeps scaling).
+1. MSL is a Dice-vs-recall tradeoff at 250ep/fold-0; before scaling to 5-fold,
+   consider a precision-aware loss (Tversky) or higher size thresholds to keep
+   the recall gain while recovering Dice.
+2. nnU-Net ResEnc-L at 1000 epochs (only if 1000ep default keeps scaling — but
+   ResEnc was a tie at 250ep, so low priority).
+3. Try 1000ep + region-based / TopK loss (MAPPING used TopK10).
 
 ## Push note
 

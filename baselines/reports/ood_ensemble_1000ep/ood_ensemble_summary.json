@@ -1,0 +1,325 @@
+{
+  "n_cases": 12,
+  "baseline_nnunet_soop_meanDice_0p5_5fold_tta": 0.2546,
+  "best_overall": {
+    "label": "blend w_nn=0.5",
+    "weight_nn": 0.5,
+    "threshold": 0.3,
+    "mean_dice": 0.28841946547627145,
+    "median_dice": 0.19931588121097427
+  },
+  "best_nn_only": {
+    "weight_nn": 1.0,
+    "threshold": 0.3,
+    "mean_dice": 0.2554601979692635,
+    "median_dice": 0.051563558365319485
+  },
+  "best_sp_only": {
+    "weight_nn": 0.0,
+    "threshold": 0.3,
+    "mean_dice": 0.27314625580105517,
+    "median_dice": 0.2089986715474103
+  },
+  "best_blend": {
+    "weight_nn": 0.5,
+    "threshold": 0.3,
+    "mean_dice": 0.28841946547627145,
+    "median_dice": 0.19931588121097427
+  },
+  "grid": {
+    "w1.0_t0.30": {
+      "weight_nn": 1.0,
+      "threshold": 0.3,
+      "mean_dice": 0.2554601979692635,
+      "median_dice": 0.051563558365319485
+    },
+    "w1.0_t0.35": {
+      "weight_nn": 1.0,
+      "threshold": 0.35,
+      "mean_dice": 0.2536392535889817,
+      "median_dice": 0.05021784643241102
+    },
+    "w1.0_t0.40": {
+      "weight_nn": 1.0,
+      "threshold": 0.4,
+      "mean_dice": 0.2519618072007088,
+      "median_dice": 0.0491352424156507
+    },
+    "w1.0_t0.45": {
+      "weight_nn": 1.0,
+      "threshold": 0.45,
+      "mean_dice": 0.250412077437608,
+      "median_dice": 0.047767895200477396
+    },
+    "w1.0_t0.50": {
+      "weight_nn": 1.0,
+      "threshold": 0.5,
+      "mean_dice": 0.24797786753524118,
+      "median_dice": 0.046386468477703745
+    },
+    "w1.0_t0.55": {
+      "weight_nn": 1.0,
+      "threshold": 0.55,
+      "mean_dice": 0.24605688664467953,
+      "median_dice": 0.04516662862360192
+    },
+    "w1.0_t0.60": {
+      "weight_nn": 1.0,
+      "threshold": 0.6,
+      "mean_dice": 0.24458641171814363,
+      "median_dice": 0.04429583904892547
+    },
+    "w0.7_t0.30": {
+      "weight_nn": 0.7,
+      "threshold": 0.3,
+      "mean_dice": 0.2647816717583625,
+      "median_dice": 0.05612072841726619
+    },
+    "w0.7_t0.35": {
+      "weight_nn": 0.7,
+      "threshold": 0.35,
+      "mean_dice": 0.2590184197489776,
+      "median_dice": 0.05011331444759207
+    },
+    "w0.7_t0.40": {
+      "weight_nn": 0.7,
+      "threshold": 0.4,
+      "mean_dice": 0.25578265852126625,
+      "median_dice": 0.048245489416110246
+    },
+    "w0.7_t0.45": {
+      "weight_nn": 0.7,
+      "threshold": 0.45,
+      "mean_dice": 0.25224374715806835,
+      "median_dice": 0.046886572095938016
+    },
+    "w0.7_t0.50": {
+      "weight_nn": 0.7,
+      "threshold": 0.5,
+      "mean_dice": 0.24927569119434156,
+      "median_dice": 0.045455844118739465
+    },
+    "w0.7_t0.55": {
+      "weight_nn": 0.7,
+      "threshold": 0.55,
+      "mean_dice": 0.24629169900840117,
+      "median_dice": 0.04410332779655192
+    },
+    "w0.7_t0.60": {
+      "weight_nn": 0.7,
+      "threshold": 0.6,
+      "mean_dice": 0.24250247860896787,
+      "median_dice": 0.042452965675714494
+    },
+    "w0.6_t0.30": {
+      "weight_nn": 0.6,
+      "threshold": 0.3,
+      "mean_dice": 0.2856327077806318,
+      "median_dice": 0.1746209192424381
+    },
+    "w0.6_t0.35": {
+      "weight_nn": 0.6,
+      "threshold": 0.35,
+      "mean_dice": 0.28059211739925605,
+      "median_dice": 0.15092304599720116
+    },
+    "w0.6_t0.40": {
+      "weight_nn": 0.6,
+      "threshold": 0.4,
+      "mean_dice": 0.2609187313436468,
+      "median_dice": 0.05192084477535883
+    },
+    "w0.6_t0.45": {
+      "weight_nn": 0.6,
+      "threshold": 0.45,
+      "mean_dice": 0.25453802294742056,
+      "median_dice": 0.04678229119123688
+    },
+    "w0.6_t0.50": {
+      "weight_nn": 0.6,
+      "threshold": 0.5,
+      "mean_dice": 0.2500309770393704,
+      "median_dice": 0.04452015574896931
+    },
+    "w0.6_t0.55": {
+      "weight_nn": 0.6,
+      "threshold": 0.55,
+      "mean_dice": 0.2448005255994258,
+      "median_dice": 0.04292116754769019
+    },
+    "w0.6_t0.60": {
+      "weight_nn": 0.6,
+      "threshold": 0.6,
+      "mean_dice": 0.23324845103105477,
+      "median_dice": 0.03646922183507549
+    },
+    "w0.5_t0.30": {
+      "weight_nn": 0.5,
+      "threshold": 0.3,
+      "mean_dice": 0.28841946547627145,
+      "median_dice": 0.19931588121097427
+    },
+    "w0.5_t0.35": {
+      "weight_nn": 0.5,
+      "threshold": 0.35,
+      "mean_dice": 0.2848815537106732,
+      "median_dice": 0.18356736897803566
+    },
+    "w0.5_t0.40": {
+      "weight_nn": 0.5,
+      "threshold": 0.4,
+      "mean_dice": 0.2792415061386905,
+      "median_dice": 0.15923191326303066
+    },
+    "w0.5_t0.45": {
+      "weight_nn": 0.5,
+      "threshold": 0.45,
+      "mean_dice": 0.2742279747403167,
+      "median_dice": 0.141912490066396
+    },
+    "w0.5_t0.50": {
+      "weight_nn": 0.5,
+      "threshold": 0.5,
+      "mean_dice": 0.24723044717273993,
+      "median_dice": 0.04207735316156551
+    },
+    "w0.5_t0.55": {
+      "weight_nn": 0.5,
+      "threshold": 0.55,
+      "mean_dice": 0.23504582641315827,
+      "median_dice": 0.03570701637056207
+    },
+    "w0.5_t0.60": {
+      "weight_nn": 0.5,
+      "threshold": 0.6,
+      "mean_dice": 0.22892074940715323,
+      "median_dice": 0.03403759288940696
+    },
+    "w0.4_t0.30": {
+      "weight_nn": 0.4,
+      "threshold": 0.3,
+      "mean_dice": 0.28727592306375455,
+      "median_dice": 0.2081117259067384
+    },
+    "w0.4_t0.35": {
+      "weight_nn": 0.4,
+      "threshold": 0.35,
+      "mean_dice": 0.2845886589010743,
+      "median_dice": 0.19824940649668987
+    },
+    "w0.4_t0.40": {
+      "weight_nn": 0.4,
+      "threshold": 0.4,
+      "mean_dice": 0.2751156574210614,
+      "median_dice": 0.18091821509290557
+    },
+    "w0.4_t0.45": {
+      "weight_nn": 0.4,
+      "threshold": 0.45,
+      "mean_dice": 0.26608081932010874,
+      "median_dice": 0.16263921787445668
+    },
+    "w0.4_t0.50": {
+      "weight_nn": 0.4,
+      "threshold": 0.5,
+      "mean_dice": 0.2606136641519651,
+      "median_dice": 0.14433154310088994
+    },
+    "w0.4_t0.55": {
+      "weight_nn": 0.4,
+      "threshold": 0.55,
+      "mean_dice": 0.25511239876180597,
+      "median_dice": 0.12543552429444618
+    },
+    "w0.4_t0.60": {
+      "weight_nn": 0.4,
+      "threshold": 0.6,
+      "mean_dice": 0.23431261418985375,
+      "median_dice": 0.036155433487371755
+    },
+    "w0.3_t0.30": {
+      "weight_nn": 0.3,
+      "threshold": 0.3,
+      "mean_dice": 0.28073967291785695,
+      "median_dice": 0.20887088988334415
+    },
+    "w0.3_t0.35": {
+      "weight_nn": 0.3,
+      "threshold": 0.35,
+      "mean_dice": 0.27263010956192185,
+      "median_dice": 0.19943392763139667
+    },
+    "w0.3_t0.40": {
+      "weight_nn": 0.3,
+      "threshold": 0.4,
+      "mean_dice": 0.26984256214741154,
+      "median_dice": 0.19184792606543732
+    },
+    "w0.3_t0.45": {
+      "weight_nn": 0.3,
+      "threshold": 0.45,
+      "mean_dice": 0.26668535390668097,
+      "median_dice": 0.18151718559121655
+    },
+    "w0.3_t0.50": {
+      "weight_nn": 0.3,
+      "threshold": 0.5,
+      "mean_dice": 0.26269851764540686,
+      "median_dice": 0.16751058668874796
+    },
+    "w0.3_t0.55": {
+      "weight_nn": 0.3,
+      "threshold": 0.55,
+      "mean_dice": 0.258104310576367,
+      "median_dice": 0.15037532701370887
+    },
+    "w0.3_t0.60": {
+      "weight_nn": 0.3,
+      "threshold": 0.6,
+      "mean_dice": 0.2536299502121743,
+      "median_dice": 0.13865559068043165
+    },
+    "w0.0_t0.30": {
+      "weight_nn": 0.0,
+      "threshold": 0.3,
+      "mean_dice": 0.27314625580105517,
+      "median_dice": 0.2089986715474103
+    },
+    "w0.0_t0.35": {
+      "weight_nn": 0.0,
+      "threshold": 0.35,
+      "mean_dice": 0.27003518418461897,
+      "median_dice": 0.1994072831613739
+    },
+    "w0.0_t0.40": {
+      "weight_nn": 0.0,
+      "threshold": 0.4,
+      "mean_dice": 0.266900963915202,
+      "median_dice": 0.1923773683509774
+    },
+    "w0.0_t0.45": {
+      "weight_nn": 0.0,
+      "threshold": 0.45,
+      "mean_dice": 0.2650147868955719,
+      "median_dice": 0.18577509241163737
+    },
+    "w0.0_t0.50": {
+      "weight_nn": 0.0,
+      "threshold": 0.5,
+      "mean_dice": 0.26293039947391655,
+      "median_dice": 0.17899813578502738
+    },
+    "w0.0_t0.55": {
+      "weight_nn": 0.0,
+      "threshold": 0.55,
+      "mean_dice": 0.2611271993454833,
+      "median_dice": 0.17155364721435645
+    },
+    "w0.0_t0.60": {
+      "weight_nn": 0.0,
+      "threshold": 0.6,
+      "mean_dice": 0.25843972035898094,
+      "median_dice": 0.16292256480438633
+    }
+  }
+}
