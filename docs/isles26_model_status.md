@@ -41,6 +41,11 @@ Metrics:
   0.6298, a precision tradeoff from extra small-lesion false positives). Tiny
   (<10 vox) unchanged (~0.18). Adopt only if the challenge's lesion-wise
   detection metric outweighs the small Dice cost.
+- **Precision-aware MSL + Tversky(0.7/0.3): FAILED** (fold-0). Intended to
+  recover MSL's Dice cost via an FP penalty, but it made both axes worse:
+  Dice 0.6298 → **0.6186**, small recall 0.486 → 0.454, tiny 0.177 → 0.140. The
+  FP penalty suppressed true positives without a Dice gain. Plain MSL remains
+  the better recall lever; Tversky-on-MSL is not worth pursuing.
 - **1000ep OOD blend: same as 250ep** — blending 1000ep nnU-Net + synth-plus on
   T1w gives soop 0.2884 (w_nn=0.5), i.e. the longer schedule helps in-dist but
   not OOD; the blend value comes from synth-plus, not the nnU-Net schedule.
