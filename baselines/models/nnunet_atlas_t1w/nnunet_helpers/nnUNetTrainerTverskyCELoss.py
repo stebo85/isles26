@@ -141,6 +141,8 @@ class nnUNetTrainerTverskyCELoss(nnUNetTrainer):
 class nnUNetTrainerTverskyCELoss_250epochs(nnUNetTrainerTverskyCELoss):
     """250-epoch schedule for cheap fold-0 hypothesis tests."""
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict,
+                 device: torch.device = torch.device('cuda')):
+        super().__init__(plans, configuration, fold, dataset_json, device)
         self.num_epochs = 250
+        self.save_every = 10
