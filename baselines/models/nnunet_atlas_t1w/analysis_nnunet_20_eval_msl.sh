@@ -19,7 +19,7 @@ set -euo pipefail
 
 REPO=/scratch/users/sciget/isles26challenge
 cd "$REPO"
-mkdir -p "$REPO/logs" "$REPO/baselines/reports/msl_fold0"
+mkdir -p "$REPO/logs" "$REPO/${MSL_REPORT_DIR:-baselines/reports/msl_fold0}"
 
 module purge
 if [[ -n "${GROUP_HOME:-}" && -d "$GROUP_HOME/modules" ]]; then
@@ -47,7 +47,9 @@ GT_DIR = REPO / "work/nnunet/nnUNet_raw/Dataset502_ATLASR30/labelsTr"
 SPLITS = json.loads((REPO / "work/nnunet/nnUNet_preprocessed/Dataset502_ATLASR30/splits_final.json").read_text())
 VAL = SPLITS[0]["val"]
 
-MSL_VAL = RES / "Dataset503_ATLASR30_MSL/nnUNetTrainer_250epochs__nnUNetPlans__3d_fullres/fold_0/validation"
+import os
+MSL_TRAINER = os.environ.get("MSL_TRAINER", "nnUNetTrainer_250epochs")
+MSL_VAL = RES / f"Dataset503_ATLASR30_MSL/{MSL_TRAINER}__nnUNetPlans__3d_fullres/fold_0/validation"
 BIN_VAL = RES / "Dataset502_ATLASR30/nnUNetTrainer_250epochs__nnUNetPlans__3d_fullres/fold_0/validation"
 C26 = np.ones((3, 3, 3), dtype=np.int64)
 BINS = [("tiny_<10", 0, 10), ("small_10-100", 10, 100), ("med_100-1k", 100, 1000),
@@ -107,7 +109,9 @@ else:
     out["msl"] = {"error": f"no MSL validation predictions at {MSL_VAL}"}
 out["binary_baseline"] = evaluate(BIN_VAL, merge_multiclass=False)
 
-(REPO / "baselines/reports/msl_fold0/summary.json").write_text(json.dumps(out, indent=2))
+OUT = REPO / os.environ.get("MSL_REPORT_DIR", "baselines/reports/msl_fold0")
+OUT.mkdir(parents=True, exist_ok=True)
+(OUT / "summary.json").write_text(json.dumps(out, indent=2))
 
 lines = ["# MSL vs binary baseline (fold-0 cross-validation, merged to binary)", ""]
 m, b = out.get("msl", {}), out["binary_baseline"]
@@ -128,6 +132,6 @@ for nm, _, _ in BINS:
     bs = f"{br:.3f}" if br is not None else "-"
     ms = f"{mr:.3f}" if mr is not None else "-"
     lines.append(f"| {nm} | {bs} | {ms} |")
-(REPO / "baselines/reports/msl_fold0/report.md").write_text("\n".join(lines) + "\n")
+(OUT / "report.md").write_text("\n".join(lines) + "\n")
 print("\n".join(lines))
 PY
