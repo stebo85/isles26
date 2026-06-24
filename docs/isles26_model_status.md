@@ -64,12 +64,18 @@ Metrics:
 
 ## Next levers (priority)
 
-1. MSL is a Dice-vs-recall tradeoff at 250ep/fold-0; before scaling to 5-fold,
-   consider a precision-aware loss (Tversky) or higher size thresholds to keep
-   the recall gain while recovering Dice.
-2. nnU-Net ResEnc-L at 1000 epochs (only if 1000ep default keeps scaling — but
-   ResEnc was a tie at 250ep, so low priority).
-3. Try 1000ep + region-based / TopK loss (MAPPING used TopK10).
+Everything cheap/obvious has now been tried (see "What worked / didn't" above
+and Problem 16 in `problems_and_lessons.md`). Remaining untested ideas, in
+rough priority:
+
+1. **Package the final pipeline:** TopK10 (1000ep, best in-dist) + the
+   synth-plus T1w OOD blend as one inference container, and benchmark the blend
+   on TopK10 probs (the blend was measured on 250ep/1000ep default, not TopK10).
+2. **Self-training / pseudo-labels** on unlabeled T1w (MAPPING used this on top
+   of TopK10 + ResEnc for a further gain) — the largest untried lever.
+3. **MSL 5-fold** only if the challenge's lesion-wise detection metric is
+   weighted enough to justify the ~0.8% Dice cost (Tversky did NOT rescue it).
+4. ResEnc-L at 1000ep is low priority (tie at 250ep).
 
 ## Push note
 

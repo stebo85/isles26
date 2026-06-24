@@ -215,6 +215,62 @@ Action:
 - Removing tiny components blindly in post-processing.
 - Ignoring metadata that the challenge explicitly provides.
 
+## Problem 13: A Custom nnU-Net Trainer With `*args` __init__ Crashes At Instantiation
+
+nnU-Net's base `nnUNetTrainer.__init__` records its keyword arguments by
+iterating the **subclass** `__init__` signature and reading `locals()[name]`
+for each parameter. A trainer subclass written as
+`def __init__(self, *args, **kwargs)` therefore makes it look up
+`locals()['args']` in the base frame, raising `KeyError: 'args'` before training
+starts (cost: a few minutes, not GPU-days — it fails at construction). **Always
+give a custom trainer the explicit signature**
+`(plans, configuration, fold, dataset_json, device=...)` and call
+`super().__init__(plans, configuration, fold, dataset_json, device)`, exactly
+like `nnUNetTrainer_250epochs`. (Hit when adding the Tversky+CE trainer.)
+
+## Problem 14: Warped Predictions And GT Can Share A Shape But Differ In Orientation
+
+soop_bench GT masks are stored `LAS`; predictions warped into TRACE space via
+`as_closest_canonical(TRACE)` come out `RAS`. They have the **same array shape**
+but a left↔right flip baked into the affine, so a naive `np.asarray(pred) vs
+np.asarray(gt)` voxel comparison scores a mirror-flipped mask (~0.016 Dice
+instead of ~0.255). `eval.run_eval` is affine-aware and handles this; ad-hoc
+in-memory comparisons are not. **When comparing two NIfTIs directly, reconcile
+orientation first** — here, `nib.as_closest_canonical(gt)` made both `RAS` and
+aligned them voxel-for-voxel. Symptom to watch for: a model scoring near-zero in
+a custom evaluator but normally under the project's eval harness. (Hit in the
+OOD ensemble eval; nn-only then reproduced the 0.2576 baseline.)
+
+## Problem 15: nibabel Infers File Type From The Suffix — `.nii.gz.tmp` Fails
+
+Writing to a temp path like `<name>.nii.gz.tmp` and renaming is a common
+atomic-write pattern, but `nib.save` raises `ImageFileError: Cannot work out
+file type` because it dispatches on the filename suffix. Use a temp name that
+**ends in the real extension**, e.g. `<name>.tmp.nii.gz`, then `os.replace` to
+the final path. (Hit building the MSL relabeled dataset.)
+
+## Problem 16: Per-Lever Results (What Actually Moved The Number)
+
+Full table and operating points live in `docs/isles26_model_status.md`. Summary
+of the R3.0 campaign so the conclusions are not lost if that file is trimmed:
+
+- **WIN — longer schedule:** 250→1000 epochs lifted consolidated 5-fold CV Dice
+  0.6372 → 0.6528 (all folds up).
+- **WIN — Dice+TopK10 (MAPPING recipe) @ 1000ep:** consolidated CV **0.6551**,
+  the best in-distribution model; postprocessing chose none.
+- **WIN — OOD T1w ensemble:** blending nnU-Net + synth-plus probabilities, both
+  on the T1w input only and warped to TRACE, lifted soop mean Dice 0.255 →
+  0.289 (median 0.04 → 0.20). synth-plus carries the acute-DWI cases.
+- **NEGATIVE — ResEnc-L:** 0.639 vs 0.638, a tie at 250ep (no gain on this task).
+- **NEGATIVE — connected-component postprocessing:** `find_best_configuration`
+  chose "no postprocessing" every time (ATLAS lesions are multifocal; pruning
+  components hurts CV Dice).
+- **TRADEOFF — MSL (size-stratified labels):** small-lesion recall 0.339 →
+  0.486, medium 0.589 → 0.641, but Dice 0.6374 → 0.6298 (precision cost).
+- **NEGATIVE — precision-aware MSL+Tversky(0.7/0.3):** worsened both Dice
+  (0.6298 → 0.6186) and small recall (0.486 → 0.454); the FP penalty suppressed
+  true positives. Do not pursue Tversky-on-MSL.
+
 ## Sources
 
 - ISLES'22 dataset paper: https://www.nature.com/articles/s41597-022-01875-5
