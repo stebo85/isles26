@@ -1,0 +1,23 @@
+{
+  "n_cases": 12,
+  "overall": [
+    {
+      "metric": "dice",
+      "n_valid": 12,
+      "mean": 0.30064323085724454,
+      "median": 0.2565943045688732,
+      "std": null,
+      "min": null,
+      "max": null
+    }
+  ],
+  "selected_blend": {
+    "label": "blend w_nn=0.6",
+    "weight_nn": 0.6,
+    "threshold": 0.3,
+    "mean_dice": 0.30064323085724454,
+    "median_dice": 0.2565943045688732
+  },
+  "source_summary": "baselines/reports/ood_ensemble_topk10/ood_ensemble_summary.json",
+  "selection_note": "Blend weight and threshold were selected on this same soop_bench sweep."
+}

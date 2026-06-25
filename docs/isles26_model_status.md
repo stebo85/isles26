@@ -19,9 +19,10 @@ Metrics:
 | nnU-Net default, R2.1, fold-0 | 0.640 (n=194) | 0.188 / — | prior baseline |
 | nnU-Net default, R3.0, 250ep, 5-fold+TTA | 0.6372 | 0.255 / 0.036 | superseded |
 | nnU-Net default, R3.0, 1000ep, 5-fold | 0.6528 | — | +1.56% over 250ep |
-| **nnU-Net Dice+TopK10, R3.0, 1000ep, 5-fold** | **0.6551** | _~0.26 (T1w)_ | **BEST in-dist (MAPPING recipe)** |
+| **nnU-Net Dice+TopK10, R3.0, 1000ep, 5-fold** | **0.6551** | 0.287 / 0.154 (nn-only) | **BEST in-dist (MAPPING recipe)** |
 | nnU-Net ResEnc-L, R3.0, 250ep | 0.6389 | — | tie — no gain |
-| **OOD blend: nnU-Net(0.4)+synth-plus(0.6) on T1w** | — | **0.2886 / 0.202** | **best OOD-realistic** |
+| **OOD blend: TopK10 nnU-Net(0.6)+synth-plus(0.4) on T1w** | — | **0.3006 / 0.257** | **best T1w-only OOD blend** |
+| OOD blend: 250ep nnU-Net(0.4)+synth-plus(0.6) on T1w | — | 0.2886 / 0.202 | superseded |
 | OOD blend: 1000ep nnU-Net(0.5)+synth-plus(0.5) on T1w | — | 0.2884 / 0.199 | same as 250ep |
 | synth-plus on DWI/TRACE directly | 0.458 (R2.1) | 0.447 | needs DWI (not at T1w test time) |
 | DeepISLES (DWI specialist) | — | 0.540 / 0.70 | reference |
@@ -55,6 +56,15 @@ Metrics:
 - **1000ep OOD blend: same as 250ep** — blending 1000ep nnU-Net + synth-plus on
   T1w gives soop 0.2884 (w_nn=0.5), i.e. the longer schedule helps in-dist but
   not OOD; the blend value comes from synth-plus, not the nnU-Net schedule.
+- **TopK10 OOD blend: best T1w-only OOD so far.** TopK10 nn-only on soop is
+  0.2866 / 0.1538; blending TopK10 + synth-plus reaches **0.3006 / 0.2566** at
+  w_nn=0.6, thr=0.30. This is still selected on the same 12-case soop grid, so
+  treat it as a robustness signal rather than a blind validation score.
+- **DBL fold-0: modest small-lesion recall gain, small Dice cost.** DBL merged
+  to binary gives Dice 0.6317 vs binary 0.6374. Tiny recall improves 0.183 →
+  0.204 and small recall 0.339 → 0.353, but medium/large/huge recall dip
+  slightly. This is less attractive than MSL's small-recall jump unless the
+  hidden metric strongly rewards tiny lesions.
 - **Leaderboard is reconciled.** `baselines/compare/leaderboard.*` now includes
   R3.0 250ep/1000ep/TopK10 CV rows, the R3.0 soop row, and the OOD blend rows.
 - **Hidden-generalization scaffolding exists.** Leave-center-out and
@@ -76,11 +86,8 @@ Everything cheap/obvious has now been tried (see "What worked / didn't" above
 and Problem 16 in `problems_and_lessons.md`). Remaining untested ideas, in
 rough priority:
 
-1. **TopK10 OOD blend:** rerun the T1w probability blend using the actual
-   Dice+TopK10 model, not default 250ep/1000ep nnU-Net. Submitted 2026-06-25:
-   probability array `31143608`, dependent eval `31143609`, writing
-   `work/predictions_ood_ens_topk10/` and
-   `baselines/reports/ood_ensemble_topk10/`.
+1. **Package the TopK10 OOD blend:** the actual TopK10 blend is complete and is
+   now the best T1w-only OOD result: `baselines/reports/ood_ensemble_topk10/`.
 2. **Self-training / pseudo-labels** on opt-in unlabeled T1w. Scripts
    `analysis_nnunet_26_selftrain_pseudolabels.sh` and
    `analysis_nnunet_27_prepare_selftrain_dataset.sh` build Dataset504 with
@@ -89,11 +96,10 @@ rough priority:
 3. **True hidden-generalization retraining:** use the generated split plan to
    run leave-center-out and leave-chronicity-out jobs for the worst/high-risk
    groups surfaced by the TopK10 grouped report (not every tiny center first).
-4. **DBL / MSL+DBL:** scripts `analysis_nnunet_30_prepare_dbl.sh` through
-   `analysis_nnunet_32_eval_dbl.sh` add the next small-lesion relabeling branch.
-   Run DBL fold 0 first; try `DBL_SCHEME=msl_dbl` if DBL improves recall without
-   the MSL Dice cost. Submitted 2026-06-25: DBL prepare `31144153`, fold-0 train
-   `31144154`, eval `31144155`.
+4. **MSL+DBL only if we want another small-lesion gamble:** DBL fold-0 is
+   complete and only modestly helps tiny/small recall while costing Dice. Try
+   `DBL_SCHEME=msl_dbl` only if we decide the small-lesion objective is worth
+   another fold-0 experiment.
 5. **Package the final pipeline:** TopK10 5-fold ensemble + any proven
    OOD/self-training/DBL additions into the submission container.
 

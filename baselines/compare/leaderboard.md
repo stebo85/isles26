@@ -1,6 +1,6 @@
 # Model leaderboard
 
-generated 2026-06-25 04:35:29 UTC by compare_models.py
+generated 2026-06-25 15:12:04 UTC by compare_models.py
 
 ## eval set: soop_bench
 
@@ -8,6 +8,7 @@ generated 2026-06-25 04:35:29 UTC by compare_models.py
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Oracle (GT as prediction) | — | 12 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 0.000 | 0.000 | upper-bound sanity check: ground truth copied as prediction (Dice should be ~1.0) |
 | DeepISLES ensemble (SEALS+NVAUTO+SWAN) | DWI+ADC+FLAIR | 12 | 0.539 | 0.704 | 0.582 | 0.584 | 0.763 | 18.929 | 18.894 | pretrained apptainer ensemble; consumes the DWI/ADC/FLAIR modalities the soop_bench GT is defined on |
+| OOD blend: R3.0 TopK10 nnU-Net + synth-plus T1w | T1w | 12 | 0.301 | 0.257 | — | — | — | — | — | best T1w-only OOD blend so far; weight/threshold selected on this same 12-case soop_bench grid |
 | OOD blend: R3.0 250ep nnU-Net + synth-plus T1w | T1w | 12 | 0.289 | 0.202 | — | — | — | — | — | exploratory T1w probability blend; weight/threshold selected on this same 12-case soop_bench grid |
 | OOD blend: R3.0 1000ep nnU-Net + synth-plus T1w | T1w | 12 | 0.288 | 0.199 | — | — | — | — | — | exploratory T1w probability blend; weight/threshold selected on this same 12-case soop_bench grid |
 | nnU-Net R3.0 default 250ep, 5-fold+TTA on soop_bench | T1w | 12 | 0.255 | 0.036 | 0.239 | 0.189 | 0.302 | 45.776 | 20.470 | T1w-only OOD proxy; R3.0 includes SOOP-source subjects, so this can be optimistic |
