@@ -1,0 +1,11 @@
+{
+  "method": "ood_blend_r30_250ep_synthplus",
+  "display_name": "OOD blend: R3.0 250ep nnU-Net + synth-plus T1w",
+  "model_family": "ensemble",
+  "eval_set": "soop_bench",
+  "input_modalities": ["T1w"],
+  "trained_on": "ATLAS R3.0 nnU-Net plus pretrained synthstroke-synth-plus",
+  "status": "complete",
+  "pipeline_dir": "baselines/models/nnunet_atlas_t1w",
+  "notes": "exploratory T1w probability blend; weight/threshold selected on this same 12-case soop_bench grid"
+}

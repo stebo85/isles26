@@ -1,0 +1,11 @@
+{
+  "method": "nnunet_r30_250ep_soop",
+  "display_name": "nnU-Net R3.0 default 250ep, 5-fold+TTA on soop_bench",
+  "model_family": "nnunet",
+  "eval_set": "soop_bench",
+  "input_modalities": ["T1w"],
+  "trained_on": "ATLAS R3.0 / ISLES'26 public training release, Dataset502_ATLASR30",
+  "status": "complete",
+  "pipeline_dir": "baselines/models/nnunet_atlas_t1w",
+  "notes": "T1w-only OOD proxy; R3.0 includes SOOP-source subjects, so this can be optimistic"
+}

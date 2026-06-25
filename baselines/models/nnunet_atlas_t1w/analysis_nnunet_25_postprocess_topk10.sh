@@ -7,15 +7,15 @@
 #SBATCH --cpus-per-task=8
 #SBATCH -p owners
 
-# Determine the best postprocessing for the default-plans ATLAS R3.0 model
-# (Dataset502, default 1000-epoch nnUNetTrainer, 3d_fullres) from the 5-fold
+# Determine the best postprocessing for the Dice+TopK10 ATLAS R3.0 model
+# (Dataset502, 1000-epoch nnUNetTrainerDiceTopK10Loss, 3d_fullres) from the 5-fold
 # cross-validation predictions, and report the consolidated CV Dice. This is
 # the canonical nnU-Net step that picks connected-component postprocessing only
 # if it improves the cross-validation metric, so it is a safe in-distribution
 # refinement. Writes postprocessing.pkl + inference_instructions.txt under the
 # results directory and a crossval summary we can read back.
 #
-#   sbatch baselines/models/nnunet_atlas_t1w/analysis_nnunet_14_postprocess_r30.sh
+#   sbatch baselines/models/nnunet_atlas_t1w/analysis_nnunet_25_postprocess_topk10.sh
 
 set -euo pipefail
 

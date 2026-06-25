@@ -1,0 +1,51 @@
+{
+  "n_cases": 1450,
+  "overall": [
+    {
+      "metric": "dice",
+      "n_valid": 1447,
+      "mean": 0.655126895313782,
+      "median": 0.763121108145889,
+      "std": 0.2783713956190007,
+      "min": 0.0,
+      "max": 0.97209016480295
+    },
+    {
+      "metric": "iou",
+      "n_valid": 1447,
+      "mean": 0.5419092382148832,
+      "median": 0.6169731840131512,
+      "std": 0.268602484289338,
+      "min": 0.0,
+      "max": 0.945695946781753
+    },
+    {
+      "metric": "sensitivity",
+      "n_valid": 1445,
+      "mean": 0.6729342877996033,
+      "median": 0.7829131652661064,
+      "std": 0.29557230738415063,
+      "min": 0.0,
+      "max": 1.0
+    },
+    {
+      "metric": "precision",
+      "n_valid": 1424,
+      "mean": 0.7359192345616314,
+      "median": 0.8410614494530921,
+      "std": 0.2685898682586166,
+      "min": 0.0,
+      "max": 1.0
+    },
+    {
+      "metric": "specificity",
+      "n_valid": 1450,
+      "mean": 0.9996242755857382,
+      "median": 0.9999202616489893,
+      "std": 0.000775361670447204,
+      "min": 0.990203175671983,
+      "max": 1.0
+    }
+  ],
+  "source_summary": "baselines/reports/nnunet_topk10_crossval/crossval_summary.json"
+}

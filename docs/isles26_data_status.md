@@ -1,69 +1,89 @@
-# ISLES'26 Data — Status, Timeline, Access (as of 2026-06-01)
+# ISLES'26 Data Status, Timeline, Access (as of 2026-06-25)
 
-Authoritative source: <https://isles-26.grand-challenge.org/> and its `/dataset/`
-page. Data questions go to the **Forum** or **ezequiel.delarosa@uzh.ch**.
+Authoritative sources: <https://isles-26.grand-challenge.org/> and its
+`/dataset/` page. Data questions go to the challenge forum or the listed
+organizers.
 
 ## TL;DR
 
-- **Task:** native-space **T1w** MRI → **binary infarct mask**, across acute /
-  sub-acute / chronic. Metadata JSON per case: `DAYS_POST_STROKE`, `CHRONICITY`
-  (1 if < 180 days), `CENTER`. Final corpus ≈ **2,000 scans / 60+ centers**.
-- **Batch 1 = ATLAS v2.0 (955 scans).** The dataset page states Batch 1 is
-  downloaded from the *NITRC ATLAS v2.0 Download Portal* ("Raw Data" folder),
-  native/skull-stripped, lesion masks for all subjects. **This is exactly the
-  data we already have** decrypted at [data/ATLAS_R2.1_raw/Training_Raw/](../data)
-  (955 sessions / 33 sites), already characterized
-  ([baselines/reports/training_data_characterization/](../baselines/reports/training_data_characterization/))
-  and already converted to nnU-Net `Dataset501_ATLASR21`. **So our work to date
-  is on the REAL ISLES'26 Batch 1 — not a proxy.**
-- **Batch 2 = the new, un-ingested expansion** (toward ~2,000 / 60+ centers).
-  Scheduled release **2026-05-29**. Its **format/layout is not published** on the
-  dataset page yet ("still to come"); whether it follows ATLAS's BIDS-ish layout
-  or a different one is **unknown** until we see it. Both batches are for
-  **training**.
+- **Task:** native-space **T1w** MRI plus per-case metadata JSON
+  (`DAYS_POST_STROKE`, `CHRONICITY`, `CENTER`) -> **binary infarct mask**.
+- **Public training data is now released.** The whole Batch 1 + Batch 2
+  training release is **N=1453** and corresponds to ATLAS v3.0 / R3.0.
+- **Local state:** the release is staged at
+  [data/ATLAS3_Training_Raw/](../data), characterized in
+  [baselines/reports/training_data_characterization_r30/](../baselines/reports/training_data_characterization_r30/),
+  and converted to nnU-Net `Dataset502_ATLASR30`.
+- **Usable nnU-Net cases:** 1450/1453. Three sessions are intentionally skipped
+  by the converter because of shape/affine problems; see
+  `work/nnunet/nnUNet_raw/Dataset502_ATLASR30/conversion_skips.csv`.
+- The old "Batch 2 format unknown / human download still required" blocker is
+  resolved for this workspace.
 
-## Key dates
+## Key Dates
 
 | Milestone | Date |
 |---|---|
-| Batch 1 release (ATLAS) | 2026-04-24 |
-| Batch 2 release | 2026-05-29 |
-| Submission system opens | 2026-06-15 |
-| Challenge closes | 2026-08-01 (23:59 CET) |
+| Batch 1 release | 2026-04-24 |
+| Batch 2 release | 2026-06-12 |
+| Submission system opens, sanity phase | 2026-07-15 |
+| Challenge closes, Docker submission | 2026-08-15 23:59 CET |
 
-## Access (auth-gated — human action required)
+## Public Training Release
 
-- A **verified Grand Challenge account** is mandatory; must **join the challenge**
-  before downloading. This cannot be scripted from the cluster (interactive
-  auth). A human must download Batch 2 via browser and stage it on `/scratch`.
-- Batch 1 (ATLAS) is already staged locally (see above).
+The dataset page describes the whole training release as **Batches 1 and 2,
+N=1453**. It includes:
 
-## Batch-1 (ATLAS) on-disk layout (known-good, for reference)
+- ATLAS v2.0 train/validation/test masks: 955 cases.
+- SOOP cohort: 169 cases.
+- Newly added cases: 329 cases.
 
+The challenge overview still describes the broader challenge corpus as roughly
+2,000 T1w scans across 60+ centers; for model development in this repo, the
+public labeled training release is the 1453-session ATLAS R3.0 set.
+
+## Local Layout
+
+Raw release:
+
+```text
+data/ATLAS3_Training_Raw/<SITE>/sub-*/ses-1/anat/
+  *_space-orig_desc-brain_T1w.nii.gz
+  *_space-orig_label-lesion_desc-T1lesion_mask.nii.gz
 ```
-data/ATLAS_R2.1_raw/Training_Raw/<SITE=Rxxx>/sub-rXXXsYYY/ses-1/anat/
-  sub-rXXXsYYY_ses-1_space-orig_desc-brain_T1w.nii.gz              # T1w (skull-stripped)
-  sub-rXXXsYYY_ses-1_space-orig_label-lesion_desc-T1lesion_mask.nii.gz  # binary lesion mask
+
+Converted nnU-Net release:
+
+```text
+work/nnunet/nnUNet_raw/Dataset502_ATLASR30/
+  imagesTr/ATLAS_####_0000.nii.gz
+  labelsTr/ATLAS_####.nii.gz
+  conversion_manifest.csv
+  conversion_skips.csv
+work/nnunet/nnUNet_preprocessed/Dataset502_ATLASR30/
+  splits_final.json
+  splits_summary.json
 ```
-Per-session metadata (DAYS_POST_STROKE etc.) comes from the ATLAS metadata CSV,
-joined in [characterize_training_data.py](../scripts/analysis/characterize_training_data.py)
-and [convert_atlas_r21_to_nnunet.py](../baselines/models/nnunet_atlas_t1w/nnunet_helpers/convert_atlas_r21_to_nnunet.py).
-ATLAS gotchas (re-binarize float masks, force canonical orientation, per-image
-percentile + z-score normalization, 126 sessions missing DAYS_POST_STROKE) are in
-[atlas_r21_training_data_characterization.md](atlas_r21_training_data_characterization.md).
 
-## What "prep real data" means here
+The converter forces canonical orientation, checks shape/affine agreement,
+re-binarizes masks on load, and writes stratified folds by
+`site x chronicity_bin x size_bin`.
 
-Batch 1 is done. The open work is to make **Batch 2 drop-in**:
-1. Human downloads Batch 2 (verified GC account) → stage under `data/isles26_batch2/`.
-2. Run the **format-discover** tool to report Batch 2's actual structure
-   (per-subject T1w / mask / metadata candidates + anomalies).
-3. Point the (pattern/config-driven) characterizer + nnU-Net converter at it;
-   build a combined **Batch1+Batch2** nnU-Net dataset with stratified splits
-   (center × chronicity × lesion-size, the existing discipline).
-4. Retrain the strong nnU-Net teacher (multi-fold + ResEnc + ensemble) on the
-   real combined corpus — the campaign we deliberately deferred off the
-   ATLAS-only proxy.
+## Current Data Caveats
 
-The characterizer/converter generalization is best **finalized once Batch 2's
-real layout is known** (via discover), to avoid guessing the format.
+- `Dataset502_ATLASR30` has 1450 converted cases, not 1453. The skipped cases
+  are documented, reproducible converter decisions, not silent data loss.
+- R3.0 includes SOOP-source subjects, so `soop_bench` is useful as a T1w/DWI
+  stress test but is not a clean external validation set for R3.0-trained
+  models.
+- The strongest current validation need is no longer ingestion; it is hidden
+  generalization: center-held-out and chronicity-held-out splits/reports.
+
+## Open Work
+
+1. Use [baselines/reports/hidden_generalization_splits/](../baselines/reports/hidden_generalization_splits/)
+   to run true leave-center-out and leave-chronicity-out retraining where needed.
+2. Package the TopK10 5-fold inference path and the T1w OOD blend into the final
+   submission container.
+3. Treat any additional unlabeled T1w for self-training as opt-in input only;
+   never pseudo-label hidden challenge/evaluation data used for reporting.

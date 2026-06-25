@@ -9,7 +9,7 @@
 
 # Convert ATLAS R3.0 (1453 sessions: 1284 R-site superset of R2.1 + 169 SOOP) to
 # nnU-Net v2 Dataset502_ATLASR30, run 3d_fullres planning/preprocessing, and
-# install custom FRESH stratified 5-fold splits (seed 42) over all 1453.
+# install custom FRESH stratified 5-fold splits (seed 42) over usable converted cases.
 # Reuses the R2.1 tooling (R3.0 is BIDS-identical). Larger corpus -> more
 # time/mem/cpu than the R2.1 prepare.
 
@@ -74,4 +74,4 @@ python "$REPO/baselines/models/nnunet_atlas_t1w/nnunet_helpers/convert_atlas_r21
   --folds 5 \
   --seed 42
 
-echo "[done] Dataset502_ATLASR30 prepared at $DATASET_DIR (1453 cases, fresh stratified 5-fold)"
+echo "[done] Dataset502_ATLASR30 prepared at $DATASET_DIR (usable converted cases; fresh stratified 5-fold)"

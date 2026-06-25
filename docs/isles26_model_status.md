@@ -2,7 +2,8 @@
 
 Goal: a model that is **extremely good on the training data (ATLAS T1w)** and
 **works OK on the SOOP benchmark** (DWI-defined OOD proxy, `data/soop_bench`,
-n=12). Challenge task: native T1w → binary infarct mask. Closes 2026-08-01.
+n=12). Challenge task: native T1w -> binary infarct mask. Docker submission
+closes 2026-08-15 23:59 CET.
 
 Metrics:
 - **In-dist** = ATLAS R3.0 5-fold cross-validation Dice over all 1450 cases
@@ -21,6 +22,7 @@ Metrics:
 | **nnU-Net Dice+TopK10, R3.0, 1000ep, 5-fold** | **0.6551** | _~0.26 (T1w)_ | **BEST in-dist (MAPPING recipe)** |
 | nnU-Net ResEnc-L, R3.0, 250ep | 0.6389 | — | tie — no gain |
 | **OOD blend: nnU-Net(0.4)+synth-plus(0.6) on T1w** | — | **0.2886 / 0.202** | **best OOD-realistic** |
+| OOD blend: 1000ep nnU-Net(0.5)+synth-plus(0.5) on T1w | — | 0.2884 / 0.199 | same as 250ep |
 | synth-plus on DWI/TRACE directly | 0.458 (R2.1) | 0.447 | needs DWI (not at T1w test time) |
 | DeepISLES (DWI specialist) | — | 0.540 / 0.70 | reference |
 
@@ -53,6 +55,12 @@ Metrics:
 - **1000ep OOD blend: same as 250ep** — blending 1000ep nnU-Net + synth-plus on
   T1w gives soop 0.2884 (w_nn=0.5), i.e. the longer schedule helps in-dist but
   not OOD; the blend value comes from synth-plus, not the nnU-Net schedule.
+- **Leaderboard is reconciled.** `baselines/compare/leaderboard.*` now includes
+  R3.0 250ep/1000ep/TopK10 CV rows, the R3.0 soop row, and the OOD blend rows.
+- **Hidden-generalization scaffolding exists.** Leave-center-out and
+  leave-chronicity-out split plans live in
+  `baselines/reports/hidden_generalization_splits/`; TopK10 out-of-fold grouped
+  triage lives in `baselines/reports/nnunet_topk10_hidden_generalization/`.
 
 ## Production recommendation (current)
 
@@ -68,18 +76,29 @@ Everything cheap/obvious has now been tried (see "What worked / didn't" above
 and Problem 16 in `problems_and_lessons.md`). Remaining untested ideas, in
 rough priority:
 
-1. **Package the final pipeline:** TopK10 (1000ep, best in-dist) + the
-   synth-plus T1w OOD blend as one inference container, and benchmark the blend
-   on TopK10 probs (the blend was measured on 250ep/1000ep default, not TopK10).
-2. **Self-training / pseudo-labels** on unlabeled T1w (MAPPING used this on top
-   of TopK10 + ResEnc for a further gain) — the largest untried lever.
-3. **MSL 5-fold** only if the challenge's lesion-wise detection metric is
-   weighted enough to justify the ~0.8% Dice cost (Tversky did NOT rescue it).
-4. ResEnc-L at 1000ep is low priority (tie at 250ep).
+1. **TopK10 OOD blend:** rerun the T1w probability blend using the actual
+   Dice+TopK10 model, not default 250ep/1000ep nnU-Net. Submitted 2026-06-25:
+   probability array `31143608`, dependent eval `31143609`, writing
+   `work/predictions_ood_ens_topk10/` and
+   `baselines/reports/ood_ensemble_topk10/`.
+2. **Self-training / pseudo-labels** on opt-in unlabeled T1w. Scripts
+   `analysis_nnunet_26_selftrain_pseudolabels.sh` and
+   `analysis_nnunet_27_prepare_selftrain_dataset.sh` build Dataset504 with
+   TopK10 pseudo-labels and train-only pseudo cases; `analysis_nnunet_33_train_selftrain.sh`
+   trains the self-training model once legitimate unlabeled inputs are staged.
+3. **True hidden-generalization retraining:** use the generated split plan to
+   run leave-center-out and leave-chronicity-out jobs for the worst/high-risk
+   groups surfaced by the TopK10 grouped report (not every tiny center first).
+4. **DBL / MSL+DBL:** scripts `analysis_nnunet_30_prepare_dbl.sh` through
+   `analysis_nnunet_32_eval_dbl.sh` add the next small-lesion relabeling branch.
+   Run DBL fold 0 first; try `DBL_SCHEME=msl_dbl` if DBL improves recall without
+   the MSL Dice cost. Submitted 2026-06-25: DBL prepare `31144153`, fold-0 train
+   `31144154`, eval `31144155`.
+5. **Package the final pipeline:** TopK10 5-fold ensemble + any proven
+   OOD/self-training/DBL additions into the submission container.
 
-## Push note
+## Git Note
 
-Cluster has no GitHub credentials (no `gh`, token, SSH key, or helper), so
-`git push` fails here. Commits land locally on `main`; a human must push
-(`origin` = https://github.com/stebo85/isles26). Local `main` is several
-commits ahead of `origin/main`.
+`main` was synced with `origin/main` before this experiment. The current work is
+on branch `self-training-hidden-generalization`; push still requires human
+credentials outside the cluster.

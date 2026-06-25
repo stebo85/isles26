@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert ATLAS R2.1 sessions to nnU-Net v2 format and write custom splits."""
+"""Convert ATLAS T1w sessions to nnU-Net v2 format and write custom splits."""
 
 from __future__ import annotations
 
@@ -49,6 +49,12 @@ MANIFEST_FIELDS = [
     "t1_path",
     "lesion_path",
 ]
+
+
+DATASET_DESCRIPTIONS = {
+    "Dataset501_ATLASR21": "ATLAS R2.1 T1w brain-extracted stroke lesion segmentation baseline dataset",
+    "Dataset502_ATLASR30": "ATLAS R3.0 / ISLES'26 public training T1w stroke lesion segmentation dataset",
+}
 
 
 def parse_float(value: object) -> float | None:
@@ -122,6 +128,13 @@ def write_json_atomic(payload: object, path: Path) -> None:
     tmp = path.with_name(path.name + ".tmp")
     tmp.write_text(json.dumps(payload, indent=2) + "\n")
     os.replace(tmp, path)
+
+
+def dataset_description(dataset_dir: Path) -> str:
+    return DATASET_DESCRIPTIONS.get(
+        dataset_dir.name,
+        f"{dataset_dir.name} T1w stroke lesion segmentation dataset",
+    )
 
 
 def save_nifti_atomic(img: nib.spatialimages.SpatialImage, path: Path) -> None:
@@ -323,8 +336,8 @@ def convert(args: argparse.Namespace) -> int:
             log_skip(type(exc).__name__, str(exc))
 
     dataset_json = {
-        "name": "Dataset501_ATLASR21",
-        "description": "ATLAS R2.1 T1w brain-extracted stroke lesion segmentation baseline dataset",
+        "name": dataset_dir.name,
+        "description": dataset_description(dataset_dir),
         "channel_names": {"0": "T1w"},
         "labels": {"background": 0, "lesion": 1},
         "numTraining": len(manifest_rows),
@@ -436,7 +449,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
 
-    p_convert = sub.add_parser("convert", help="convert ATLAS R2.1 to nnU-Net raw dataset format")
+    p_convert = sub.add_parser("convert", help="convert ATLAS T1w inventory to nnU-Net raw dataset format")
     p_convert.add_argument("--inventory", required=True, type=Path)
     p_convert.add_argument("--dataset-dir", required=True, type=Path)
     p_convert.add_argument("--repo-root", required=True, type=Path)

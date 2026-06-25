@@ -63,7 +63,7 @@ eval/
   report.py     # aggregation + JSON + Markdown writers
   qc_viz.py     # per-subject PNG overlays
   run_eval.py    # CLI entry-point
-  tests/test_metrics.py  # 19 synthetic-mask unit tests
+  tests/test_metrics.py  # 24 synthetic-mask unit tests
 analysis_01_pull_deepisles.sh  # apptainer pull DeepISLES SIF
 analysis_02_run_deepisles.sh  # SLURM array, one subject per task
 analysis_03_evaluate.sh       # run eval framework on predictions
@@ -71,7 +71,7 @@ analysis_03_evaluate.sh       # run eval framework on predictions
 
 ## Tests
 
-19 synthetic-mask tests cover:
+24 synthetic-mask tests cover:
 
 - voxel-overlap perfect / disjoint / partial / all empty-mask combinations
 - volume metrics with non-isotropic voxels
@@ -85,12 +85,13 @@ analysis_03_evaluate.sh       # run eval framework on predictions
 Run with:
 
 ```bash
-module load python/3.12.1
+module load devel python/3.12.1
+export LD_LIBRARY_PATH=/share/software/user/open/python/3.12.1/lib:${LD_LIBRARY_PATH:-}
 source .venv-eval/bin/activate
 PYTHONPATH=. python eval/tests/test_metrics.py
 ```
 
-Output: `19/19 passed`.
+Output: `24/24 passed`.
 
 ## Reference model: DeepISLES
 

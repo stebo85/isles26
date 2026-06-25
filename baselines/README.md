@@ -28,7 +28,8 @@ leaderboard row. Regenerate after any new eval:
 
 ```bash
 module load devel python/3.12.1
-export LD_LIBRARY_PATH=/share/software/user/open/python/3.12.1/lib:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=/share/software/user/open/python/3.12.1/lib:${LD_LIBRARY_PATH:-}
+source .venv-eval/bin/activate
 python baselines/compare/compare_models.py        # writes compare/leaderboard.{md,csv}
 ```
 
@@ -41,6 +42,9 @@ target. We currently have two eval sets:
   card and `docs/problems_and_lessons.md` Problem 3).
 - **`atlas_r21_fold0_val`** — 194 held-out ATLAS R2.1 cases, GT defined on
   **T1w** (chronic). In-distribution for any ATLAS-trained T1w model.
+- **`atlas_r30_5fold_cv`** — 1450 usable ATLAS R3.0 / ISLES'26 public-training
+  cases evaluated by nnU-Net out-of-fold cross-validation. This is the current
+  main in-distribution model-selection track.
 
 `oracle` (GT-as-prediction, Dice≈1) and `empty` (null prediction, Dice 0) bound
 each eval set top and bottom as sanity anchors.

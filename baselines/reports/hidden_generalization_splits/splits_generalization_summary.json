@@ -1,0 +1,799 @@
+{
+  "n_cases": 1450,
+  "splits": [
+    {
+      "split_id": "center_SOOP",
+      "kind": "center_holdout",
+      "holdout": "SOOP",
+      "n_train": 1282,
+      "n_val": 168,
+      "val_by_site": {
+        "SOOP": 168
+      },
+      "val_by_chronicity": {
+        "unknown": 168
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 56,
+        "med_1-10mL": 44,
+        "small_0.1-1mL": 18,
+        "vlarge_>=50mL": 46,
+        "vsmall_<0.1mL": 4
+      },
+      "train_by_chronicity": {
+        "ge180d": 648,
+        "lt180d": 432,
+        "unknown": 202
+      }
+    },
+    {
+      "split_id": "center_R009",
+      "kind": "center_holdout",
+      "holdout": "R009",
+      "n_train": 1339,
+      "n_val": 111,
+      "val_by_site": {
+        "R009": 111
+      },
+      "val_by_chronicity": {
+        "ge180d": 61,
+        "lt180d": 50
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 13,
+        "med_1-10mL": 46,
+        "small_0.1-1mL": 35,
+        "vlarge_>=50mL": 5,
+        "vsmall_<0.1mL": 12
+      },
+      "train_by_chronicity": {
+        "ge180d": 587,
+        "lt180d": 382,
+        "unknown": 370
+      }
+    },
+    {
+      "split_id": "center_R038",
+      "kind": "center_holdout",
+      "holdout": "R038",
+      "n_train": 1356,
+      "n_val": 94,
+      "val_by_site": {
+        "R038": 94
+      },
+      "val_by_chronicity": {
+        "ge180d": 18,
+        "lt180d": 76
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 27,
+        "med_1-10mL": 36,
+        "small_0.1-1mL": 16,
+        "vlarge_>=50mL": 15
+      },
+      "train_by_chronicity": {
+        "ge180d": 630,
+        "lt180d": 356,
+        "unknown": 370
+      }
+    },
+    {
+      "split_id": "center_R040",
+      "kind": "center_holdout",
+      "holdout": "R040",
+      "n_train": 1364,
+      "n_val": 86,
+      "val_by_site": {
+        "R040": 86
+      },
+      "val_by_chronicity": {
+        "ge180d": 18,
+        "lt180d": 67,
+        "unknown": 1
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 20,
+        "med_1-10mL": 29,
+        "small_0.1-1mL": 10,
+        "vlarge_>=50mL": 26,
+        "vsmall_<0.1mL": 1
+      },
+      "train_by_chronicity": {
+        "ge180d": 630,
+        "lt180d": 365,
+        "unknown": 369
+      }
+    },
+    {
+      "split_id": "center_R047",
+      "kind": "center_holdout",
+      "holdout": "R047",
+      "n_train": 1402,
+      "n_val": 48,
+      "val_by_site": {
+        "R047": 48
+      },
+      "val_by_chronicity": {
+        "ge180d": 46,
+        "lt180d": 2
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 16,
+        "med_1-10mL": 18,
+        "small_0.1-1mL": 5,
+        "vlarge_>=50mL": 9
+      },
+      "train_by_chronicity": {
+        "ge180d": 602,
+        "lt180d": 430,
+        "unknown": 370
+      }
+    },
+    {
+      "split_id": "center_R048",
+      "kind": "center_holdout",
+      "holdout": "R048",
+      "n_train": 1406,
+      "n_val": 44,
+      "val_by_site": {
+        "R048": 44
+      },
+      "val_by_chronicity": {
+        "ge180d": 44
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 10,
+        "med_1-10mL": 17,
+        "small_0.1-1mL": 8,
+        "vlarge_>=50mL": 9
+      },
+      "train_by_chronicity": {
+        "ge180d": 604,
+        "lt180d": 432,
+        "unknown": 370
+      }
+    },
+    {
+      "split_id": "center_R069",
+      "kind": "center_holdout",
+      "holdout": "R069",
+      "n_train": 1410,
+      "n_val": 40,
+      "val_by_site": {
+        "R069": 40
+      },
+      "val_by_chronicity": {
+        "lt180d": 40
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 13,
+        "med_1-10mL": 19,
+        "small_0.1-1mL": 2,
+        "vlarge_>=50mL": 6
+      },
+      "train_by_chronicity": {
+        "ge180d": 648,
+        "lt180d": 392,
+        "unknown": 370
+      }
+    },
+    {
+      "split_id": "center_R001",
+      "kind": "center_holdout",
+      "holdout": "R001",
+      "n_train": 1411,
+      "n_val": 39,
+      "val_by_site": {
+        "R001": 39
+      },
+      "val_by_chronicity": {
+        "ge180d": 39
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 8,
+        "med_1-10mL": 18,
+        "small_0.1-1mL": 6,
+        "vlarge_>=50mL": 5,
+        "vsmall_<0.1mL": 2
+      },
+      "train_by_chronicity": {
+        "ge180d": 609,
+        "lt180d": 432,
+        "unknown": 370
+      }
+    },
+    {
+      "split_id": "center_R059",
+      "kind": "center_holdout",
+      "holdout": "R059",
+      "n_train": 1412,
+      "n_val": 38,
+      "val_by_site": {
+        "R059": 38
+      },
+      "val_by_chronicity": {
+        "unknown": 38
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 7,
+        "med_1-10mL": 16,
+        "small_0.1-1mL": 6,
+        "vlarge_>=50mL": 8,
+        "vsmall_<0.1mL": 1
+      },
+      "train_by_chronicity": {
+        "ge180d": 648,
+        "lt180d": 432,
+        "unknown": 332
+      }
+    },
+    {
+      "split_id": "center_R004",
+      "kind": "center_holdout",
+      "holdout": "R004",
+      "n_train": 1413,
+      "n_val": 37,
+      "val_by_site": {
+        "R004": 37
+      },
+      "val_by_chronicity": {
+        "ge180d": 20,
+        "unknown": 17
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 17,
+        "med_1-10mL": 7,
+        "vlarge_>=50mL": 13
+      },
+      "train_by_chronicity": {
+        "ge180d": 628,
+        "lt180d": 432,
+        "unknown": 353
+      }
+    },
+    {
+      "split_id": "center_R005",
+      "kind": "center_holdout",
+      "holdout": "R005",
+      "n_train": 1413,
+      "n_val": 37,
+      "val_by_site": {
+        "R005": 37
+      },
+      "val_by_chronicity": {
+        "ge180d": 35,
+        "lt180d": 1,
+        "unknown": 1
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 5,
+        "med_1-10mL": 10,
+        "small_0.1-1mL": 13,
+        "vlarge_>=50mL": 8,
+        "vsmall_<0.1mL": 1
+      },
+      "train_by_chronicity": {
+        "ge180d": 613,
+        "lt180d": 431,
+        "unknown": 369
+      }
+    },
+    {
+      "split_id": "center_R031",
+      "kind": "center_holdout",
+      "holdout": "R031",
+      "n_train": 1413,
+      "n_val": 37,
+      "val_by_site": {
+        "R031": 37
+      },
+      "val_by_chronicity": {
+        "ge180d": 1,
+        "lt180d": 36
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 10,
+        "med_1-10mL": 18,
+        "small_0.1-1mL": 3,
+        "vlarge_>=50mL": 6
+      },
+      "train_by_chronicity": {
+        "ge180d": 647,
+        "lt180d": 396,
+        "unknown": 370
+      }
+    },
+    {
+      "split_id": "center_R032",
+      "kind": "center_holdout",
+      "holdout": "R032",
+      "n_train": 1415,
+      "n_val": 35,
+      "val_by_site": {
+        "R032": 35
+      },
+      "val_by_chronicity": {
+        "ge180d": 8,
+        "lt180d": 27
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 4,
+        "med_1-10mL": 17,
+        "small_0.1-1mL": 1,
+        "vlarge_>=50mL": 13
+      },
+      "train_by_chronicity": {
+        "ge180d": 640,
+        "lt180d": 405,
+        "unknown": 370
+      }
+    },
+    {
+      "split_id": "center_R042",
+      "kind": "center_holdout",
+      "holdout": "R042",
+      "n_train": 1415,
+      "n_val": 35,
+      "val_by_site": {
+        "R042": 35
+      },
+      "val_by_chronicity": {
+        "ge180d": 34,
+        "lt180d": 1
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 11,
+        "med_1-10mL": 11,
+        "small_0.1-1mL": 4,
+        "vlarge_>=50mL": 8,
+        "vsmall_<0.1mL": 1
+      },
+      "train_by_chronicity": {
+        "ge180d": 614,
+        "lt180d": 431,
+        "unknown": 370
+      }
+    },
+    {
+      "split_id": "center_R058",
+      "kind": "center_holdout",
+      "holdout": "R058",
+      "n_train": 1415,
+      "n_val": 35,
+      "val_by_site": {
+        "R058": 35
+      },
+      "val_by_chronicity": {
+        "lt180d": 35
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 10,
+        "med_1-10mL": 11,
+        "small_0.1-1mL": 11,
+        "vlarge_>=50mL": 2,
+        "vsmall_<0.1mL": 1
+      },
+      "train_by_chronicity": {
+        "ge180d": 648,
+        "lt180d": 397,
+        "unknown": 370
+      }
+    },
+    {
+      "split_id": "center_R027",
+      "kind": "center_holdout",
+      "holdout": "R027",
+      "n_train": 1418,
+      "n_val": 32,
+      "val_by_site": {
+        "R027": 32
+      },
+      "val_by_chronicity": {
+        "ge180d": 29,
+        "unknown": 3
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 6,
+        "med_1-10mL": 11,
+        "small_0.1-1mL": 5,
+        "vlarge_>=50mL": 10
+      },
+      "train_by_chronicity": {
+        "ge180d": 619,
+        "lt180d": 432,
+        "unknown": 367
+      }
+    },
+    {
+      "split_id": "center_R052",
+      "kind": "center_holdout",
+      "holdout": "R052",
+      "n_train": 1418,
+      "n_val": 32,
+      "val_by_site": {
+        "R052": 32
+      },
+      "val_by_chronicity": {
+        "ge180d": 32
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 7,
+        "med_1-10mL": 11,
+        "small_0.1-1mL": 7,
+        "vlarge_>=50mL": 7
+      },
+      "train_by_chronicity": {
+        "ge180d": 616,
+        "lt180d": 432,
+        "unknown": 370
+      }
+    },
+    {
+      "split_id": "center_R011",
+      "kind": "center_holdout",
+      "holdout": "R011",
+      "n_train": 1421,
+      "n_val": 29,
+      "val_by_site": {
+        "R011": 29
+      },
+      "val_by_chronicity": {
+        "unknown": 29
+      },
+      "val_by_size_bin": {
+        "med_1-10mL": 13,
+        "small_0.1-1mL": 11,
+        "vsmall_<0.1mL": 5
+      },
+      "train_by_chronicity": {
+        "ge180d": 648,
+        "lt180d": 432,
+        "unknown": 341
+      }
+    },
+    {
+      "split_id": "center_R067",
+      "kind": "center_holdout",
+      "holdout": "R067",
+      "n_train": 1423,
+      "n_val": 27,
+      "val_by_site": {
+        "R067": 27
+      },
+      "val_by_chronicity": {
+        "ge180d": 23,
+        "lt180d": 4
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 12,
+        "med_1-10mL": 11,
+        "small_0.1-1mL": 1,
+        "vlarge_>=50mL": 3
+      },
+      "train_by_chronicity": {
+        "ge180d": 625,
+        "lt180d": 428,
+        "unknown": 370
+      }
+    },
+    {
+      "split_id": "center_R010",
+      "kind": "center_holdout",
+      "holdout": "R010",
+      "n_train": 1424,
+      "n_val": 26,
+      "val_by_site": {
+        "R010": 26
+      },
+      "val_by_chronicity": {
+        "unknown": 26
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 1,
+        "med_1-10mL": 10,
+        "small_0.1-1mL": 14,
+        "vsmall_<0.1mL": 1
+      },
+      "train_by_chronicity": {
+        "ge180d": 648,
+        "lt180d": 432,
+        "unknown": 344
+      }
+    },
+    {
+      "split_id": "center_R028",
+      "kind": "center_holdout",
+      "holdout": "R028",
+      "n_train": 1424,
+      "n_val": 26,
+      "val_by_site": {
+        "R028": 26
+      },
+      "val_by_chronicity": {
+        "ge180d": 25,
+        "lt180d": 1
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 8,
+        "med_1-10mL": 11,
+        "small_0.1-1mL": 3,
+        "vlarge_>=50mL": 4
+      },
+      "train_by_chronicity": {
+        "ge180d": 623,
+        "lt180d": 431,
+        "unknown": 370
+      }
+    },
+    {
+      "split_id": "center_R071",
+      "kind": "center_holdout",
+      "holdout": "R071",
+      "n_train": 1424,
+      "n_val": 26,
+      "val_by_site": {
+        "R071": 26
+      },
+      "val_by_chronicity": {
+        "lt180d": 26
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 3,
+        "med_1-10mL": 17,
+        "small_0.1-1mL": 6
+      },
+      "train_by_chronicity": {
+        "ge180d": 648,
+        "lt180d": 406,
+        "unknown": 370
+      }
+    },
+    {
+      "split_id": "center_R034",
+      "kind": "center_holdout",
+      "holdout": "R034",
+      "n_train": 1426,
+      "n_val": 24,
+      "val_by_site": {
+        "R034": 24
+      },
+      "val_by_chronicity": {
+        "ge180d": 24
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 5,
+        "med_1-10mL": 9,
+        "small_0.1-1mL": 7,
+        "vlarge_>=50mL": 2,
+        "vsmall_<0.1mL": 1
+      },
+      "train_by_chronicity": {
+        "ge180d": 624,
+        "lt180d": 432,
+        "unknown": 370
+      }
+    },
+    {
+      "split_id": "center_R049",
+      "kind": "center_holdout",
+      "holdout": "R049",
+      "n_train": 1426,
+      "n_val": 24,
+      "val_by_site": {
+        "R049": 24
+      },
+      "val_by_chronicity": {
+        "lt180d": 6,
+        "unknown": 18
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 3,
+        "med_1-10mL": 7,
+        "small_0.1-1mL": 12,
+        "vsmall_<0.1mL": 2
+      },
+      "train_by_chronicity": {
+        "ge180d": 648,
+        "lt180d": 426,
+        "unknown": 352
+      }
+    },
+    {
+      "split_id": "center_R015",
+      "kind": "center_holdout",
+      "holdout": "R015",
+      "n_train": 1427,
+      "n_val": 23,
+      "val_by_site": {
+        "R015": 23
+      },
+      "val_by_chronicity": {
+        "unknown": 23
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 7,
+        "med_1-10mL": 5,
+        "small_0.1-1mL": 4,
+        "vlarge_>=50mL": 7
+      },
+      "train_by_chronicity": {
+        "ge180d": 648,
+        "lt180d": 432,
+        "unknown": 347
+      }
+    },
+    {
+      "split_id": "center_R024",
+      "kind": "center_holdout",
+      "holdout": "R024",
+      "n_train": 1429,
+      "n_val": 21,
+      "val_by_site": {
+        "R024": 21
+      },
+      "val_by_chronicity": {
+        "ge180d": 21
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 4,
+        "med_1-10mL": 6,
+        "small_0.1-1mL": 6,
+        "vlarge_>=50mL": 4,
+        "vsmall_<0.1mL": 1
+      },
+      "train_by_chronicity": {
+        "ge180d": 627,
+        "lt180d": 432,
+        "unknown": 370
+      }
+    },
+    {
+      "split_id": "chronicity_ge180d",
+      "kind": "chronicity_holdout",
+      "holdout": "ge180d",
+      "n_train": 802,
+      "n_val": 648,
+      "val_by_site": {
+        "R001": 39,
+        "R002": 12,
+        "R003": 15,
+        "R004": 20,
+        "R005": 35,
+        "R009": 61,
+        "R017": 15,
+        "R018": 11,
+        "R024": 21,
+        "R027": 29,
+        "R028": 25,
+        "R029": 9,
+        "R030": 14,
+        "R031": 1,
+        "R032": 8,
+        "R034": 24,
+        "R035": 15,
+        "R038": 18,
+        "R040": 18,
+        "R042": 34,
+        "R044": 4,
+        "R045": 4,
+        "R046": 13,
+        "R047": 46,
+        "R048": 44,
+        "R052": 32,
+        "R056": 14,
+        "R057": 14,
+        "R061": 15,
+        "R062": 8,
+        "R063": 1,
+        "R064": 6,
+        "R067": 23
+      },
+      "val_by_chronicity": {
+        "ge180d": 648
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 155,
+        "med_1-10mL": 239,
+        "small_0.1-1mL": 113,
+        "vlarge_>=50mL": 125,
+        "vsmall_<0.1mL": 16
+      },
+      "train_by_chronicity": {
+        "lt180d": 432,
+        "unknown": 370
+      }
+    },
+    {
+      "split_id": "chronicity_lt180d",
+      "kind": "chronicity_holdout",
+      "holdout": "lt180d",
+      "n_train": 1018,
+      "n_val": 432,
+      "val_by_site": {
+        "R005": 1,
+        "R008": 6,
+        "R009": 50,
+        "R019": 13,
+        "R020": 1,
+        "R028": 1,
+        "R029": 1,
+        "R030": 1,
+        "R031": 36,
+        "R032": 27,
+        "R033": 2,
+        "R038": 76,
+        "R039": 4,
+        "R040": 67,
+        "R041": 3,
+        "R042": 1,
+        "R047": 2,
+        "R049": 6,
+        "R050": 6,
+        "R053": 5,
+        "R058": 35,
+        "R065": 12,
+        "R067": 4,
+        "R069": 40,
+        "R070": 6,
+        "R071": 26
+      },
+      "val_by_chronicity": {
+        "lt180d": 432
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 101,
+        "med_1-10mL": 174,
+        "small_0.1-1mL": 82,
+        "vlarge_>=50mL": 62,
+        "vsmall_<0.1mL": 13
+      },
+      "train_by_chronicity": {
+        "ge180d": 648,
+        "unknown": 370
+      }
+    },
+    {
+      "split_id": "chronicity_unknown",
+      "kind": "chronicity_holdout",
+      "holdout": "unknown",
+      "n_train": 1080,
+      "n_val": 370,
+      "val_by_site": {
+        "R004": 17,
+        "R005": 1,
+        "R008": 1,
+        "R010": 26,
+        "R011": 29,
+        "R014": 9,
+        "R015": 23,
+        "R016": 1,
+        "R017": 1,
+        "R019": 1,
+        "R023": 15,
+        "R027": 3,
+        "R040": 1,
+        "R049": 18,
+        "R050": 9,
+        "R056": 1,
+        "R059": 38,
+        "R065": 6,
+        "R070": 2,
+        "SOOP": 168
+      },
+      "val_by_chronicity": {
+        "unknown": 370
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 86,
+        "med_1-10mL": 109,
+        "small_0.1-1mL": 79,
+        "vlarge_>=50mL": 77,
+        "vsmall_<0.1mL": 19
+      },
+      "train_by_chronicity": {
+        "ge180d": 648,
+        "lt180d": 432
+      }
+    }
+  ]
+}

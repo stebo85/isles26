@@ -1,0 +1,11 @@
+{
+  "method": "nnunet_r30_1000ep_cv",
+  "display_name": "nnU-Net R3.0 default 1000ep, 5-fold CV",
+  "model_family": "nnunet",
+  "eval_set": "atlas_r30_5fold_cv",
+  "input_modalities": ["T1w"],
+  "trained_on": "ATLAS R3.0 / ISLES'26 public training release, Dataset502_ATLASR30",
+  "status": "complete",
+  "pipeline_dir": "baselines/models/nnunet_atlas_t1w",
+  "notes": "full default schedule; +1.55 Dice points over 250ep on the same 1450-case CV"
+}

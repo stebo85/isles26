@@ -1,24 +1,29 @@
 #!/usr/bin/env python3
-"""Build a Multi-Size-Labeling (MSL) dataset from a binary-lesion nnU-Net dataset.
+"""Build MSL/DBL relabeled datasets from a binary-lesion nnU-Net dataset.
 
 Shang et al. 2024 (MSL/DBL) showed that splitting the single "lesion" class into
-size-stratified sub-classes raises small-lesion recall, because the rare small
-components get their own class signal instead of being drowned out by large
-lesions under a single foreground label. We implement the MSL variant in a
-framework-native way: relabel every connected lesion component (26-connectivity)
-into a size class, write a new dataset, train nnU-Net multiclass, then merge the
-size classes back to a binary lesion mask at inference.
+size-stratified and/or boundary-aware sub-classes can raise small-lesion recall,
+because rare small components get their own class signal instead of being
+drowned out by large lesions under a single foreground label. We implement these
+variants in a framework-native way: relabel every connected lesion component
+(26-connectivity), write a new dataset, train nnU-Net multiclass, then merge all
+foreground classes back to a binary lesion mask at inference.
 
 Size classes (voxels, matching the eval framework's small-lesion bins):
     1 = small   (< 100 voxels)
     2 = medium  (100 - 999 voxels)
     3 = large   (>= 1000 voxels)
 
+DBL classes split each component into a one-voxel boundary shell and interior.
+Tiny components that erode away are treated as boundary-only.
+
 Images are symlinked from the source dataset (no copy); only labels are rewritten.
 
 Usage:
     python make_msl_dataset.py --src-dir <raw/Dataset502_ATLASR30> \
         --dst-dir <raw/Dataset503_ATLASR30_MSL>
+    python make_msl_dataset.py --scheme dbl --src-dir <raw/Dataset502_ATLASR30> \
+        --dst-dir <raw/Dataset505_ATLASR30_DBL>
 """
 from __future__ import annotations
 
@@ -34,7 +39,24 @@ from scipy import ndimage as ndi
 CONNECTIVITY_26 = np.ones((3, 3, 3), dtype=np.int64)
 # (upper-exclusive voxel bound, class id); last bound is +inf.
 SIZE_CLASSES = [(100, 1), (1000, 2), (np.inf, 3)]
-LABELS = {"background": 0, "small": 1, "medium": 2, "large": 3}
+LABELS_BY_SCHEME = {
+    "msl": {"background": 0, "small": 1, "medium": 2, "large": 3},
+    "dbl": {"background": 0, "boundary": 1, "interior": 2},
+    "msl_dbl": {
+        "background": 0,
+        "small_boundary": 1,
+        "small_interior": 2,
+        "medium_boundary": 3,
+        "medium_interior": 4,
+        "large_boundary": 5,
+        "large_interior": 6,
+    },
+}
+DESCRIPTIONS = {
+    "msl": "ATLAS R3.0 T1w MSL (size-stratified lesion classes) for small-lesion sensitivity",
+    "dbl": "ATLAS R3.0 T1w DBL (boundary/interior lesion classes) for boundary-aware supervision",
+    "msl_dbl": "ATLAS R3.0 T1w MSL+DBL (size x boundary/interior lesion classes)",
+}
 
 
 def size_relabel(mask: np.ndarray) -> np.ndarray:
@@ -52,11 +74,67 @@ def size_relabel(mask: np.ndarray) -> np.ndarray:
     return out
 
 
+def boundary_and_interior(component: np.ndarray, radius: int) -> tuple[np.ndarray, np.ndarray]:
+    eroded = ndi.binary_erosion(component, structure=CONNECTIVITY_26, iterations=radius, border_value=0)
+    if not eroded.any():
+        return component, np.zeros(component.shape, dtype=bool)
+    return np.logical_and(component, ~eroded), eroded
+
+
+def dbl_relabel(mask: np.ndarray, radius: int) -> np.ndarray:
+    binary = mask > 0.5
+    out = np.zeros(mask.shape, dtype=np.uint8)
+    if not binary.any():
+        return out
+    lab, n = ndi.label(binary, structure=CONNECTIVITY_26)
+    for comp_id in range(1, n + 1):
+        component = lab == comp_id
+        boundary, interior = boundary_and_interior(component, radius)
+        out[boundary] = 1
+        out[interior] = 2
+    return out
+
+
+def msl_dbl_relabel(mask: np.ndarray, radius: int) -> np.ndarray:
+    binary = mask > 0.5
+    out = np.zeros(mask.shape, dtype=np.uint8)
+    if not binary.any():
+        return out
+    lab, n = ndi.label(binary, structure=CONNECTIVITY_26)
+    sizes = ndi.sum(np.ones_like(lab), lab, index=np.arange(1, n + 1))
+    # class ids are (small boundary/interior)=1/2, (medium)=3/4, (large)=5/6.
+    for comp_id, sz in enumerate(sizes, start=1):
+        size_cls = next(c for bound, c in SIZE_CLASSES if sz < bound)
+        boundary_cls = 2 * size_cls - 1
+        interior_cls = 2 * size_cls
+        component = lab == comp_id
+        boundary, interior = boundary_and_interior(component, radius)
+        out[boundary] = boundary_cls
+        out[interior] = interior_cls
+    return out
+
+
+def relabel(mask: np.ndarray, scheme: str, radius: int) -> np.ndarray:
+    if scheme == "msl":
+        return size_relabel(mask)
+    if scheme == "dbl":
+        return dbl_relabel(mask, radius)
+    if scheme == "msl_dbl":
+        return msl_dbl_relabel(mask, radius)
+    raise ValueError(f"unknown relabeling scheme: {scheme}")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--src-dir", required=True, type=Path)
     ap.add_argument("--dst-dir", required=True, type=Path)
+    ap.add_argument("--scheme", choices=sorted(LABELS_BY_SCHEME), default="msl",
+                    help="label transform to apply; default preserves the original MSL behavior")
+    ap.add_argument("--boundary-radius", default=1, type=int,
+                    help="binary-erosion radius, in voxels, used by DBL/MSL+DBL")
     args = ap.parse_args()
+    if args.boundary_radius < 1:
+        raise SystemExit("--boundary-radius must be >= 1")
 
     src_images = args.src_dir / "imagesTr"
     src_labels = args.src_dir / "labelsTr"
@@ -73,12 +151,13 @@ def main() -> int:
         link.symlink_to(img.resolve())
 
     label_files = sorted(src_labels.glob("*.nii.gz"))
-    hist = {c: 0 for c in LABELS.values()}
+    labels = LABELS_BY_SCHEME[args.scheme]
+    hist = {c: 0 for c in labels.values()}
     for lab_path in label_files:
         img = nib.load(str(lab_path))
         data = np.asanyarray(img.dataobj)
-        relabeled = size_relabel(data)
-        for c in LABELS.values():
+        relabeled = relabel(data, args.scheme, args.boundary_radius)
+        for c in labels.values():
             hist[c] += int((relabeled == c).sum())
         out = nib.Nifti1Image(relabeled, img.affine, img.header.copy())
         out.set_data_dtype(np.uint8)
@@ -90,15 +169,15 @@ def main() -> int:
     src_meta = json.loads((args.src_dir / "dataset.json").read_text())
     dataset = {
         "name": args.dst_dir.name,
-        "description": "ATLAS R3.0 T1w MSL (size-stratified lesion classes) for small-lesion sensitivity",
+        "description": DESCRIPTIONS[args.scheme],
         "channel_names": src_meta["channel_names"],
-        "labels": LABELS,
+        "labels": labels,
         "numTraining": len(label_files),
         "file_ending": ".nii.gz",
     }
     (args.dst_dir / "dataset.json").write_text(json.dumps(dataset, indent=2) + "\n")
 
-    print(f"[done] wrote {len(label_files)} MSL labels to {dst_labels}")
+    print(f"[done] wrote {len(label_files)} {args.scheme} labels to {dst_labels}")
     print(f"[info] voxel histogram by class: {hist}")
     return 0
 

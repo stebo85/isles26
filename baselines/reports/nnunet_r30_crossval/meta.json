@@ -1,0 +1,11 @@
+{
+  "method": "nnunet_r30_250ep_cv",
+  "display_name": "nnU-Net R3.0 default 250ep, 5-fold CV",
+  "model_family": "nnunet",
+  "eval_set": "atlas_r30_5fold_cv",
+  "input_modalities": ["T1w"],
+  "trained_on": "ATLAS R3.0 / ISLES'26 public training release, Dataset502_ATLASR30",
+  "status": "complete",
+  "pipeline_dir": "baselines/models/nnunet_atlas_t1w",
+  "notes": "baseline 250-epoch 5-fold out-of-fold CV over 1450 usable converted R3.0 cases"
+}

@@ -15,7 +15,7 @@
 # refinement. Writes postprocessing.pkl + inference_instructions.txt under the
 # results directory and a crossval summary we can read back.
 #
-#   sbatch baselines/models/nnunet_atlas_t1w/analysis_nnunet_14_postprocess_r30.sh
+#   sbatch baselines/models/nnunet_atlas_t1w/analysis_nnunet_21_postprocess_1000ep.sh
 
 set -euo pipefail
 
