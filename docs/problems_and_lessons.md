@@ -256,8 +256,9 @@ of the R3.0 campaign so the conclusions are not lost if that file is trimmed:
 
 - **WIN — longer schedule:** 250→1000 epochs lifted consolidated 5-fold CV Dice
   0.6372 → 0.6528 (all folds up).
-- **WIN — Dice+TopK10 (MAPPING recipe) @ 1000ep:** consolidated CV **0.6551**,
-  the best in-distribution model; postprocessing chose none.
+- **WIN — Dice+TopK10 (MAPPING recipe) @ 1000ep:** nnU-Net consolidated CV
+  **0.6551**; rich repo-harness OOF report **Dice 0.6558 / lesion-F1 0.6735 /
+  surface Dice 0.7679 / HD95 18.10 mm**; postprocessing chose none.
 - **WIN — OOD T1w ensemble:** blending nnU-Net + synth-plus probabilities, both
   on the T1w input only and warped to TRACE, lifted soop mean Dice 0.255 →
   0.289 (median 0.04 → 0.20). synth-plus carries the acute-DWI cases.

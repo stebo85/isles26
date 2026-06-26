@@ -7,5 +7,5 @@
   "trained_on": "ATLAS R3.0 / ISLES'26 public training release, Dataset502_ATLASR30",
   "status": "complete",
   "pipeline_dir": "baselines/models/nnunet_atlas_t1w",
-  "notes": "current best in-distribution model; MAPPING-style Dice+TopK10 hard-example loss"
+  "notes": "current best single nnU-Net in-distribution model; rich OOF eval via repo harness"
 }

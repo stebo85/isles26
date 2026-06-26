@@ -1,6 +1,6 @@
 # Model leaderboard
 
-generated 2026-06-25 15:12:04 UTC by compare_models.py
+generated 2026-06-26 04:18:49 UTC by compare_models.py
 
 ## eval set: soop_bench
 
@@ -25,8 +25,13 @@ generated 2026-06-25 15:12:04 UTC by compare_models.py
 
 | Method | Modalities | n | Dice mean | Dice median | Lesion F1 | Lesion recall | Surface Dice 3mm | HD95 mm | AVD mL | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| nnU-Net R3.0 Dice+TopK10 1000ep, 5-fold CV | T1w | 1450 | 0.655 | 0.763 | — | — | — | — | — | current best in-distribution model; MAPPING-style Dice+TopK10 hard-example loss |
+| nnU-Net R3.0 Dice+TopK10 1000ep, 5-fold CV | T1w | 1450 | 0.656 | 0.764 | 0.674 | 0.707 | 0.768 | 18.099 | 4.943 | current best single nnU-Net in-distribution model; rich OOF eval via repo harness |
+| MAPPING input single TopK10 OOF argmax | T1w | 1450 | 0.656 | 0.763 | 0.674 | 0.707 | 0.768 | 18.099 | 4.943 | Single-family argmax from step-35 validation softmax; exact TopK10 input source for 3-family ensemble comparison |
+| MAPPING 3-family softmax ensemble OOF CV | T1w | 1450 | 0.655 | 0.770 | 0.673 | 0.700 | 0.768 | 17.602 | 5.160 | MAPPING-style 3-family per-fold validation softmax average; threshold 0.5; no Dataset504/self-training member |
+| MAPPING 3-family softmax ensemble OOF CV, threshold 0.54 | T1w | 1450 | 0.654 | 0.768 | 0.676 | 0.697 | 0.767 | 17.633 | 5.159 | Threshold selected by sweeping saved OOF probability NIfTIs only; thresholds=0.35:0.55:0.01; primary_score=lesion_f1_mean; no re-inference |
+| MAPPING input single default 1000ep OOF argmax | T1w | 1450 | 0.653 | 0.764 | 0.665 | 0.704 | 0.759 | 18.700 | 5.296 | Single-family argmax from step-35 validation softmax; exact default 1000ep input source for 3-family ensemble comparison |
 | nnU-Net R3.0 default 1000ep, 5-fold CV | T1w | 1450 | 0.653 | 0.763 | — | — | — | — | — | full default schedule; +1.55 Dice points over 250ep on the same 1450-case CV |
+| MAPPING input single ResEnc-L OOF argmax | T1w | 1450 | 0.639 | 0.754 | 0.638 | 0.693 | 0.755 | 18.170 | 5.390 | Single-family argmax from step-35 validation softmax; exact ResEnc-L input source for 3-family ensemble comparison |
 | nnU-Net R3.0 default 250ep, 5-fold CV | T1w | 1450 | 0.637 | 0.744 | — | — | — | — | — | baseline 250-epoch 5-fold out-of-fold CV over 1450 usable converted R3.0 cases |
 
 Note: lower is better for HD95/AVD; higher is better for the remaining metrics.

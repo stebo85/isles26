@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Evaluate nnU-Net predictions on ATLAS R2.1 fold-0 validation cases."""
+"""Evaluate nnU-Net predictions on ATLAS validation cases."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ import csv
 import json
 import math
 import sys
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from collections import defaultdict
 from pathlib import Path
 
@@ -17,6 +18,13 @@ from eval.loader import load_mask, resample_to_reference
 from eval.metrics import DEFAULT_SIZE_BINS_ML, evaluate_case
 from eval.qc_viz import make_overlay
 from eval.report import aggregate, aggregate_minimal, write_json, write_markdown
+
+
+_WORKER_MANIFEST: dict[str, dict[str, str]] = {}
+_WORKER_PER_SESSION_INDEX: dict[tuple[str, str, str], dict[str, str]] = {}
+_WORKER_PRED_DIR: Path | None = None
+_WORKER_MIN_OVERLAP_VOXELS = 1
+_WORKER_MANIFEST_PATH = ""
 
 
 def load_csv(path: Path) -> list[dict[str, str]]:
@@ -67,15 +75,48 @@ def size_bin_ml(volume_ml: float | None) -> str:
     return DEFAULT_SIZE_BINS_ML[-1][0]
 
 
-def load_fold0_val(path: Path) -> list[str]:
+def parse_folds(value: str, n_folds: int) -> list[int]:
+    text = value.strip().lower()
+    if text == "all":
+        return list(range(n_folds))
+    out = []
+    for part in text.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            fold = int(part)
+        except ValueError as exc:
+            raise SystemExit(f"invalid fold {part!r}; use an int, comma-list, or 'all'") from exc
+        if fold < 0 or fold >= n_folds:
+            raise SystemExit(f"fold {fold} is outside available range 0-{n_folds - 1}")
+        out.append(fold)
+    if not out:
+        raise SystemExit("--folds resolved to an empty fold list")
+    return out
+
+
+def load_val_cases(path: Path, folds_arg: str) -> list[str]:
     data = json.loads(path.read_text())
     folds = data.get("folds", data) if isinstance(data, dict) else data
-    try:
-        val_cases = list(folds[0]["val"])
-    except (IndexError, KeyError, TypeError) as exc:
-        raise SystemExit(f"could not read fold 0 val cases from {path}: {exc}") from exc
+    if not isinstance(folds, list):
+        raise SystemExit(f"could not read folds from {path}")
+    selected_folds = parse_folds(folds_arg, len(folds))
+
+    val_cases = []
+    seen = set()
+    for fold in selected_folds:
+        try:
+            fold_cases = list(folds[fold]["val"])
+        except (IndexError, KeyError, TypeError) as exc:
+            raise SystemExit(f"could not read fold {fold} val cases from {path}: {exc}") from exc
+        for case_id in fold_cases:
+            if case_id in seen:
+                raise SystemExit(f"duplicate validation case across requested folds: {case_id}")
+            seen.add(case_id)
+            val_cases.append(case_id)
     if not val_cases:
-        raise SystemExit(f"fold 0 val list is empty in {path}")
+        raise SystemExit(f"requested validation case list is empty in {path}")
     return val_cases
 
 
@@ -192,6 +233,116 @@ def write_qc(selected: list[dict], out_dir: Path) -> None:
         )
 
 
+def configure_case_evaluator(
+    manifest: dict[str, dict[str, str]],
+    per_session_index: dict[tuple[str, str, str], dict[str, str]],
+    pred_dir: str,
+    min_overlap_voxels: int,
+    manifest_path: str,
+) -> None:
+    global _WORKER_MANIFEST
+    global _WORKER_PER_SESSION_INDEX
+    global _WORKER_PRED_DIR
+    global _WORKER_MIN_OVERLAP_VOXELS
+    global _WORKER_MANIFEST_PATH
+
+    _WORKER_MANIFEST = manifest
+    _WORKER_PER_SESSION_INDEX = per_session_index
+    _WORKER_PRED_DIR = Path(pred_dir)
+    _WORKER_MIN_OVERLAP_VOXELS = min_overlap_voxels
+    _WORKER_MANIFEST_PATH = manifest_path
+
+
+def evaluate_atlas_case(index: int, case_id: str) -> tuple[int, dict, str]:
+    if _WORKER_PRED_DIR is None:
+        raise RuntimeError("case evaluator was not configured")
+    if case_id not in _WORKER_MANIFEST:
+        raise SystemExit(f"{case_id} is in requested val split but missing from {_WORKER_MANIFEST_PATH}")
+
+    manifest_row = _WORKER_MANIFEST[case_id]
+    gt_path = path_from_manifest(manifest_row, "lesion_source_path")
+    t1_path = path_from_manifest(manifest_row, "t1_source_path")
+    pred_path = _WORKER_PRED_DIR / f"{case_id}.nii.gz"
+    if not pred_path.exists():
+        raise SystemExit(f"missing prediction for {case_id}: {pred_path}")
+    if not gt_path.exists():
+        raise SystemExit(f"missing GT lesion source for {case_id}: {gt_path}")
+    if not t1_path.exists():
+        raise SystemExit(f"missing T1w source for {case_id}: {t1_path}")
+
+    site, chronicity, lesion_volume_ml, lesion_size_bin = atlas_characterization(
+        manifest_row,
+        _WORKER_PER_SESSION_INDEX,
+    )
+
+    gt_img = nib.load(str(gt_path))
+    gt_data, _, voxel_size = load_mask(gt_path)
+    pred_data = resample_to_reference(pred_path, gt_img)
+    metrics = evaluate_case(
+        pred_data,
+        gt_data,
+        voxel_size,
+        subject_id=case_id,
+        chronicity=chronicity,
+        center=site,
+        min_overlap_voxels=_WORKER_MIN_OVERLAP_VOXELS,
+    )
+    case_dict = metrics.to_dict()
+    case_dict["prediction_path"] = str(pred_path)
+    case_dict["gt_path"] = str(gt_path)
+    case_dict["t1_path"] = str(t1_path)
+    case_dict["site"] = site
+    case_dict["subject"] = manifest_row.get("subject", "")
+    case_dict["session"] = manifest_row.get("session", "")
+    case_dict["chronicity_bin"] = chronicity
+    case_dict["lesion_volume_ml_characterization"] = lesion_volume_ml
+    case_dict["lesion_size_bin"] = lesion_size_bin
+
+    line = (
+        f"{case_id}: site={site} chronicity={chronicity} size_bin={lesion_size_bin} "
+        f"Dice={metrics.overlap.dice:.4f} F1={metrics.lesionwise.lesion_f1:.4f} "
+        f"GTml={metrics.volume.gt_vol_ml:.2f} PredML={metrics.volume.pred_vol_ml:.2f}"
+    )
+    return index, case_dict, line
+
+
+def evaluate_cases(val_cases: list[str], workers: int) -> list[dict]:
+    results: list[dict | None] = [None] * len(val_cases)
+    total = len(val_cases)
+    if workers <= 1:
+        for index, case_id in enumerate(val_cases):
+            _, case_dict, line = evaluate_atlas_case(index, case_id)
+            results[index] = case_dict
+            print(f"[{index + 1}/{total}] {line}", flush=True)
+    else:
+        with ProcessPoolExecutor(
+            max_workers=workers,
+            initializer=configure_case_evaluator,
+            initargs=(
+                _WORKER_MANIFEST,
+                _WORKER_PER_SESSION_INDEX,
+                str(_WORKER_PRED_DIR),
+                _WORKER_MIN_OVERLAP_VOXELS,
+                _WORKER_MANIFEST_PATH,
+            ),
+        ) as executor:
+            futures = [
+                executor.submit(evaluate_atlas_case, index, case_id)
+                for index, case_id in enumerate(val_cases)
+            ]
+            completed = 0
+            for future in as_completed(futures):
+                index, case_dict, line = future.result()
+                results[index] = case_dict
+                completed += 1
+                print(f"[{completed}/{total}] {line}", flush=True)
+
+    missing = [val_cases[index] for index, case in enumerate(results) if case is None]
+    if missing:
+        raise RuntimeError(f"internal error: missing evaluated cases: {', '.join(missing[:10])}")
+    return [case for case in results if case is not None]
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", required=True, type=Path)
@@ -200,73 +351,47 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--per-session-csv", required=True, type=Path)
     parser.add_argument("--out-dir", required=True, type=Path)
     parser.add_argument("--title", required=True)
+    parser.add_argument(
+        "--folds",
+        default="0",
+        help="Validation folds to evaluate: default '0' preserves the historical fold-0 behavior; use 'all' or comma-list.",
+    )
     parser.add_argument("--min-overlap-voxels", type=int, default=1)
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=1,
+        help="Number of parallel case-evaluation workers. Default 1 preserves historical behavior.",
+    )
     args = parser.parse_args(argv)
 
     if args.min_overlap_voxels < 1:
         parser.error("--min-overlap-voxels must be >= 1")
+    if args.workers < 1:
+        parser.error("--workers must be >= 1")
 
     manifest = {row["nnunet_id"]: row for row in load_csv(args.manifest)}
     per_session_index = {
         (row.get("site", ""), row.get("subject", ""), row.get("session", "")): row
         for row in load_csv(args.per_session_csv)
     }
-    val_cases = load_fold0_val(args.splits)
+    val_cases = load_val_cases(args.splits, args.folds)
 
-    per_case: list[dict] = []
-    for case_id in val_cases:
-        if case_id not in manifest:
-            raise SystemExit(f"{case_id} is in fold 0 val split but missing from {args.manifest}")
-        manifest_row = manifest[case_id]
-        gt_path = path_from_manifest(manifest_row, "lesion_source_path")
-        t1_path = path_from_manifest(manifest_row, "t1_source_path")
-        pred_path = args.pred_dir / f"{case_id}.nii.gz"
-        if not pred_path.exists():
-            raise SystemExit(f"missing prediction for {case_id}: {pred_path}")
-        if not gt_path.exists():
-            raise SystemExit(f"missing GT lesion source for {case_id}: {gt_path}")
-        if not t1_path.exists():
-            raise SystemExit(f"missing T1w source for {case_id}: {t1_path}")
-
-        site, chronicity, lesion_volume_ml, lesion_size_bin = atlas_characterization(
-            manifest_row,
-            per_session_index,
-        )
-
-        gt_img = nib.load(str(gt_path))
-        gt_data, _, voxel_size = load_mask(gt_path)
-        pred_data = resample_to_reference(pred_path, gt_img)
-        metrics = evaluate_case(
-            pred_data,
-            gt_data,
-            voxel_size,
-            subject_id=case_id,
-            chronicity=chronicity,
-            center=site,
-            min_overlap_voxels=args.min_overlap_voxels,
-        )
-        case_dict = metrics.to_dict()
-        case_dict["prediction_path"] = str(pred_path)
-        case_dict["gt_path"] = str(gt_path)
-        case_dict["t1_path"] = str(t1_path)
-        case_dict["site"] = site
-        case_dict["subject"] = manifest_row.get("subject", "")
-        case_dict["session"] = manifest_row.get("session", "")
-        case_dict["chronicity_bin"] = chronicity
-        case_dict["lesion_volume_ml_characterization"] = lesion_volume_ml
-        case_dict["lesion_size_bin"] = lesion_size_bin
-        per_case.append(case_dict)
-        print(
-            f"{case_id}: site={site} chronicity={chronicity} size_bin={lesion_size_bin} "
-            f"Dice={metrics.overlap.dice:.4f} F1={metrics.lesionwise.lesion_f1:.4f} "
-            f"GTml={metrics.volume.gt_vol_ml:.2f} PredML={metrics.volume.pred_vol_ml:.2f}"
-        )
+    configure_case_evaluator(
+        manifest,
+        per_session_index,
+        str(args.pred_dir),
+        args.min_overlap_voxels,
+        str(args.manifest),
+    )
+    per_case = evaluate_cases(val_cases, workers=args.workers)
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     (args.out_dir / "per_case.json").write_text(json.dumps(per_case, indent=2, default=str) + "\n")
 
     report = aggregate(per_case)
     report["atlas_val_cases"] = val_cases
+    report["atlas_eval_folds"] = args.folds
     report["by_site"] = report["by_center"]
     report["by_chronicity_bin"] = report["by_chronicity"]
     report["by_lesion_size_bin"] = group_by_case_key(per_case, "lesion_size_bin")

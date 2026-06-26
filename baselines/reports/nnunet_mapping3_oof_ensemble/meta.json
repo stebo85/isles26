@@ -1,0 +1,11 @@
+{
+  "method": "nnunet_mapping3_oof_ensemble",
+  "display_name": "MAPPING 3-family softmax ensemble OOF CV",
+  "model_family": "ensemble",
+  "eval_set": "atlas_r30_5fold_cv",
+  "input_modalities": ["T1w"],
+  "trained_on": "ATLAS R3.0 / Dataset502_ATLASR30; OOF average of TopK10 1000ep, default 1000ep, and ResEnc-L 250ep validation softmax",
+  "status": "complete",
+  "pipeline_dir": "baselines/models/nnunet_atlas_t1w",
+  "notes": "MAPPING-style 3-family per-fold validation softmax average; threshold 0.5; no Dataset504/self-training member"
+}

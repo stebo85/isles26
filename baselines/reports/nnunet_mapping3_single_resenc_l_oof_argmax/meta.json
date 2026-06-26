@@ -1,0 +1,11 @@
+{
+  "method": "nnunet_mapping3_single_resenc_l_oof_argmax",
+  "display_name": "MAPPING input single ResEnc-L OOF argmax",
+  "model_family": "nnunet",
+  "eval_set": "atlas_r30_5fold_cv",
+  "input_modalities": ["T1w"],
+  "trained_on": "ATLAS R3.0 / Dataset502_ATLASR30",
+  "status": "complete",
+  "pipeline_dir": "baselines/models/nnunet_atlas_t1w",
+  "notes": "Single-family argmax from step-35 validation softmax; exact ResEnc-L input source for 3-family ensemble comparison"
+}
