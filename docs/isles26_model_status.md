@@ -22,6 +22,7 @@ Metrics:
 | nnU-Net default, R3.0, 250ep, 5-fold+TTA | 0.6372 | 0.255 / 0.036 | superseded |
 | nnU-Net default, R3.0, 1000ep, 5-fold | 0.6528 | — | +1.56% over 250ep |
 | **nnU-Net Dice+TopK10, R3.0, 1000ep, 5-fold** | **0.6558** | 0.287 / 0.154 (nn-only) | **BEST single model (MAPPING recipe)** |
+| nnU-Net Dice+TopK10 **+ synth-lesion insertion**, R3.0, 1000ep, 5-fold | 0.6558 | — | recall↑ / F1↓ — no net gain |
 | nnU-Net ResEnc-L, R3.0, 250ep | 0.6389 | — | tie — no gain |
 | **OOD blend: TopK10 nnU-Net(0.6)+synth-plus(0.4) on T1w** | — | **0.3006 / 0.257** | **best T1w-only OOD blend** |
 | OOD blend: 250ep nnU-Net(0.4)+synth-plus(0.6) on T1w | — | 0.2886 / 0.202 | superseded |
@@ -69,6 +70,20 @@ Metrics:
   0.204 and small recall 0.339 → 0.353, but medium/large/huge recall dip
   slightly. This is less attractive than MSL's small-recall jump unless the
   hidden metric strongly rewards tiny lesions.
+- **Synthetic-lesion insertion augmentation (full 5-fold CV): neutral, not a
+  win.** Size-rebalanced synthetic lesion insertion on top of Dice+TopK10, run
+  as a full 1450-case 5-fold CV (not just fold-0). It does what it was built to
+  do at the margin: lesion recall rises 0.7065 → **0.7131** and every size bin
+  ticks up (tiny <10 vox 0.156 → 0.162, small 10-100 0.288 → 0.293, medium
+  0.607 → 0.625). But it is a precision trade — lesion-F1 **drops 0.6735 →
+  0.6647**, surface Dice 0.7679 → 0.7647, HD95 18.10 → 18.19 mm, AVD 4.94 →
+  4.97 mL, and Dice is flat (0.65584 → 0.65580). Same pattern as MSL/DBL:
+  recall-positive, precision-negative, no aggregate gain. Keep plain TopK10 as
+  the primary; revisit only if the hidden metric is lesion-detection-weighted.
+  Report: `baselines/reports/nnunet_synthlesion_topk10_crossval/`; scripts
+  `analysis_nnunet_40_train_synthlesion_topk10.sh` /
+  `analysis_nnunet_41_postprocess_eval_synthlesion_topk10.sh`. Postprocessing
+  again chose none.
 - **Leaderboard is reconciled.** `baselines/compare/leaderboard.*` now includes
   R3.0 250ep/1000ep/TopK10 CV rows, the R3.0 soop row, and the OOD blend rows.
 - **Hidden-generalization scaffolding exists.** Leave-center-out and
@@ -87,29 +102,45 @@ Metrics:
 ## Next levers (priority)
 
 Everything cheap/obvious has now been tried (see "What worked / didn't" above
-and Problem 16 in `problems_and_lessons.md`). Remaining untested ideas, in
-rough priority:
+and Problem 16 in `problems_and_lessons.md`). The recurring blocker is now
+clear: **every small-lesion recall lever we have tried (MSL, DBL, synth-lesion
+insertion) trades precision for recall and leaves Dice flat-to-worse.** So the
+next levers split into (a) ensembling/packaging proven members, and (b) one
+last attempt to convert recall into Dice rather than chasing more recall.
 
-1. **Package the TopK10 OOD blend:** the actual TopK10 blend is complete and is
+Remaining untested ideas, in rough priority:
+
+0. **Decide whether recall even matters for ranking.** Before spending more
+   compute on recall levers, confirm the hidden challenge metric. If it is
+   Dice/overlap-weighted, stop tuning recall and ship TopK10 as-is; if it is
+   lesion-wise detection (F1/recall), then MSL — not synth-lesion — is the
+   strongest recall lever measured so far and should be promoted to a full CV.
+1. **Tune synth-lesion to keep recall without the precision bleed (cheap):**
+   the augmentation works mechanically — the loss is false positives. Re-run a
+   single fold with a lower insertion rate / smaller synthetic lesions, or add a
+   small-component FP penalty at inference (min-size pruning on *added* detections
+   only), and check whether F1 recovers above 0.6735 while holding recall. Only
+   promote to full CV if fold-0 beats plain TopK10 on F1 *and* Dice.
+2. **Package the TopK10 OOD blend:** the actual TopK10 blend is complete and is
    now the best T1w-only OOD result: `baselines/reports/ood_ensemble_topk10/`.
-2. **Self-training / pseudo-labels** on opt-in unlabeled T1w. Scripts
+3. **Self-training / pseudo-labels** on opt-in unlabeled T1w. Scripts
    `analysis_nnunet_26_selftrain_pseudolabels.sh` and
    `analysis_nnunet_27_prepare_selftrain_dataset.sh` build Dataset504 with
    TopK10 pseudo-labels and train-only pseudo cases; `analysis_nnunet_33_train_selftrain.sh`
    trains the self-training model once legitimate unlabeled inputs are staged.
-3. **MAPPING-style softmax ensemble package:** `analysis_nnunet_34_mapping_ensemble_predict.sh`
+4. **MAPPING-style softmax ensemble package:** `analysis_nnunet_34_mapping_ensemble_predict.sh`
    now runs TopK10 + default 1000ep + ResEnc-L + Dataset504 self-training members
    on nnU-Net-format T1w inputs, saves each member's softmax, and averages them via
    `nnunet_helpers/average_softmax_ensemble.py`. It is blocked only on the Dataset504
    checkpoints if self-training has not been run yet.
-4. **True hidden-generalization retraining:** use the generated split plan to
+5. **True hidden-generalization retraining:** use the generated split plan to
    run leave-center-out and leave-chronicity-out jobs for the worst/high-risk
    groups surfaced by the TopK10 grouped report (not every tiny center first).
-5. **MSL+DBL only if we want another small-lesion gamble:** DBL fold-0 is
+6. **MSL+DBL only if we want another small-lesion gamble:** DBL fold-0 is
    complete and only modestly helps tiny/small recall while costing Dice. Try
    `DBL_SCHEME=msl_dbl` only if we decide the small-lesion objective is worth
    another fold-0 experiment.
-6. **Package the final container:** TopK10 5-fold ensemble + any proven
+7. **Package the final container:** TopK10 5-fold ensemble + any proven
    OOD/self-training/DBL additions into the submission container.
 
 ## Git Note
