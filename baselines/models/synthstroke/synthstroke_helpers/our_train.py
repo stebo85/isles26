@@ -244,7 +244,164 @@ class DWIContrastD(mn.transforms.RandomizableTransform, mn.transforms.MapTransfo
         return d
 
 
-def synth_transform(patch, n_classes, device, syn, fade=False, dwi_prob=0.0):
+class LesionContrastD(mn.transforms.RandomizableTransform, mn.transforms.MapTransform):
+    """Bound lesion contrast while preserving random bright/dark polarity.
+
+    cornucopia's GMM synthesis treats the lesion as just another anatomical
+    label, so the lesion can land near the local tissue intensity. This transform
+    fixes that lesion-specific failure mode after synthesis by setting the lesion
+    mean to local_perilesional_mean +/- k * tissue_std, with random sign.
+    """
+
+    def __init__(self, lesion_idx, image_key="image", label_key="label",
+                 prob=0.0, cnr_lo=0.75, cnr_hi=2.0, dilate_iters=3, min_ref_voxels=32,
+                 ctrl=4, texture_std_fraction=(0.05, 0.18)):
+        mn.transforms.RandomizableTransform.__init__(self, prob)
+        mn.transforms.MapTransform.__init__(self, [image_key])
+        if cnr_lo < 0 or cnr_hi < cnr_lo:
+            raise ValueError("cnr_lo/cnr_hi must satisfy 0 <= cnr_lo <= cnr_hi")
+        if dilate_iters < 1:
+            raise ValueError("dilate_iters must be >= 1")
+        if min_ref_voxels < 1:
+            raise ValueError("min_ref_voxels must be >= 1")
+        if ctrl < 1:
+            raise ValueError("ctrl must be >= 1")
+        tex_lo, tex_hi = texture_std_fraction
+        if tex_lo < 0 or tex_hi < tex_lo:
+            raise ValueError("texture_std_fraction must satisfy 0 <= lo <= hi")
+        self.lesion_idx = int(lesion_idx)
+        self.ik = image_key
+        self.lk = label_key
+        self.cnr_lo = float(cnr_lo)
+        self.cnr_hi = float(cnr_hi)
+        self.dilate_iters = int(dilate_iters)
+        self.min_ref_voxels = int(min_ref_voxels)
+        self.ctrl = int(ctrl)
+        self.texture_std_fraction = (float(tex_lo), float(tex_hi))
+
+    def randomize(self, data=None):
+        super().randomize(None)
+        self._sign = 1.0 if self.R.uniform(0.0, 1.0) < 0.5 else -1.0
+        self._cnr = self.R.uniform(self.cnr_lo, self.cnr_hi)
+        self._texture_frac = self.R.uniform(*self.texture_std_fraction)
+
+    def __call__(self, data):
+        d = dict(data)
+        self.randomize(None)
+        if not self._do_transform:
+            return d
+
+        img = d[self.ik]
+        lab = d[self.lk]
+        if not torch.is_tensor(img):
+            img = torch.as_tensor(img)
+        img = img.float()
+        if not torch.is_tensor(lab):
+            lab = torch.as_tensor(lab, device=img.device)
+        elif lab.device != img.device:
+            lab = lab.to(img.device)
+
+        lab_sp = self._spatial_label(lab)
+        les = lab_sp == self.lesion_idx
+        if not bool(les.any()):
+            d[self.ik] = img
+            return d
+
+        tissue = (lab_sp > 0) & ~les
+        if int(tissue.sum().item()) < self.min_ref_voxels:
+            tissue = lab_sp > 0
+        if int(tissue.sum().item()) < self.min_ref_voxels:
+            d[self.ik] = img
+            return d
+
+        ring = self._dilate(les, self.dilate_iters) & ~les & tissue
+        if int(ring.sum().item()) < self.min_ref_voxels:
+            ring = tissue
+
+        bbox = self._bbox_from_mask(les)
+        if bbox is None:
+            d[self.ik] = img
+            return d
+
+        local_slices = tuple(bbox)
+        changed_any = False
+        for ch in range(img.shape[0]):
+            channel = img[ch]
+            finite = torch.isfinite(channel)
+            ref_vals = channel[ring & finite]
+            if ref_vals.numel() < self.min_ref_voxels:
+                ref_vals = channel[tissue & finite]
+            tissue_vals = channel[tissue & finite]
+            if ref_vals.numel() < self.min_ref_voxels or tissue_vals.numel() < self.min_ref_voxels:
+                continue
+
+            ref_mean = ref_vals.mean()
+            tissue_std = tissue_vals.std(unbiased=False)
+            if (not bool(torch.isfinite(ref_mean).item())
+                    or not bool(torch.isfinite(tissue_std).item())
+                    or bool((tissue_std <= 0).item())):
+                continue
+
+            target_mean = ref_mean + float(self._sign * self._cnr) * tissue_std
+            local_shape = channel[local_slices].shape
+            texture = self._low_frequency_texture(local_shape, img.device, img.dtype)
+            les_l = les[local_slices]
+            if bool(les_l.any().item()):
+                texture = texture - texture[les_l].mean()
+            texture = texture * (tissue_std.to(img.dtype) * float(self._texture_frac))
+            target = (target_mean.to(img.dtype) + texture).to(img.dtype)
+
+            channel_local = channel[local_slices].clone()
+            channel_local[les_l] = target[les_l]
+            channel[local_slices] = channel_local
+            changed_any = True
+
+        if changed_any:
+            d[self.ik] = img
+        return d
+
+    @staticmethod
+    def _spatial_label(label):
+        if label.ndim == 4 and label.shape[0] == 1:
+            return label[0]
+        if label.ndim == 3:
+            return label
+        return torch.squeeze(label)
+
+    @staticmethod
+    def _dilate(mask, iterations):
+        out = mask.bool()
+        for _ in range(iterations):
+            out = torch.nn.functional.max_pool3d(out[None, None].float(), 3, stride=1, padding=1)[0, 0] > 0
+        return out
+
+    @staticmethod
+    def _bbox_from_mask(mask):
+        coords = mask.nonzero(as_tuple=False)
+        if coords.numel() == 0:
+            return None
+        lo = torch.clamp(coords.min(dim=0).values, min=0)
+        hi = torch.minimum(coords.max(dim=0).values + 1, torch.as_tensor(mask.shape, device=coords.device))
+        return [slice(int(lo[i].item()), int(hi[i].item())) for i in range(3)]
+
+    def _low_frequency_texture(self, shape, device, dtype):
+        if any(int(s) <= 1 for s in shape):
+            return torch.zeros(shape, device=device, dtype=dtype)
+        coarse_shape = tuple(max(1, min(self.ctrl, int(s))) for s in shape)
+        coarse_np = self.R.normal(0.0, 1.0, size=(1, 1, *coarse_shape))
+        coarse = torch.as_tensor(coarse_np, device=device, dtype=torch.float32)
+        tex = torch.nn.functional.interpolate(
+            coarse, size=tuple(int(s) for s in shape), mode="trilinear", align_corners=False
+        )[0, 0]
+        tex = tex - tex.mean()
+        tex = tex / torch.clamp(tex.std(unbiased=False), min=1e-6)
+        return tex.to(dtype)
+
+
+def synth_transform(patch, n_classes, device, syn, fade=False, dwi_prob=0.0,
+                    lesion_contrast_prob=0.0, lesion_contrast_cnr_lo=0.75,
+                    lesion_contrast_cnr_hi=2.0, lesion_contrast_dilate_iters=3,
+                    lesion_contrast_texture_lo=0.05, lesion_contrast_texture_hi=0.18):
     """Synthetic transform: lesion-focused crop BEFORE synthesis for efficiency.
 
     Critical ordering:
@@ -255,6 +412,7 @@ def synth_transform(patch, n_classes, device, syn, fade=False, dwi_prob=0.0):
     DeleteItemsd (drop lesion key) ->
     SynthFromLabelD (synthesize image from cropped label) ->
     [LesionFadeD if fade] -> [DWIContrastD if dwi_prob>0] ->
+    [LesionContrastD if lesion_contrast_prob>0] ->
     flips -> NormalizeIntensity -> AsDiscrete -> ToTensor
     """
     lesion_idx = n_classes - 1
@@ -281,6 +439,17 @@ def synth_transform(patch, n_classes, device, syn, fade=False, dwi_prob=0.0):
         tfms.append(LesionFadeD(lesion_idx, image_key="image", label_key="label"))
     if dwi_prob and dwi_prob > 0:
         tfms.append(DWIContrastD(lesion_idx, image_key="image", label_key="label", prob=dwi_prob))
+    if lesion_contrast_prob and lesion_contrast_prob > 0:
+        tfms.append(LesionContrastD(
+            lesion_idx,
+            image_key="image",
+            label_key="label",
+            prob=lesion_contrast_prob,
+            cnr_lo=lesion_contrast_cnr_lo,
+            cnr_hi=lesion_contrast_cnr_hi,
+            dilate_iters=lesion_contrast_dilate_iters,
+            texture_std_fraction=(lesion_contrast_texture_lo, lesion_contrast_texture_hi),
+        ))
     tfms += [
         mn.transforms.RandAxisFlipd(keys=["image", "label"], prob=0.8),
         mn.transforms.RandAxisFlipd(keys=["image", "label"], prob=0.8),
@@ -385,6 +554,47 @@ def cycle(loader):
             yield b
 
 
+def _walk_transform_rng(transform, prefix="", seen=None):
+    if transform is None:
+        return
+    if seen is None:
+        seen = set()
+    obj_id = id(transform)
+    if obj_id in seen:
+        return
+    seen.add(obj_id)
+    if hasattr(transform, "R") and hasattr(transform.R, "get_state"):
+        yield prefix or "root", transform
+    for idx, child in enumerate(getattr(transform, "transforms", []) or []):
+        child_prefix = f"{prefix}.{idx}" if prefix else str(idx)
+        yield from _walk_transform_rng(child, child_prefix, seen)
+    cropper = getattr(transform, "cropper", None)
+    if cropper is not None:
+        child_prefix = f"{prefix}.cropper" if prefix else "cropper"
+        yield from _walk_transform_rng(cropper, child_prefix, seen)
+
+
+def transform_rng_states(named_transforms):
+    states = {}
+    for name, transform in named_transforms:
+        for path, t in _walk_transform_rng(transform):
+            states[f"{name}:{path}:{type(t).__name__}"] = t.R.get_state()
+    return states
+
+
+def restore_transform_rng_states(named_transforms, states):
+    if not states:
+        return
+    current = {}
+    for name, transform in named_transforms:
+        for path, t in _walk_transform_rng(transform):
+            current[f"{name}:{path}:{type(t).__name__}"] = t
+    for key, state in states.items():
+        t = current.get(key)
+        if t is not None and hasattr(t.R, "set_state"):
+            t.R.set_state(state)
+
+
 def atomic_torch_save(payload, path):
     path = Path(path)
     tmp = path.with_name(path.name + ".tmp")
@@ -419,13 +629,23 @@ def validation_config(args):
 
 
 def objective_config(args):
-    return {
+    cfg = {
         "loss": args.loss,
         "tversky_alpha": args.tversky_alpha,
         "tversky_beta": args.tversky_beta,
         "lesion_weight": args.lesion_weight,
         "l2_epochs": args.l2,
     }
+    if args.lesion_contrast_prob and args.lesion_contrast_prob > 0:
+        cfg.update({
+            "lesion_contrast_prob": float(args.lesion_contrast_prob),
+            "lesion_contrast_cnr_lo": float(args.lesion_contrast_cnr_lo),
+            "lesion_contrast_cnr_hi": float(args.lesion_contrast_cnr_hi),
+            "lesion_contrast_dilate_iters": int(args.lesion_contrast_dilate_iters),
+            "lesion_contrast_texture_lo": float(args.lesion_contrast_texture_lo),
+            "lesion_contrast_texture_hi": float(args.lesion_contrast_texture_hi),
+        })
+    return cfg
 
 
 def lesion_prediction_from_probs(probs, batch, lesion_idx, args):
@@ -475,6 +695,19 @@ def main():
                          "(restricted-diffusion cue) relative to brain tissue. Synth path only. Default 0.0 = off "
                          "(no change). Independent of --fade; when both fire on the same sample, DWI overrides fade "
                          "on the lesion.")
+    ap.add_argument("--lesion-contrast-prob", type=float, default=0.0,
+                    help="probability of overriding the synthetic lesion GMM draw with a local, signed, "
+                         "bounded-CNR contrast target. Default 0.0 = off / no change.")
+    ap.add_argument("--lesion-contrast-cnr-lo", type=float, default=0.75,
+                    help="minimum absolute lesion-vs-local-tissue CNR for --lesion-contrast-prob")
+    ap.add_argument("--lesion-contrast-cnr-hi", type=float, default=2.0,
+                    help="maximum absolute lesion-vs-local-tissue CNR for --lesion-contrast-prob")
+    ap.add_argument("--lesion-contrast-dilate-iters", type=int, default=3,
+                    help="lesion dilation iterations used to form the local perilesional reference ring")
+    ap.add_argument("--lesion-contrast-texture-lo", type=float, default=0.05,
+                    help="low end of smooth lesion texture amplitude as a fraction of tissue std")
+    ap.add_argument("--lesion-contrast-texture-hi", type=float, default=0.18,
+                    help="high end of smooth lesion texture amplitude as a fraction of tissue std")
     ap.add_argument("--synth-prob", type=float, default=0.33,
                     help="probability of drawing a synthetic batch each step "
                          "(default 0.33 = 67%% real, ATLAS-first); "
@@ -563,6 +796,8 @@ def main():
     outdir.mkdir(parents=True, exist_ok=True)
     print(f"[info] device={device} n_classes={n_classes} mix_real={args.mix_real} "
           f"synth_prob={args.synth_prob:.2f} fade={args.fade} dwi_prob={args.dwi_prob:.2f} "
+          f"lesion_contrast_prob={args.lesion_contrast_prob:.2f} "
+          f"lesion_contrast_cnr=({args.lesion_contrast_cnr_lo:.2f},{args.lesion_contrast_cnr_hi:.2f}) "
           f"real_aug={args.real_aug} "
           f"loss={args.loss} tversky_alpha={args.tversky_alpha:.2f} tversky_beta={args.tversky_beta:.2f} "
           f"epochs={args.epochs} outdir={outdir}")
@@ -590,11 +825,27 @@ def main():
 
     synth_loader = make_loader(
         synth_dicts,
-        synth_transform(args.patch, n_classes, device, syn, fade=args.fade, dwi_prob=args.dwi_prob),
+        synth_transform(
+            args.patch,
+            n_classes,
+            device,
+            syn,
+            fade=args.fade,
+            dwi_prob=args.dwi_prob,
+            lesion_contrast_prob=args.lesion_contrast_prob,
+            lesion_contrast_cnr_lo=args.lesion_contrast_cnr_lo,
+            lesion_contrast_cnr_hi=args.lesion_contrast_cnr_hi,
+            lesion_contrast_dilate_iters=args.lesion_contrast_dilate_iters,
+            lesion_contrast_texture_lo=args.lesion_contrast_texture_lo,
+            lesion_contrast_texture_hi=args.lesion_contrast_texture_hi,
+        ),
         True,
     )
     real_loader = make_loader(real_dicts, real_transform(args.patch, n_classes, device, True, real_aug=args.real_aug), True) if args.mix_real else None
     val_loader = make_loader(val_dicts, val_transform(device), False)
+    train_transform_rng = [("synth", synth_loader.dataset.transform)]
+    if real_loader is not None:
+        train_transform_rng.append(("real", real_loader.dataset.transform))
 
     model = UNet(spatial_dims=3, in_channels=1, out_channels=n_classes,
                  channels=[32, 64, 128, 256, 320, 320], strides=[2, 2, 2, 2, 2],
@@ -675,6 +926,8 @@ def main():
         torch.random.set_rng_state(resume_ckpt["torch_rng_state"].cpu())
     if resume_ckpt and torch.cuda.is_available() and resume_ckpt.get("cuda_rng_state") is not None:
         torch.cuda.set_rng_state_all(resume_ckpt["cuda_rng_state"])
+    if resume_ckpt and "transform_rng_states" in resume_ckpt:
+        restore_transform_rng_states(train_transform_rng, resume_ckpt["transform_rng_states"])
     synth_prob = args.synth_prob
 
     def checkpoint_payload(epoch, metric):
@@ -692,6 +945,7 @@ def main():
             "numpy_rng_state": np.random.get_state(),
             "torch_rng_state": torch.random.get_rng_state(),
             "cuda_rng_state": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None,
+            "transform_rng_states": transform_rng_states(train_transform_rng),
         }
 
     def save_last(epoch, metric):

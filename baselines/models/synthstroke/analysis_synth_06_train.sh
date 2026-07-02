@@ -54,6 +54,8 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 #   Run D recipe: LABELMAPS_DIR=$REPO/work/synthstroke/labelmaps_compact6 N_CLASSES=6 FADE=1 SYNTH_PROB=0.33
 #   REAL_AUG=1 enables real-image intensity augmentation (bias field + noise + gamma + intensity shift); default off.
 #   DWI_PROB=0.5 enables DWI-aware lesion-hyperintensity synth augmentation; default unset/off.
+#   LESION_CONTRAST_PROB=1 enables local signed bounded-CNR lesion recoloring;
+#   tune with LESION_CONTRAST_CNR_LO/HI (defaults 0.75/2.0). Default unset/off.
 # Validation checkpoint-selection knobs default to the deployment defaults used
 # by analysis_synth_07_predict_eval.sh when no tuned operating point exists.
 NAME="${SYNTH_TRAIN_NAME:-isles26_fs_synth_mixreal}"
@@ -71,6 +73,15 @@ FADE_FLAG=""
 case "${FADE:-}" in 1|true|TRUE|yes|YES) FADE_FLAG="--fade";; esac
 DWI_FLAG=""
 if [[ -n "${DWI_PROB:-}" ]]; then DWI_FLAG="--dwi-prob $DWI_PROB"; fi
+LESION_CONTRAST_FLAG=""
+if [[ -n "${LESION_CONTRAST_PROB:-}" ]]; then
+  LESION_CONTRAST_FLAG="--lesion-contrast-prob $LESION_CONTRAST_PROB \
+--lesion-contrast-cnr-lo ${LESION_CONTRAST_CNR_LO:-0.75} \
+--lesion-contrast-cnr-hi ${LESION_CONTRAST_CNR_HI:-2.0} \
+--lesion-contrast-dilate-iters ${LESION_CONTRAST_DILATE_ITERS:-3} \
+--lesion-contrast-texture-lo ${LESION_CONTRAST_TEXTURE_LO:-0.05} \
+--lesion-contrast-texture-hi ${LESION_CONTRAST_TEXTURE_HI:-0.18}"
+fi
 REAL_AUG_FLAG=""
 case "${REAL_AUG:-}" in 1|true|TRUE|yes|YES) REAL_AUG_FLAG="--real-aug";; esac
 VAL_BINARIZE="${VAL_BINARIZE:-threshold}"
@@ -97,7 +108,7 @@ python "$REPO/baselines/models/synthstroke/synthstroke_helpers/our_train.py" \
   --val-binarize "$VAL_BINARIZE" \
   --val-threshold "$VAL_THRESHOLD" \
   --val-min-cc-voxels "$VAL_MIN_CC_VOXELS" \
-  $FADE_FLAG $DWI_FLAG $REAL_AUG_FLAG \
+  $FADE_FLAG $DWI_FLAG $LESION_CONTRAST_FLAG $REAL_AUG_FLAG \
   $VAL_BRAIN_MASK_FLAG \
   --device auto &
 PY_PID=$!
