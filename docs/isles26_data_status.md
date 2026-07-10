@@ -42,6 +42,29 @@ The challenge overview still describes the broader challenge corpus as roughly
 2,000 T1w scans across 60+ centers; for model development in this repo, the
 public labeled training release is the 1453-session ATLAS R3.0 set.
 
+## Metadata Variables
+
+Each case ships a per-case metadata JSON. The stroke-timing variables interact
+as follows:
+
+- **`DAYS_POST_STROKE`** — the primary, most informative timing variable
+  (continuous days between stroke onset and scan). Preferred whenever available,
+  but for some cases it could not be retrieved and is missing.
+- **`CHRONICITY`** — a secondary, coarse fallback. It is provided as a partial
+  substitute *because `DAYS_POST_STROKE` was not retrievable for some cases*;
+  when known it gives a rough sense of lesion maturation. It is effectively a
+  single-valued flag: **`1` = chronic (180+ days post-stroke)** or **`NaN` = not
+  available**. There is no explicit "acute/subacute" code — that state is only
+  inferrable from `DAYS_POST_STROKE`, not from `CHRONICITY`. So `CHRONICITY`
+  alone can confirm "this case is 180+ days out" but cannot, on its own, place a
+  case in the acute/subacute window.
+
+Practical consequence for stratification: a case's chronicity bin is derived by
+combining both fields — `DAYS_POST_STROKE` when present, else `CHRONICITY==1`
+implies `chronic_≥180d`, and everything remaining stays `unknown`. See
+[atlas_r21_training_data_characterization.md](atlas_r21_training_data_characterization.md)
+for the exact DPS-sanitization rule and the observed bin counts.
+
 ## Local Layout
 
 Raw release:
