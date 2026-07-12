@@ -37,6 +37,38 @@ sbatch -p owners --dependency=afterok:$TRAIN analysis_nnunet_03_predict_soop_ben
 (installs it into the venv), `run_atlas_eval.py` (ATLAS-val evaluator mirroring
 `eval/run_eval.py`), `requirements_nnunet.txt` (pinned deps).
 
+## Corrected center-grouped TopK10 run
+
+The challenge candidate uses an independent immutable nnU-Net lineage,
+`Dataset507_ATLASR30_CORRECTED`. It converts the corrected ATLAS R3.0 inventory
+from source, preprocesses all 1,452 usable cases, and trains five
+`nnUNetTrainerDiceTopK10Loss` folds. Validation centers are disjoint from each
+fold's training centers. The allocator balances validation case count, stroke
+phase, lesion-size bins, and lesion burden without splitting a center.
+
+The frozen assignment and balance audit are in
+`baselines/reports/nnunet_center_grouped_splits/`. SOOP is one indivisible
+168-case center, so its unknown-phase cases necessarily occur together in one
+validation fold; the report makes that constraint explicit.
+
+| Script | Stage | Resources |
+|---|---|---|
+| `analysis_nnunet_42_prepare_center_grouped.sh` | fresh Dataset507 conversion, planning, preprocessing, split and lineage verification | CPU |
+| `analysis_nnunet_43_train_center_topk10.sh` | five-fold corrected TopK10 training and validation | 1 GPU per fold |
+| `analysis_nnunet_44_postprocess_center_topk10.sh` | consolidated cross-validation and postprocessing selection | CPU |
+| `analysis_nnunet_45_eval_center_topk10_oof.sh` | rich raw and postprocessed out-of-fold evaluation | CPU |
+| `analysis_nnunet_46_submit_center_topk10.sh` | submit the dependency chain above | login |
+
+Submit the complete chain with:
+
+```bash
+bash baselines/models/nnunet_atlas_t1w/analysis_nnunet_46_submit_center_topk10.sh
+```
+
+Preparation refuses to reuse or overwrite another Dataset507 directory. Each
+training task re-verifies the dataset certificate and refuses checkpoints whose
+training lineage does not match the frozen data, split, trainer, and script.
+
 ## Results (2026-05-20)
 
 | Eval set | n | Dice mean/median | Lesion F1 | Surface Dice 3mm | HD95 mm |

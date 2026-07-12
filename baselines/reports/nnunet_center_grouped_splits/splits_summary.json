@@ -1,0 +1,2412 @@
+{
+  "schema_version": 1,
+  "algorithm": "center_grouped_v1",
+  "manifest": "/scratch/users/sciget/isles26challenge/work/nnunet/nnUNet_raw/Dataset502_ATLASR30/conversion_manifest.csv",
+  "manifest_sha256": "fe6b935782d15dce3ce03b62c3ad1cefa87e08d53936e67863252a8138265aea",
+  "assignment_input_sha256": "168683caeabdb8bb7000b431972e4493f5b030e28ed223c4d839bb5d0b390492",
+  "assignment_input_fields": [
+    "nnunet_id",
+    "site",
+    "chronicity_bin",
+    "size_bin",
+    "lesion_volume_ml"
+  ],
+  "seed": 42,
+  "folds": 5,
+  "restarts": 256,
+  "group_field": "site",
+  "balance_fields": [
+    "nnunet_id",
+    "chronicity_bin",
+    "size_bin",
+    "lesion_volume_ml"
+  ],
+  "objective": {
+    "value": 0.49072415072450504,
+    "weights": {
+      "case_count": 4.0,
+      "chronicity": 3.0,
+      "size_bin": 3.0,
+      "volume_known_count": 0.5,
+      "volume_sum_ml": 0.5,
+      "volume_log1p_sum": 1.0
+    },
+    "unweighted_breakdown": {
+      "case_count": 0.002142006086408791,
+      "chronicity": 0.15104449830101327,
+      "size_bin": 0.00684112435857564,
+      "volume_known_count": 0.002142006086408791,
+      "volume_sum_ml": 0.004364946061683783,
+      "volume_log1p_sum": 0.005245782326056822
+    }
+  },
+  "validation": {
+    "passed": true,
+    "n_cases": 1452,
+    "n_centers": 55,
+    "n_folds": 5,
+    "each_case_in_validation_exactly_once": true,
+    "train_val_disjoint_in_every_fold": true,
+    "train_is_validation_complement_in_every_fold": true,
+    "each_center_in_one_validation_fold": true,
+    "center_exclusive_train_val_in_every_fold": true
+  },
+  "global": {
+    "n_cases": 1452,
+    "n_centers": 55,
+    "by_chronicity": {
+      "ge180d": 649,
+      "lt180d": 433,
+      "unknown": 370
+    },
+    "by_size_bin": {
+      "large_10-50mL": 342,
+      "med_1-10mL": 524,
+      "small_0.1-1mL": 274,
+      "vlarge_>=50mL": 264,
+      "vsmall_<0.1mL": 48
+    },
+    "lesion_volume": {
+      "n_known": 1452,
+      "n_missing": 0,
+      "sum_ml": 40634.0026,
+      "mean_ml": 27.984850275482092,
+      "median_ml": 5.38655,
+      "log1p_sum": 3172.521381643085
+    }
+  },
+  "target_per_fold": {
+    "case_count": 290.4,
+    "by_chronicity": {
+      "ge180d": 129.8,
+      "lt180d": 86.6,
+      "unknown": 74.0
+    },
+    "by_size_bin": {
+      "large_10-50mL": 68.4,
+      "med_1-10mL": 104.8,
+      "small_0.1-1mL": 54.8,
+      "vlarge_>=50mL": 52.8,
+      "vsmall_<0.1mL": 9.6
+    },
+    "volume_known_count": 290.4,
+    "volume_sum_ml": 8126.80052,
+    "volume_log1p_sum": 634.504276328617
+  },
+  "imbalance": {
+    "case_count": {
+      "values_by_fold": [
+        281,
+        284,
+        287,
+        283,
+        317
+      ],
+      "target": 290.4,
+      "min": 281,
+      "max": 317,
+      "range": 36,
+      "coefficient_of_variation": 0.046281811615458524
+    },
+    "chronicity": {
+      "ge180d": {
+        "values_by_fold": [
+          145,
+          145,
+          140,
+          138,
+          81
+        ],
+        "target": 129.8,
+        "min": 81,
+        "max": 145,
+        "range": 64,
+        "coefficient_of_variation": 0.18917753342948904
+      },
+      "lt180d": {
+        "values_by_fold": [
+          90,
+          89,
+          91,
+          95,
+          68
+        ],
+        "target": 86.6,
+        "min": 68,
+        "max": 95,
+        "range": 27,
+        "coefficient_of_variation": 0.10993653797147257
+      },
+      "unknown": {
+        "values_by_fold": [
+          46,
+          50,
+          56,
+          50,
+          168
+        ],
+        "target": 74.0,
+        "min": 46,
+        "max": 168,
+        "range": 122,
+        "coefficient_of_variation": 0.63659980628918
+      }
+    },
+    "size_bin": {
+      "large_10-50mL": {
+        "values_by_fold": [
+          63,
+          67,
+          64,
+          65,
+          83
+        ],
+        "target": 68.4,
+        "min": 63,
+        "max": 83,
+        "range": 20,
+        "coefficient_of_variation": 0.108463374216324
+      },
+      "med_1-10mL": {
+        "values_by_fold": [
+          100,
+          101,
+          105,
+          106,
+          112
+        ],
+        "target": 104.8,
+        "min": 100,
+        "max": 112,
+        "range": 12,
+        "coefficient_of_variation": 0.04066273998599717
+      },
+      "small_0.1-1mL": {
+        "values_by_fold": [
+          56,
+          58,
+          52,
+          53,
+          55
+        ],
+        "target": 54.8,
+        "min": 52,
+        "max": 58,
+        "range": 6,
+        "coefficient_of_variation": 0.03896743887602669
+      },
+      "vlarge_>=50mL": {
+        "values_by_fold": [
+          53,
+          49,
+          54,
+          50,
+          58
+        ],
+        "target": 52.8,
+        "min": 49,
+        "max": 58,
+        "range": 9,
+        "coefficient_of_variation": 0.06036885397920162
+      },
+      "vsmall_<0.1mL": {
+        "values_by_fold": [
+          9,
+          9,
+          12,
+          9,
+          9
+        ],
+        "target": 9.6,
+        "min": 9,
+        "max": 12,
+        "range": 3,
+        "coefficient_of_variation": 0.125
+      }
+    },
+    "volume_known_count": {
+      "values_by_fold": [
+        281,
+        284,
+        287,
+        283,
+        317
+      ],
+      "target": 290.4,
+      "min": 281,
+      "max": 317,
+      "range": 36,
+      "coefficient_of_variation": 0.046281811615458524
+    },
+    "volume_sum_ml": {
+      "values_by_fold": [
+        8797.6488,
+        7331.7234,
+        7721.375,
+        8226.4156,
+        8556.8398
+      ],
+      "target": 8126.80052,
+      "min": 7331.7234,
+      "max": 8797.6488,
+      "range": 1465.925400000001,
+      "coefficient_of_variation": 0.06606773843324239
+    },
+    "volume_log1p_sum": {
+      "values_by_fold": [
+        610.1724716718221,
+        599.8308999282086,
+        616.3373376593211,
+        620.8526056451593,
+        725.3280667385739
+      ],
+      "target": 634.504276328617,
+      "min": 599.8308999282086,
+      "max": 725.3280667385739,
+      "range": 125.49716681036523,
+      "coefficient_of_variation": 0.07242777316787369
+    }
+  },
+  "fold_summary": [
+    {
+      "fold": 0,
+      "n_train": 1171,
+      "n_val": 281,
+      "n_train_centers": 42,
+      "n_val_centers": 13,
+      "train_centers": [
+        "R001",
+        "R002",
+        "R003",
+        "R004",
+        "R005",
+        "R008",
+        "R009",
+        "R011",
+        "R015",
+        "R017",
+        "R019",
+        "R020",
+        "R023",
+        "R024",
+        "R027",
+        "R028",
+        "R030",
+        "R031",
+        "R032",
+        "R034",
+        "R038",
+        "R039",
+        "R041",
+        "R042",
+        "R044",
+        "R045",
+        "R046",
+        "R048",
+        "R049",
+        "R050",
+        "R053",
+        "R057",
+        "R058",
+        "R059",
+        "R061",
+        "R062",
+        "R063",
+        "R064",
+        "R067",
+        "R069",
+        "R071",
+        "SOOP"
+      ],
+      "val_centers": [
+        "R010",
+        "R014",
+        "R016",
+        "R018",
+        "R029",
+        "R033",
+        "R035",
+        "R040",
+        "R047",
+        "R052",
+        "R056",
+        "R065",
+        "R070"
+      ],
+      "train_by_chronicity": {
+        "ge180d": 504,
+        "lt180d": 343,
+        "unknown": 324
+      },
+      "val_by_chronicity": {
+        "ge180d": 145,
+        "lt180d": 90,
+        "unknown": 46
+      },
+      "train_by_size_bin": {
+        "large_10-50mL": 279,
+        "med_1-10mL": 424,
+        "small_0.1-1mL": 218,
+        "vlarge_>=50mL": 211,
+        "vsmall_<0.1mL": 39
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 63,
+        "med_1-10mL": 100,
+        "small_0.1-1mL": 56,
+        "vlarge_>=50mL": 53,
+        "vsmall_<0.1mL": 9
+      },
+      "train_lesion_volume": {
+        "n_known": 1171,
+        "n_missing": 0,
+        "sum_ml": 31836.3538,
+        "mean_ml": 27.18732177625961,
+        "median_ml": 5.4738,
+        "log1p_sum": 2562.348909971263
+      },
+      "val_lesion_volume": {
+        "n_known": 281,
+        "n_missing": 0,
+        "sum_ml": 8797.6488,
+        "mean_ml": 31.308358718861214,
+        "median_ml": 4.378,
+        "log1p_sum": 610.1724716718221
+      },
+      "deviation_from_target": {
+        "case_count": {
+          "actual": 281,
+          "target": 290.4,
+          "difference": -9.399999999999977,
+          "relative_difference": -0.032369146005509566
+        },
+        "chronicity": {
+          "ge180d": {
+            "actual": 145,
+            "target": 129.8,
+            "difference": 15.199999999999989,
+            "relative_difference": 0.11710323574730344
+          },
+          "lt180d": {
+            "actual": 90,
+            "target": 86.6,
+            "difference": 3.4000000000000057,
+            "relative_difference": 0.03926096997690538
+          },
+          "unknown": {
+            "actual": 46,
+            "target": 74.0,
+            "difference": -28.0,
+            "relative_difference": -0.3783783783783784
+          }
+        },
+        "size_bin": {
+          "large_10-50mL": {
+            "actual": 63,
+            "target": 68.4,
+            "difference": -5.400000000000006,
+            "relative_difference": -0.07894736842105271
+          },
+          "med_1-10mL": {
+            "actual": 100,
+            "target": 104.8,
+            "difference": -4.799999999999997,
+            "relative_difference": -0.045801526717557224
+          },
+          "small_0.1-1mL": {
+            "actual": 56,
+            "target": 54.8,
+            "difference": 1.2000000000000028,
+            "relative_difference": 0.021897810218978155
+          },
+          "vlarge_>=50mL": {
+            "actual": 53,
+            "target": 52.8,
+            "difference": 0.20000000000000284,
+            "relative_difference": 0.0037878787878788418
+          },
+          "vsmall_<0.1mL": {
+            "actual": 9,
+            "target": 9.6,
+            "difference": -0.5999999999999996,
+            "relative_difference": -0.062499999999999965
+          }
+        },
+        "volume_known_count": {
+          "actual": 281,
+          "target": 290.4,
+          "difference": -9.399999999999977,
+          "relative_difference": -0.032369146005509566
+        },
+        "volume_sum_ml": {
+          "actual": 8797.6488,
+          "target": 8126.80052,
+          "difference": 670.8482800000011,
+          "relative_difference": 0.0825476493915469
+        },
+        "volume_log1p_sum": {
+          "actual": 610.1724716718221,
+          "target": 634.504276328617,
+          "difference": -24.33180465679493,
+          "relative_difference": -0.0383477394314569
+        }
+      }
+    },
+    {
+      "fold": 1,
+      "n_train": 1168,
+      "n_val": 284,
+      "n_train_centers": 45,
+      "n_val_centers": 10,
+      "train_centers": [
+        "R001",
+        "R002",
+        "R003",
+        "R004",
+        "R005",
+        "R008",
+        "R009",
+        "R010",
+        "R014",
+        "R015",
+        "R016",
+        "R017",
+        "R018",
+        "R019",
+        "R023",
+        "R028",
+        "R029",
+        "R031",
+        "R032",
+        "R033",
+        "R034",
+        "R035",
+        "R039",
+        "R040",
+        "R041",
+        "R044",
+        "R045",
+        "R046",
+        "R047",
+        "R048",
+        "R050",
+        "R052",
+        "R053",
+        "R056",
+        "R057",
+        "R058",
+        "R059",
+        "R061",
+        "R062",
+        "R063",
+        "R065",
+        "R069",
+        "R070",
+        "R071",
+        "SOOP"
+      ],
+      "val_centers": [
+        "R011",
+        "R020",
+        "R024",
+        "R027",
+        "R030",
+        "R038",
+        "R042",
+        "R049",
+        "R064",
+        "R067"
+      ],
+      "train_by_chronicity": {
+        "ge180d": 504,
+        "lt180d": 344,
+        "unknown": 320
+      },
+      "val_by_chronicity": {
+        "ge180d": 145,
+        "lt180d": 89,
+        "unknown": 50
+      },
+      "train_by_size_bin": {
+        "large_10-50mL": 275,
+        "med_1-10mL": 423,
+        "small_0.1-1mL": 216,
+        "vlarge_>=50mL": 215,
+        "vsmall_<0.1mL": 39
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 67,
+        "med_1-10mL": 101,
+        "small_0.1-1mL": 58,
+        "vlarge_>=50mL": 49,
+        "vsmall_<0.1mL": 9
+      },
+      "train_lesion_volume": {
+        "n_known": 1168,
+        "n_missing": 0,
+        "sum_ml": 33302.2792,
+        "mean_ml": 28.51222534246575,
+        "median_ml": 5.4818999999999996,
+        "log1p_sum": 2572.6904817148766
+      },
+      "val_lesion_volume": {
+        "n_known": 284,
+        "n_missing": 0,
+        "sum_ml": 7331.7234,
+        "mean_ml": 25.815927464788732,
+        "median_ml": 4.39235,
+        "log1p_sum": 599.8308999282086
+      },
+      "deviation_from_target": {
+        "case_count": {
+          "actual": 284,
+          "target": 290.4,
+          "difference": -6.399999999999977,
+          "relative_difference": -0.022038567493112872
+        },
+        "chronicity": {
+          "ge180d": {
+            "actual": 145,
+            "target": 129.8,
+            "difference": 15.199999999999989,
+            "relative_difference": 0.11710323574730344
+          },
+          "lt180d": {
+            "actual": 89,
+            "target": 86.6,
+            "difference": 2.4000000000000057,
+            "relative_difference": 0.027713625866050876
+          },
+          "unknown": {
+            "actual": 50,
+            "target": 74.0,
+            "difference": -24.0,
+            "relative_difference": -0.32432432432432434
+          }
+        },
+        "size_bin": {
+          "large_10-50mL": {
+            "actual": 67,
+            "target": 68.4,
+            "difference": -1.4000000000000057,
+            "relative_difference": -0.020467836257310024
+          },
+          "med_1-10mL": {
+            "actual": 101,
+            "target": 104.8,
+            "difference": -3.799999999999997,
+            "relative_difference": -0.0362595419847328
+          },
+          "small_0.1-1mL": {
+            "actual": 58,
+            "target": 54.8,
+            "difference": 3.200000000000003,
+            "relative_difference": 0.05839416058394166
+          },
+          "vlarge_>=50mL": {
+            "actual": 49,
+            "target": 52.8,
+            "difference": -3.799999999999997,
+            "relative_difference": -0.07196969696969692
+          },
+          "vsmall_<0.1mL": {
+            "actual": 9,
+            "target": 9.6,
+            "difference": -0.5999999999999996,
+            "relative_difference": -0.062499999999999965
+          }
+        },
+        "volume_known_count": {
+          "actual": 284,
+          "target": 290.4,
+          "difference": -6.399999999999977,
+          "relative_difference": -0.022038567493112872
+        },
+        "volume_sum_ml": {
+          "actual": 7331.7234,
+          "target": 8126.80052,
+          "difference": -795.0771199999999,
+          "relative_difference": -0.097833965290931
+        },
+        "volume_log1p_sum": {
+          "actual": 599.8308999282086,
+          "target": 634.504276328617,
+          "difference": -34.673376400408415,
+          "relative_difference": -0.054646403017228326
+        }
+      }
+    },
+    {
+      "fold": 2,
+      "n_train": 1165,
+      "n_val": 287,
+      "n_train_centers": 45,
+      "n_val_centers": 10,
+      "train_centers": [
+        "R001",
+        "R005",
+        "R008",
+        "R010",
+        "R011",
+        "R014",
+        "R016",
+        "R017",
+        "R018",
+        "R020",
+        "R024",
+        "R027",
+        "R028",
+        "R029",
+        "R030",
+        "R031",
+        "R033",
+        "R034",
+        "R035",
+        "R038",
+        "R039",
+        "R040",
+        "R041",
+        "R042",
+        "R044",
+        "R045",
+        "R046",
+        "R047",
+        "R048",
+        "R049",
+        "R050",
+        "R052",
+        "R053",
+        "R056",
+        "R057",
+        "R058",
+        "R059",
+        "R063",
+        "R064",
+        "R065",
+        "R067",
+        "R069",
+        "R070",
+        "R071",
+        "SOOP"
+      ],
+      "val_centers": [
+        "R002",
+        "R003",
+        "R004",
+        "R009",
+        "R015",
+        "R019",
+        "R023",
+        "R032",
+        "R061",
+        "R062"
+      ],
+      "train_by_chronicity": {
+        "ge180d": 509,
+        "lt180d": 342,
+        "unknown": 314
+      },
+      "val_by_chronicity": {
+        "ge180d": 140,
+        "lt180d": 91,
+        "unknown": 56
+      },
+      "train_by_size_bin": {
+        "large_10-50mL": 278,
+        "med_1-10mL": 419,
+        "small_0.1-1mL": 222,
+        "vlarge_>=50mL": 210,
+        "vsmall_<0.1mL": 36
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 64,
+        "med_1-10mL": 105,
+        "small_0.1-1mL": 52,
+        "vlarge_>=50mL": 54,
+        "vsmall_<0.1mL": 12
+      },
+      "train_lesion_volume": {
+        "n_known": 1165,
+        "n_missing": 0,
+        "sum_ml": 32912.6276,
+        "mean_ml": 28.251182489270388,
+        "median_ml": 5.333,
+        "log1p_sum": 2556.184043983764
+      },
+      "val_lesion_volume": {
+        "n_known": 287,
+        "n_missing": 0,
+        "sum_ml": 7721.375,
+        "mean_ml": 26.903745644599304,
+        "median_ml": 5.5081,
+        "log1p_sum": 616.3373376593211
+      },
+      "deviation_from_target": {
+        "case_count": {
+          "actual": 287,
+          "target": 290.4,
+          "difference": -3.3999999999999773,
+          "relative_difference": -0.011707988980716176
+        },
+        "chronicity": {
+          "ge180d": {
+            "actual": 140,
+            "target": 129.8,
+            "difference": 10.199999999999989,
+            "relative_difference": 0.07858243451463781
+          },
+          "lt180d": {
+            "actual": 91,
+            "target": 86.6,
+            "difference": 4.400000000000006,
+            "relative_difference": 0.05080831408775988
+          },
+          "unknown": {
+            "actual": 56,
+            "target": 74.0,
+            "difference": -18.0,
+            "relative_difference": -0.24324324324324326
+          }
+        },
+        "size_bin": {
+          "large_10-50mL": {
+            "actual": 64,
+            "target": 68.4,
+            "difference": -4.400000000000006,
+            "relative_difference": -0.06432748538011704
+          },
+          "med_1-10mL": {
+            "actual": 105,
+            "target": 104.8,
+            "difference": 0.20000000000000284,
+            "relative_difference": 0.0019083969465649127
+          },
+          "small_0.1-1mL": {
+            "actual": 52,
+            "target": 54.8,
+            "difference": -2.799999999999997,
+            "relative_difference": -0.05109489051094886
+          },
+          "vlarge_>=50mL": {
+            "actual": 54,
+            "target": 52.8,
+            "difference": 1.2000000000000028,
+            "relative_difference": 0.022727272727272783
+          },
+          "vsmall_<0.1mL": {
+            "actual": 12,
+            "target": 9.6,
+            "difference": 2.4000000000000004,
+            "relative_difference": 0.25000000000000006
+          }
+        },
+        "volume_known_count": {
+          "actual": 287,
+          "target": 290.4,
+          "difference": -3.3999999999999773,
+          "relative_difference": -0.011707988980716176
+        },
+        "volume_sum_ml": {
+          "actual": 7721.375,
+          "target": 8126.80052,
+          "difference": -405.4255199999998,
+          "relative_difference": -0.04988747035223153
+        },
+        "volume_log1p_sum": {
+          "actual": 616.3373376593211,
+          "target": 634.504276328617,
+          "difference": -18.166938669295973,
+          "relative_difference": -0.028631704067329417
+        }
+      }
+    },
+    {
+      "fold": 3,
+      "n_train": 1169,
+      "n_val": 283,
+      "n_train_centers": 43,
+      "n_val_centers": 12,
+      "train_centers": [
+        "R001",
+        "R002",
+        "R003",
+        "R004",
+        "R009",
+        "R010",
+        "R011",
+        "R014",
+        "R015",
+        "R016",
+        "R018",
+        "R019",
+        "R020",
+        "R023",
+        "R024",
+        "R027",
+        "R029",
+        "R030",
+        "R032",
+        "R033",
+        "R034",
+        "R035",
+        "R038",
+        "R039",
+        "R040",
+        "R041",
+        "R042",
+        "R045",
+        "R046",
+        "R047",
+        "R049",
+        "R052",
+        "R056",
+        "R058",
+        "R061",
+        "R062",
+        "R063",
+        "R064",
+        "R065",
+        "R067",
+        "R070",
+        "R071",
+        "SOOP"
+      ],
+      "val_centers": [
+        "R005",
+        "R008",
+        "R017",
+        "R028",
+        "R031",
+        "R044",
+        "R048",
+        "R050",
+        "R053",
+        "R057",
+        "R059",
+        "R069"
+      ],
+      "train_by_chronicity": {
+        "ge180d": 511,
+        "lt180d": 338,
+        "unknown": 320
+      },
+      "val_by_chronicity": {
+        "ge180d": 138,
+        "lt180d": 95,
+        "unknown": 50
+      },
+      "train_by_size_bin": {
+        "large_10-50mL": 277,
+        "med_1-10mL": 418,
+        "small_0.1-1mL": 221,
+        "vlarge_>=50mL": 214,
+        "vsmall_<0.1mL": 39
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 65,
+        "med_1-10mL": 106,
+        "small_0.1-1mL": 53,
+        "vlarge_>=50mL": 50,
+        "vsmall_<0.1mL": 9
+      },
+      "train_lesion_volume": {
+        "n_known": 1169,
+        "n_missing": 0,
+        "sum_ml": 32407.587,
+        "mean_ml": 27.722486740804104,
+        "median_ml": 5.3878,
+        "log1p_sum": 2551.668775997926
+      },
+      "val_lesion_volume": {
+        "n_known": 283,
+        "n_missing": 0,
+        "sum_ml": 8226.4156,
+        "mean_ml": 29.068606360424027,
+        "median_ml": 5.3853,
+        "log1p_sum": 620.8526056451593
+      },
+      "deviation_from_target": {
+        "case_count": {
+          "actual": 283,
+          "target": 290.4,
+          "difference": -7.399999999999977,
+          "relative_difference": -0.02548209366391177
+        },
+        "chronicity": {
+          "ge180d": {
+            "actual": 138,
+            "target": 129.8,
+            "difference": 8.199999999999989,
+            "relative_difference": 0.06317411402157155
+          },
+          "lt180d": {
+            "actual": 95,
+            "target": 86.6,
+            "difference": 8.400000000000006,
+            "relative_difference": 0.0969976905311779
+          },
+          "unknown": {
+            "actual": 50,
+            "target": 74.0,
+            "difference": -24.0,
+            "relative_difference": -0.32432432432432434
+          }
+        },
+        "size_bin": {
+          "large_10-50mL": {
+            "actual": 65,
+            "target": 68.4,
+            "difference": -3.4000000000000057,
+            "relative_difference": -0.04970760233918137
+          },
+          "med_1-10mL": {
+            "actual": 106,
+            "target": 104.8,
+            "difference": 1.2000000000000028,
+            "relative_difference": 0.01145038167938934
+          },
+          "small_0.1-1mL": {
+            "actual": 53,
+            "target": 54.8,
+            "difference": -1.7999999999999972,
+            "relative_difference": -0.032846715328467106
+          },
+          "vlarge_>=50mL": {
+            "actual": 50,
+            "target": 52.8,
+            "difference": -2.799999999999997,
+            "relative_difference": -0.053030303030302976
+          },
+          "vsmall_<0.1mL": {
+            "actual": 9,
+            "target": 9.6,
+            "difference": -0.5999999999999996,
+            "relative_difference": -0.062499999999999965
+          }
+        },
+        "volume_known_count": {
+          "actual": 283,
+          "target": 290.4,
+          "difference": -7.399999999999977,
+          "relative_difference": -0.02548209366391177
+        },
+        "volume_sum_ml": {
+          "actual": 8226.4156,
+          "target": 8126.80052,
+          "difference": 99.61508000000049,
+          "relative_difference": 0.012257601223857835
+        },
+        "volume_log1p_sum": {
+          "actual": 620.8526056451593,
+          "target": 634.504276328617,
+          "difference": -13.651670683457723,
+          "relative_difference": -0.02151549042734484
+        }
+      }
+    },
+    {
+      "fold": 4,
+      "n_train": 1135,
+      "n_val": 317,
+      "n_train_centers": 45,
+      "n_val_centers": 10,
+      "train_centers": [
+        "R002",
+        "R003",
+        "R004",
+        "R005",
+        "R008",
+        "R009",
+        "R010",
+        "R011",
+        "R014",
+        "R015",
+        "R016",
+        "R017",
+        "R018",
+        "R019",
+        "R020",
+        "R023",
+        "R024",
+        "R027",
+        "R028",
+        "R029",
+        "R030",
+        "R031",
+        "R032",
+        "R033",
+        "R035",
+        "R038",
+        "R040",
+        "R042",
+        "R044",
+        "R047",
+        "R048",
+        "R049",
+        "R050",
+        "R052",
+        "R053",
+        "R056",
+        "R057",
+        "R059",
+        "R061",
+        "R062",
+        "R064",
+        "R065",
+        "R067",
+        "R069",
+        "R070"
+      ],
+      "val_centers": [
+        "R001",
+        "R034",
+        "R039",
+        "R041",
+        "R045",
+        "R046",
+        "R058",
+        "R063",
+        "R071",
+        "SOOP"
+      ],
+      "train_by_chronicity": {
+        "ge180d": 568,
+        "lt180d": 365,
+        "unknown": 202
+      },
+      "val_by_chronicity": {
+        "ge180d": 81,
+        "lt180d": 68,
+        "unknown": 168
+      },
+      "train_by_size_bin": {
+        "large_10-50mL": 259,
+        "med_1-10mL": 412,
+        "small_0.1-1mL": 219,
+        "vlarge_>=50mL": 206,
+        "vsmall_<0.1mL": 39
+      },
+      "val_by_size_bin": {
+        "large_10-50mL": 83,
+        "med_1-10mL": 112,
+        "small_0.1-1mL": 55,
+        "vlarge_>=50mL": 58,
+        "vsmall_<0.1mL": 9
+      },
+      "train_lesion_volume": {
+        "n_known": 1135,
+        "n_missing": 0,
+        "sum_ml": 32077.1628,
+        "mean_ml": 28.261817444933918,
+        "median_ml": 4.9228,
+        "log1p_sum": 2447.193314904511
+      },
+      "val_lesion_volume": {
+        "n_known": 317,
+        "n_missing": 0,
+        "sum_ml": 8556.8398,
+        "mean_ml": 26.99318548895899,
+        "median_ml": 7.235,
+        "log1p_sum": 725.3280667385739
+      },
+      "deviation_from_target": {
+        "case_count": {
+          "actual": 317,
+          "target": 290.4,
+          "difference": 26.600000000000023,
+          "relative_difference": 0.09159779614325077
+        },
+        "chronicity": {
+          "ge180d": {
+            "actual": 81,
+            "target": 129.8,
+            "difference": -48.80000000000001,
+            "relative_difference": -0.3759630200308167
+          },
+          "lt180d": {
+            "actual": 68,
+            "target": 86.6,
+            "difference": -18.599999999999994,
+            "relative_difference": -0.2147806004618937
+          },
+          "unknown": {
+            "actual": 168,
+            "target": 74.0,
+            "difference": 94.0,
+            "relative_difference": 1.2702702702702702
+          }
+        },
+        "size_bin": {
+          "large_10-50mL": {
+            "actual": 83,
+            "target": 68.4,
+            "difference": 14.599999999999994,
+            "relative_difference": 0.21345029239766072
+          },
+          "med_1-10mL": {
+            "actual": 112,
+            "target": 104.8,
+            "difference": 7.200000000000003,
+            "relative_difference": 0.06870229007633591
+          },
+          "small_0.1-1mL": {
+            "actual": 55,
+            "target": 54.8,
+            "difference": 0.20000000000000284,
+            "relative_difference": 0.0036496350364964023
+          },
+          "vlarge_>=50mL": {
+            "actual": 58,
+            "target": 52.8,
+            "difference": 5.200000000000003,
+            "relative_difference": 0.09848484848484855
+          },
+          "vsmall_<0.1mL": {
+            "actual": 9,
+            "target": 9.6,
+            "difference": -0.5999999999999996,
+            "relative_difference": -0.062499999999999965
+          }
+        },
+        "volume_known_count": {
+          "actual": 317,
+          "target": 290.4,
+          "difference": 26.600000000000023,
+          "relative_difference": 0.09159779614325077
+        },
+        "volume_sum_ml": {
+          "actual": 8556.8398,
+          "target": 8126.80052,
+          "difference": 430.03927999999996,
+          "relative_difference": 0.05291618502775801
+        },
+        "volume_log1p_sum": {
+          "actual": 725.3280667385739,
+          "target": 634.504276328617,
+          "difference": 90.82379040995681,
+          "relative_difference": 0.14314133694335912
+        }
+      }
+    }
+  ],
+  "center_assignments": [
+    {
+      "center": "R010",
+      "fold": 0,
+      "n_cases": 26,
+      "by_chronicity": {
+        "unknown": 26
+      },
+      "by_size_bin": {
+        "large_10-50mL": 1,
+        "med_1-10mL": 10,
+        "small_0.1-1mL": 14,
+        "vsmall_<0.1mL": 1
+      },
+      "lesion_volume": {
+        "n_known": 26,
+        "n_missing": 0,
+        "sum_ml": 45.297,
+        "mean_ml": 1.7421923076923076,
+        "median_ml": 0.683,
+        "log1p_sum": 19.855648664913385
+      }
+    },
+    {
+      "center": "R014",
+      "fold": 0,
+      "n_cases": 9,
+      "by_chronicity": {
+        "unknown": 9
+      },
+      "by_size_bin": {
+        "small_0.1-1mL": 5,
+        "vsmall_<0.1mL": 4
+      },
+      "lesion_volume": {
+        "n_known": 9,
+        "n_missing": 0,
+        "sum_ml": 1.398,
+        "mean_ml": 0.15533333333333332,
+        "median_ml": 0.125,
+        "log1p_sum": 1.2549125759519002
+      }
+    },
+    {
+      "center": "R016",
+      "fold": 0,
+      "n_cases": 1,
+      "by_chronicity": {
+        "unknown": 1
+      },
+      "by_size_bin": {
+        "small_0.1-1mL": 1
+      },
+      "lesion_volume": {
+        "n_known": 1,
+        "n_missing": 0,
+        "sum_ml": 0.904,
+        "mean_ml": 0.904,
+        "median_ml": 0.904,
+        "log1p_sum": 0.6439569363691736
+      }
+    },
+    {
+      "center": "R018",
+      "fold": 0,
+      "n_cases": 11,
+      "by_chronicity": {
+        "ge180d": 11
+      },
+      "by_size_bin": {
+        "large_10-50mL": 3,
+        "med_1-10mL": 2,
+        "small_0.1-1mL": 1,
+        "vlarge_>=50mL": 5
+      },
+      "lesion_volume": {
+        "n_known": 11,
+        "n_missing": 0,
+        "sum_ml": 467.2491,
+        "mean_ml": 42.47719090909091,
+        "median_ml": 41.404,
+        "log1p_sum": 34.14444368821001
+      }
+    },
+    {
+      "center": "R029",
+      "fold": 0,
+      "n_cases": 10,
+      "by_chronicity": {
+        "ge180d": 9,
+        "lt180d": 1
+      },
+      "by_size_bin": {
+        "large_10-50mL": 3,
+        "med_1-10mL": 5,
+        "small_0.1-1mL": 1,
+        "vlarge_>=50mL": 1
+      },
+      "lesion_volume": {
+        "n_known": 10,
+        "n_missing": 0,
+        "sum_ml": 226.994,
+        "mean_ml": 22.6994,
+        "median_ml": 3.857,
+        "log1p_sum": 22.193667888398227
+      }
+    },
+    {
+      "center": "R033",
+      "fold": 0,
+      "n_cases": 2,
+      "by_chronicity": {
+        "lt180d": 2
+      },
+      "by_size_bin": {
+        "large_10-50mL": 2
+      },
+      "lesion_volume": {
+        "n_known": 2,
+        "n_missing": 0,
+        "sum_ml": 31.93,
+        "mean_ml": 15.965,
+        "median_ml": 15.965,
+        "log1p_sum": 5.561718481761504
+      }
+    },
+    {
+      "center": "R035",
+      "fold": 0,
+      "n_cases": 15,
+      "by_chronicity": {
+        "ge180d": 15
+      },
+      "by_size_bin": {
+        "large_10-50mL": 4,
+        "med_1-10mL": 6,
+        "small_0.1-1mL": 2,
+        "vlarge_>=50mL": 2,
+        "vsmall_<0.1mL": 1
+      },
+      "lesion_volume": {
+        "n_known": 15,
+        "n_missing": 0,
+        "sum_ml": 306.77070000000003,
+        "mean_ml": 20.451380000000004,
+        "median_ml": 2.9306,
+        "log1p_sum": 29.943783934785632
+      }
+    },
+    {
+      "center": "R040",
+      "fold": 0,
+      "n_cases": 86,
+      "by_chronicity": {
+        "ge180d": 18,
+        "lt180d": 67,
+        "unknown": 1
+      },
+      "by_size_bin": {
+        "large_10-50mL": 20,
+        "med_1-10mL": 29,
+        "small_0.1-1mL": 10,
+        "vlarge_>=50mL": 26,
+        "vsmall_<0.1mL": 1
+      },
+      "lesion_volume": {
+        "n_known": 86,
+        "n_missing": 0,
+        "sum_ml": 4576.0122,
+        "mean_ml": 53.20944418604651,
+        "median_ml": 16.10055,
+        "log1p_sum": 238.29332398375035
+      }
+    },
+    {
+      "center": "R047",
+      "fold": 0,
+      "n_cases": 48,
+      "by_chronicity": {
+        "ge180d": 46,
+        "lt180d": 2
+      },
+      "by_size_bin": {
+        "large_10-50mL": 16,
+        "med_1-10mL": 18,
+        "small_0.1-1mL": 5,
+        "vlarge_>=50mL": 9
+      },
+      "lesion_volume": {
+        "n_known": 48,
+        "n_missing": 0,
+        "sum_ml": 1544.9038,
+        "mean_ml": 32.185495833333334,
+        "median_ml": 10.58035,
+        "log1p_sum": 120.76308081191644
+      }
+    },
+    {
+      "center": "R052",
+      "fold": 0,
+      "n_cases": 32,
+      "by_chronicity": {
+        "ge180d": 32
+      },
+      "by_size_bin": {
+        "large_10-50mL": 7,
+        "med_1-10mL": 11,
+        "small_0.1-1mL": 7,
+        "vlarge_>=50mL": 7
+      },
+      "lesion_volume": {
+        "n_known": 32,
+        "n_missing": 0,
+        "sum_ml": 998.163,
+        "mean_ml": 31.19259375,
+        "median_ml": 6.018,
+        "log1p_sum": 73.11894959089088
+      }
+    },
+    {
+      "center": "R056",
+      "fold": 0,
+      "n_cases": 15,
+      "by_chronicity": {
+        "ge180d": 14,
+        "unknown": 1
+      },
+      "by_size_bin": {
+        "large_10-50mL": 3,
+        "med_1-10mL": 7,
+        "small_0.1-1mL": 3,
+        "vlarge_>=50mL": 2
+      },
+      "lesion_volume": {
+        "n_known": 15,
+        "n_missing": 0,
+        "sum_ml": 417.8116,
+        "mean_ml": 27.854106666666667,
+        "median_ml": 2.2351,
+        "log1p_sum": 30.681522166724005
+      }
+    },
+    {
+      "center": "R065",
+      "fold": 0,
+      "n_cases": 18,
+      "by_chronicity": {
+        "lt180d": 12,
+        "unknown": 6
+      },
+      "by_size_bin": {
+        "large_10-50mL": 1,
+        "med_1-10mL": 8,
+        "small_0.1-1mL": 6,
+        "vlarge_>=50mL": 1,
+        "vsmall_<0.1mL": 2
+      },
+      "lesion_volume": {
+        "n_known": 18,
+        "n_missing": 0,
+        "sum_ml": 98.1054,
+        "mean_ml": 5.4503,
+        "median_ml": 1.47425,
+        "log1p_sum": 19.122199895976497
+      }
+    },
+    {
+      "center": "R070",
+      "fold": 0,
+      "n_cases": 8,
+      "by_chronicity": {
+        "lt180d": 6,
+        "unknown": 2
+      },
+      "by_size_bin": {
+        "large_10-50mL": 3,
+        "med_1-10mL": 4,
+        "small_0.1-1mL": 1
+      },
+      "lesion_volume": {
+        "n_known": 8,
+        "n_missing": 0,
+        "sum_ml": 82.11,
+        "mean_ml": 10.26375,
+        "median_ml": 3.941,
+        "log1p_sum": 14.59526305217415
+      }
+    },
+    {
+      "center": "R011",
+      "fold": 1,
+      "n_cases": 29,
+      "by_chronicity": {
+        "unknown": 29
+      },
+      "by_size_bin": {
+        "med_1-10mL": 13,
+        "small_0.1-1mL": 11,
+        "vsmall_<0.1mL": 5
+      },
+      "lesion_volume": {
+        "n_known": 29,
+        "n_missing": 0,
+        "sum_ml": 39.675,
+        "mean_ml": 1.368103448275862,
+        "median_ml": 0.904,
+        "log1p_sum": 20.843943782587697
+      }
+    },
+    {
+      "center": "R020",
+      "fold": 1,
+      "n_cases": 1,
+      "by_chronicity": {
+        "lt180d": 1
+      },
+      "by_size_bin": {
+        "med_1-10mL": 1
+      },
+      "lesion_volume": {
+        "n_known": 1,
+        "n_missing": 0,
+        "sum_ml": 5.0735,
+        "mean_ml": 5.0735,
+        "median_ml": 5.0735,
+        "log1p_sum": 1.8039350451581884
+      }
+    },
+    {
+      "center": "R024",
+      "fold": 1,
+      "n_cases": 21,
+      "by_chronicity": {
+        "ge180d": 21
+      },
+      "by_size_bin": {
+        "large_10-50mL": 4,
+        "med_1-10mL": 6,
+        "small_0.1-1mL": 6,
+        "vlarge_>=50mL": 4,
+        "vsmall_<0.1mL": 1
+      },
+      "lesion_volume": {
+        "n_known": 21,
+        "n_missing": 0,
+        "sum_ml": 439.6119,
+        "mean_ml": 20.9339,
+        "median_ml": 3.708,
+        "log1p_sum": 42.315584707799175
+      }
+    },
+    {
+      "center": "R027",
+      "fold": 1,
+      "n_cases": 32,
+      "by_chronicity": {
+        "ge180d": 29,
+        "unknown": 3
+      },
+      "by_size_bin": {
+        "large_10-50mL": 6,
+        "med_1-10mL": 11,
+        "small_0.1-1mL": 5,
+        "vlarge_>=50mL": 10
+      },
+      "lesion_volume": {
+        "n_known": 32,
+        "n_missing": 0,
+        "sum_ml": 1335.5589,
+        "mean_ml": 41.736215625,
+        "median_ml": 11.163499999999999,
+        "log1p_sum": 82.38067185380619
+      }
+    },
+    {
+      "center": "R030",
+      "fold": 1,
+      "n_cases": 15,
+      "by_chronicity": {
+        "ge180d": 14,
+        "lt180d": 1
+      },
+      "by_size_bin": {
+        "large_10-50mL": 3,
+        "med_1-10mL": 2,
+        "small_0.1-1mL": 3,
+        "vlarge_>=50mL": 7
+      },
+      "lesion_volume": {
+        "n_known": 15,
+        "n_missing": 0,
+        "sum_ml": 787.246,
+        "mean_ml": 52.483066666666666,
+        "median_ml": 17.124,
+        "log1p_sum": 43.61757128392016
+      }
+    },
+    {
+      "center": "R038",
+      "fold": 1,
+      "n_cases": 94,
+      "by_chronicity": {
+        "ge180d": 18,
+        "lt180d": 76
+      },
+      "by_size_bin": {
+        "large_10-50mL": 27,
+        "med_1-10mL": 36,
+        "small_0.1-1mL": 16,
+        "vlarge_>=50mL": 15
+      },
+      "lesion_volume": {
+        "n_known": 94,
+        "n_missing": 0,
+        "sum_ml": 2276.1329,
+        "mean_ml": 24.214179787234045,
+        "median_ml": 4.6075,
+        "log1p_sum": 204.02587685203986
+      }
+    },
+    {
+      "center": "R042",
+      "fold": 1,
+      "n_cases": 35,
+      "by_chronicity": {
+        "ge180d": 34,
+        "lt180d": 1
+      },
+      "by_size_bin": {
+        "large_10-50mL": 11,
+        "med_1-10mL": 11,
+        "small_0.1-1mL": 4,
+        "vlarge_>=50mL": 8,
+        "vsmall_<0.1mL": 1
+      },
+      "lesion_volume": {
+        "n_known": 35,
+        "n_missing": 0,
+        "sum_ml": 1303.8688,
+        "mean_ml": 37.253394285714286,
+        "median_ml": 11.294,
+        "log1p_sum": 92.07068851845455
+      }
+    },
+    {
+      "center": "R049",
+      "fold": 1,
+      "n_cases": 24,
+      "by_chronicity": {
+        "lt180d": 6,
+        "unknown": 18
+      },
+      "by_size_bin": {
+        "large_10-50mL": 3,
+        "med_1-10mL": 7,
+        "small_0.1-1mL": 12,
+        "vsmall_<0.1mL": 2
+      },
+      "lesion_volume": {
+        "n_known": 24,
+        "n_missing": 0,
+        "sum_ml": 119.3123,
+        "mean_ml": 4.971345833333333,
+        "median_ml": 0.8269,
+        "log1p_sum": 23.416956377954882
+      }
+    },
+    {
+      "center": "R064",
+      "fold": 1,
+      "n_cases": 6,
+      "by_chronicity": {
+        "ge180d": 6
+      },
+      "by_size_bin": {
+        "large_10-50mL": 1,
+        "med_1-10mL": 3,
+        "vlarge_>=50mL": 2
+      },
+      "lesion_volume": {
+        "n_known": 6,
+        "n_missing": 0,
+        "sum_ml": 212.708,
+        "mean_ml": 35.45133333333333,
+        "median_ml": 12.166,
+        "log1p_sum": 15.368314876312521
+      }
+    },
+    {
+      "center": "R067",
+      "fold": 1,
+      "n_cases": 27,
+      "by_chronicity": {
+        "ge180d": 23,
+        "lt180d": 4
+      },
+      "by_size_bin": {
+        "large_10-50mL": 12,
+        "med_1-10mL": 11,
+        "small_0.1-1mL": 1,
+        "vlarge_>=50mL": 3
+      },
+      "lesion_volume": {
+        "n_known": 27,
+        "n_missing": 0,
+        "sum_ml": 812.5361,
+        "mean_ml": 30.09392962962963,
+        "median_ml": 14.9488,
+        "log1p_sum": 73.9873566301754
+      }
+    },
+    {
+      "center": "R002",
+      "fold": 2,
+      "n_cases": 12,
+      "by_chronicity": {
+        "ge180d": 12
+      },
+      "by_size_bin": {
+        "large_10-50mL": 6,
+        "med_1-10mL": 5,
+        "vlarge_>=50mL": 1
+      },
+      "lesion_volume": {
+        "n_known": 12,
+        "n_missing": 0,
+        "sum_ml": 326.613,
+        "mean_ml": 27.21775,
+        "median_ml": 21.338,
+        "log1p_sum": 33.904367188438385
+      }
+    },
+    {
+      "center": "R003",
+      "fold": 2,
+      "n_cases": 15,
+      "by_chronicity": {
+        "ge180d": 15
+      },
+      "by_size_bin": {
+        "large_10-50mL": 4,
+        "med_1-10mL": 5,
+        "small_0.1-1mL": 2,
+        "vlarge_>=50mL": 4
+      },
+      "lesion_volume": {
+        "n_known": 15,
+        "n_missing": 0,
+        "sum_ml": 627.8639999999999,
+        "mean_ml": 41.8576,
+        "median_ml": 15.334,
+        "log1p_sum": 41.6129818927345
+      }
+    },
+    {
+      "center": "R004",
+      "fold": 2,
+      "n_cases": 37,
+      "by_chronicity": {
+        "ge180d": 20,
+        "unknown": 17
+      },
+      "by_size_bin": {
+        "large_10-50mL": 17,
+        "med_1-10mL": 7,
+        "vlarge_>=50mL": 13
+      },
+      "lesion_volume": {
+        "n_known": 37,
+        "n_missing": 0,
+        "sum_ml": 1903.0111,
+        "mean_ml": 51.43273243243243,
+        "median_ml": 40.006,
+        "log1p_sum": 127.10157300945204
+      }
+    },
+    {
+      "center": "R009",
+      "fold": 2,
+      "n_cases": 111,
+      "by_chronicity": {
+        "ge180d": 61,
+        "lt180d": 50
+      },
+      "by_size_bin": {
+        "large_10-50mL": 13,
+        "med_1-10mL": 46,
+        "small_0.1-1mL": 35,
+        "vlarge_>=50mL": 5,
+        "vsmall_<0.1mL": 12
+      },
+      "lesion_volume": {
+        "n_known": 111,
+        "n_missing": 0,
+        "sum_ml": 771.7806,
+        "mean_ml": 6.952978378378379,
+        "median_ml": 1.1069,
+        "log1p_sum": 131.87059794527568
+      }
+    },
+    {
+      "center": "R015",
+      "fold": 2,
+      "n_cases": 23,
+      "by_chronicity": {
+        "unknown": 23
+      },
+      "by_size_bin": {
+        "large_10-50mL": 7,
+        "med_1-10mL": 5,
+        "small_0.1-1mL": 4,
+        "vlarge_>=50mL": 7
+      },
+      "lesion_volume": {
+        "n_known": 23,
+        "n_missing": 0,
+        "sum_ml": 817.9981,
+        "mean_ml": 35.565134782608695,
+        "median_ml": 19.1065,
+        "log1p_sum": 60.101174722928256
+      }
+    },
+    {
+      "center": "R019",
+      "fold": 2,
+      "n_cases": 14,
+      "by_chronicity": {
+        "lt180d": 13,
+        "unknown": 1
+      },
+      "by_size_bin": {
+        "large_10-50mL": 3,
+        "med_1-10mL": 6,
+        "small_0.1-1mL": 4,
+        "vlarge_>=50mL": 1
+      },
+      "lesion_volume": {
+        "n_known": 14,
+        "n_missing": 0,
+        "sum_ml": 118.4406,
+        "mean_ml": 8.460042857142858,
+        "median_ml": 2.4395,
+        "log1p_sum": 20.700332361938464
+      }
+    },
+    {
+      "center": "R023",
+      "fold": 2,
+      "n_cases": 15,
+      "by_chronicity": {
+        "unknown": 15
+      },
+      "by_size_bin": {
+        "large_10-50mL": 2,
+        "med_1-10mL": 6,
+        "vlarge_>=50mL": 7
+      },
+      "lesion_volume": {
+        "n_known": 15,
+        "n_missing": 0,
+        "sum_ml": 913.5286,
+        "mean_ml": 60.90190666666667,
+        "median_ml": 49.8172,
+        "log1p_sum": 47.54470931875165
+      }
+    },
+    {
+      "center": "R032",
+      "fold": 2,
+      "n_cases": 37,
+      "by_chronicity": {
+        "ge180d": 9,
+        "lt180d": 28
+      },
+      "by_size_bin": {
+        "large_10-50mL": 4,
+        "med_1-10mL": 19,
+        "small_0.1-1mL": 1,
+        "vlarge_>=50mL": 13
+      },
+      "lesion_volume": {
+        "n_known": 37,
+        "n_missing": 0,
+        "sum_ml": 1804.238,
+        "mean_ml": 48.76318918918919,
+        "median_ml": 9.7163,
+        "log1p_sum": 103.91649302141786
+      }
+    },
+    {
+      "center": "R061",
+      "fold": 2,
+      "n_cases": 15,
+      "by_chronicity": {
+        "ge180d": 15
+      },
+      "by_size_bin": {
+        "large_10-50mL": 6,
+        "med_1-10mL": 5,
+        "small_0.1-1mL": 3,
+        "vlarge_>=50mL": 1
+      },
+      "lesion_volume": {
+        "n_known": 15,
+        "n_missing": 0,
+        "sum_ml": 237.986,
+        "mean_ml": 15.865733333333333,
+        "median_ml": 9.171,
+        "log1p_sum": 32.36730758799682
+      }
+    },
+    {
+      "center": "R062",
+      "fold": 2,
+      "n_cases": 8,
+      "by_chronicity": {
+        "ge180d": 8
+      },
+      "by_size_bin": {
+        "large_10-50mL": 2,
+        "med_1-10mL": 1,
+        "small_0.1-1mL": 3,
+        "vlarge_>=50mL": 2
+      },
+      "lesion_volume": {
+        "n_known": 8,
+        "n_missing": 0,
+        "sum_ml": 199.91500000000002,
+        "mean_ml": 24.989375000000003,
+        "median_ml": 11.9975,
+        "log1p_sum": 17.217800610387446
+      }
+    },
+    {
+      "center": "R005",
+      "fold": 3,
+      "n_cases": 37,
+      "by_chronicity": {
+        "ge180d": 35,
+        "lt180d": 1,
+        "unknown": 1
+      },
+      "by_size_bin": {
+        "large_10-50mL": 5,
+        "med_1-10mL": 10,
+        "small_0.1-1mL": 13,
+        "vlarge_>=50mL": 8,
+        "vsmall_<0.1mL": 1
+      },
+      "lesion_volume": {
+        "n_known": 37,
+        "n_missing": 0,
+        "sum_ml": 1231.27,
+        "mean_ml": 33.277567567567566,
+        "median_ml": 1.62,
+        "log1p_sum": 70.29591292055302
+      }
+    },
+    {
+      "center": "R008",
+      "fold": 3,
+      "n_cases": 7,
+      "by_chronicity": {
+        "lt180d": 6,
+        "unknown": 1
+      },
+      "by_size_bin": {
+        "med_1-10mL": 3,
+        "small_0.1-1mL": 3,
+        "vsmall_<0.1mL": 1
+      },
+      "lesion_volume": {
+        "n_known": 7,
+        "n_missing": 0,
+        "sum_ml": 9.2068,
+        "mean_ml": 1.3152571428571427,
+        "median_ml": 0.9759,
+        "log1p_sum": 4.87871200757542
+      }
+    },
+    {
+      "center": "R017",
+      "fold": 3,
+      "n_cases": 16,
+      "by_chronicity": {
+        "ge180d": 15,
+        "unknown": 1
+      },
+      "by_size_bin": {
+        "large_10-50mL": 5,
+        "med_1-10mL": 4,
+        "small_0.1-1mL": 3,
+        "vlarge_>=50mL": 4
+      },
+      "lesion_volume": {
+        "n_known": 16,
+        "n_missing": 0,
+        "sum_ml": 471.5176,
+        "mean_ml": 29.46985,
+        "median_ml": 16.92905,
+        "log1p_sum": 39.392777961089635
+      }
+    },
+    {
+      "center": "R028",
+      "fold": 3,
+      "n_cases": 26,
+      "by_chronicity": {
+        "ge180d": 25,
+        "lt180d": 1
+      },
+      "by_size_bin": {
+        "large_10-50mL": 8,
+        "med_1-10mL": 11,
+        "small_0.1-1mL": 3,
+        "vlarge_>=50mL": 4
+      },
+      "lesion_volume": {
+        "n_known": 26,
+        "n_missing": 0,
+        "sum_ml": 635.038,
+        "mean_ml": 24.42453846153846,
+        "median_ml": 4.936999999999999,
+        "log1p_sum": 60.160621645139926
+      }
+    },
+    {
+      "center": "R031",
+      "fold": 3,
+      "n_cases": 37,
+      "by_chronicity": {
+        "ge180d": 1,
+        "lt180d": 36
+      },
+      "by_size_bin": {
+        "large_10-50mL": 10,
+        "med_1-10mL": 18,
+        "small_0.1-1mL": 3,
+        "vlarge_>=50mL": 6
+      },
+      "lesion_volume": {
+        "n_known": 37,
+        "n_missing": 0,
+        "sum_ml": 1072.484,
+        "mean_ml": 28.98605405405405,
+        "median_ml": 6.734,
+        "log1p_sum": 90.8287124081485
+      }
+    },
+    {
+      "center": "R044",
+      "fold": 3,
+      "n_cases": 4,
+      "by_chronicity": {
+        "ge180d": 4
+      },
+      "by_size_bin": {
+        "large_10-50mL": 1,
+        "med_1-10mL": 2,
+        "vlarge_>=50mL": 1
+      },
+      "lesion_volume": {
+        "n_known": 4,
+        "n_missing": 0,
+        "sum_ml": 157.807,
+        "mean_ml": 39.45175,
+        "median_ml": 18.6465,
+        "log1p_sum": 10.72289570933053
+      }
+    },
+    {
+      "center": "R048",
+      "fold": 3,
+      "n_cases": 44,
+      "by_chronicity": {
+        "ge180d": 44
+      },
+      "by_size_bin": {
+        "large_10-50mL": 10,
+        "med_1-10mL": 17,
+        "small_0.1-1mL": 8,
+        "vlarge_>=50mL": 9
+      },
+      "lesion_volume": {
+        "n_known": 44,
+        "n_missing": 0,
+        "sum_ml": 1669.287,
+        "mean_ml": 37.93834090909091,
+        "median_ml": 8.4665,
+        "log1p_sum": 108.96579922140147
+      }
+    },
+    {
+      "center": "R050",
+      "fold": 3,
+      "n_cases": 15,
+      "by_chronicity": {
+        "lt180d": 6,
+        "unknown": 9
+      },
+      "by_size_bin": {
+        "large_10-50mL": 1,
+        "med_1-10mL": 1,
+        "small_0.1-1mL": 10,
+        "vsmall_<0.1mL": 3
+      },
+      "lesion_volume": {
+        "n_known": 15,
+        "n_missing": 0,
+        "sum_ml": 26.724899999999998,
+        "mean_ml": 1.7816599999999998,
+        "median_ml": 0.2579,
+        "log1p_sum": 7.51260697598411
+      }
+    },
+    {
+      "center": "R053",
+      "fold": 3,
+      "n_cases": 5,
+      "by_chronicity": {
+        "lt180d": 5
+      },
+      "by_size_bin": {
+        "med_1-10mL": 2,
+        "small_0.1-1mL": 1,
+        "vsmall_<0.1mL": 2
+      },
+      "lesion_volume": {
+        "n_known": 5,
+        "n_missing": 0,
+        "sum_ml": 4.229,
+        "mean_ml": 0.8458,
+        "median_ml": 0.13,
+        "log1p_sum": 2.326904202240727
+      }
+    },
+    {
+      "center": "R057",
+      "fold": 3,
+      "n_cases": 14,
+      "by_chronicity": {
+        "ge180d": 14
+      },
+      "by_size_bin": {
+        "large_10-50mL": 5,
+        "med_1-10mL": 3,
+        "small_0.1-1mL": 1,
+        "vlarge_>=50mL": 4,
+        "vsmall_<0.1mL": 1
+      },
+      "lesion_volume": {
+        "n_known": 14,
+        "n_missing": 0,
+        "sum_ml": 574.147,
+        "mean_ml": 41.0105,
+        "median_ml": 23.456,
+        "log1p_sum": 39.10101853496854
+      }
+    },
+    {
+      "center": "R059",
+      "fold": 3,
+      "n_cases": 38,
+      "by_chronicity": {
+        "unknown": 38
+      },
+      "by_size_bin": {
+        "large_10-50mL": 7,
+        "med_1-10mL": 16,
+        "small_0.1-1mL": 6,
+        "vlarge_>=50mL": 8,
+        "vsmall_<0.1mL": 1
+      },
+      "lesion_volume": {
+        "n_known": 38,
+        "n_missing": 0,
+        "sum_ml": 1482.15,
+        "mean_ml": 39.00394736842105,
+        "median_ml": 5.968,
+        "log1p_sum": 90.15499915444106
+      }
+    },
+    {
+      "center": "R069",
+      "fold": 3,
+      "n_cases": 40,
+      "by_chronicity": {
+        "lt180d": 40
+      },
+      "by_size_bin": {
+        "large_10-50mL": 13,
+        "med_1-10mL": 19,
+        "small_0.1-1mL": 2,
+        "vlarge_>=50mL": 6
+      },
+      "lesion_volume": {
+        "n_known": 40,
+        "n_missing": 0,
+        "sum_ml": 892.5543,
+        "mean_ml": 22.3138575,
+        "median_ml": 9.10065,
+        "log1p_sum": 96.51164490428633
+      }
+    },
+    {
+      "center": "R001",
+      "fold": 4,
+      "n_cases": 39,
+      "by_chronicity": {
+        "ge180d": 39
+      },
+      "by_size_bin": {
+        "large_10-50mL": 8,
+        "med_1-10mL": 18,
+        "small_0.1-1mL": 6,
+        "vlarge_>=50mL": 5,
+        "vsmall_<0.1mL": 2
+      },
+      "lesion_volume": {
+        "n_known": 39,
+        "n_missing": 0,
+        "sum_ml": 623.286,
+        "mean_ml": 15.981692307692306,
+        "median_ml": 4.148,
+        "log1p_sum": 73.848086895995
+      }
+    },
+    {
+      "center": "R034",
+      "fold": 4,
+      "n_cases": 24,
+      "by_chronicity": {
+        "ge180d": 24
+      },
+      "by_size_bin": {
+        "large_10-50mL": 5,
+        "med_1-10mL": 9,
+        "small_0.1-1mL": 7,
+        "vlarge_>=50mL": 2,
+        "vsmall_<0.1mL": 1
+      },
+      "lesion_volume": {
+        "n_known": 24,
+        "n_missing": 0,
+        "sum_ml": 336.463,
+        "mean_ml": 14.019291666666668,
+        "median_ml": 2.37,
+        "log1p_sum": 40.601186085564756
+      }
+    },
+    {
+      "center": "R039",
+      "fold": 4,
+      "n_cases": 4,
+      "by_chronicity": {
+        "lt180d": 4
+      },
+      "by_size_bin": {
+        "med_1-10mL": 1,
+        "small_0.1-1mL": 2,
+        "vlarge_>=50mL": 1
+      },
+      "lesion_volume": {
+        "n_known": 4,
+        "n_missing": 0,
+        "sum_ml": 187.1183,
+        "mean_ml": 46.779575,
+        "median_ml": 1.47145,
+        "log1p_sum": 7.375461635133105
+      }
+    },
+    {
+      "center": "R041",
+      "fold": 4,
+      "n_cases": 3,
+      "by_chronicity": {
+        "lt180d": 3
+      },
+      "by_size_bin": {
+        "small_0.1-1mL": 2,
+        "vsmall_<0.1mL": 1
+      },
+      "lesion_volume": {
+        "n_known": 3,
+        "n_missing": 0,
+        "sum_ml": 0.692,
+        "mean_ml": 0.23066666666666666,
+        "median_ml": 0.194,
+        "log1p_sum": 0.581439900065438
+      }
+    },
+    {
+      "center": "R045",
+      "fold": 4,
+      "n_cases": 4,
+      "by_chronicity": {
+        "ge180d": 4
+      },
+      "by_size_bin": {
+        "med_1-10mL": 3,
+        "small_0.1-1mL": 1
+      },
+      "lesion_volume": {
+        "n_known": 4,
+        "n_missing": 0,
+        "sum_ml": 22.4456,
+        "mean_ml": 5.6114,
+        "median_ml": 6.1645,
+        "log1p_sum": 6.4298860812623
+      }
+    },
+    {
+      "center": "R046",
+      "fold": 4,
+      "n_cases": 13,
+      "by_chronicity": {
+        "ge180d": 13
+      },
+      "by_size_bin": {
+        "large_10-50mL": 1,
+        "med_1-10mL": 8,
+        "small_0.1-1mL": 2,
+        "vlarge_>=50mL": 2
+      },
+      "lesion_volume": {
+        "n_known": 13,
+        "n_missing": 0,
+        "sum_ml": 263.0889,
+        "mean_ml": 20.237607692307694,
+        "median_ml": 3.3684,
+        "log1p_sum": 24.09778560911729
+      }
+    },
+    {
+      "center": "R058",
+      "fold": 4,
+      "n_cases": 35,
+      "by_chronicity": {
+        "lt180d": 35
+      },
+      "by_size_bin": {
+        "large_10-50mL": 10,
+        "med_1-10mL": 11,
+        "small_0.1-1mL": 11,
+        "vlarge_>=50mL": 2,
+        "vsmall_<0.1mL": 1
+      },
+      "lesion_volume": {
+        "n_known": 35,
+        "n_missing": 0,
+        "sum_ml": 394.2573,
+        "mean_ml": 11.264494285714285,
+        "median_ml": 3.7443,
+        "log1p_sum": 59.664428268379226
+      }
+    },
+    {
+      "center": "R063",
+      "fold": 4,
+      "n_cases": 1,
+      "by_chronicity": {
+        "ge180d": 1
+      },
+      "by_size_bin": {
+        "med_1-10mL": 1
+      },
+      "lesion_volume": {
+        "n_known": 1,
+        "n_missing": 0,
+        "sum_ml": 4.0363,
+        "mean_ml": 4.0363,
+        "median_ml": 4.0363,
+        "log1p_sum": 1.616671685495979
+      }
+    },
+    {
+      "center": "R071",
+      "fold": 4,
+      "n_cases": 26,
+      "by_chronicity": {
+        "lt180d": 26
+      },
+      "by_size_bin": {
+        "large_10-50mL": 3,
+        "med_1-10mL": 17,
+        "small_0.1-1mL": 6
+      },
+      "lesion_volume": {
+        "n_known": 26,
+        "n_missing": 0,
+        "sum_ml": 148.905,
+        "mean_ml": 5.727115384615384,
+        "median_ml": 2.51,
+        "log1p_sum": 38.24575556178734
+      }
+    },
+    {
+      "center": "SOOP",
+      "fold": 4,
+      "n_cases": 168,
+      "by_chronicity": {
+        "unknown": 168
+      },
+      "by_size_bin": {
+        "large_10-50mL": 56,
+        "med_1-10mL": 44,
+        "small_0.1-1mL": 18,
+        "vlarge_>=50mL": 46,
+        "vsmall_<0.1mL": 4
+      },
+      "lesion_volume": {
+        "n_known": 168,
+        "n_missing": 0,
+        "sum_ml": 6576.5474,
+        "mean_ml": 39.14611547619048,
+        "median_ml": 22.261499999999998,
+        "log1p_sum": 472.86736501577343
+      }
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "control_artifacts": {
+    "dataset_fingerprint_sha256": "21752e775221fd22c1775d8d59c5966b1a769576247240d628803e348585534f",
+    "manifest_semantic_sha256": "2228d536aaf076f9f6e5f0630a3cfcf2c86dfcdeb97b8ad76a340771c79f99e8",
+    "nnunet_plans_sha256": "bb3f6576791da03e5a5208ebf4a7269d2b0bb49373856aec707755b1bde993c7",
+    "preprocessed_dataset_json_sha256": "d34df80aa4c8023093e2043121bf5b9fdbde14d55a06ba2f429ba6157a0238da",
+    "raw_dataset_json_sha256": "d34df80aa4c8023093e2043121bf5b9fdbde14d55a06ba2f429ba6157a0238da",
+    "split_summary_semantic_sha256": "3a60dd26f1b27290efa9bfbc01bbdb2e8f4d2fcca59498f38d9941c29bec3582",
+    "splits_sha256": "20672dc5ca9d96ec6ddc9279933a8873604529ae82c2b4fec7c9c7d87b1007b4"
+  },
+  "dataset": {
+    "case_ids_sha256": "8fba054d7813e9f24a4d86557787f2d9df6c95cc108aab923a3bca33ab494438",
+    "configuration": "3d_fullres",
+    "name": "Dataset507_ATLASR30_CORRECTED",
+    "num_training": 1452
+  },
+  "lineage_version": "nnunet_center_grouped_lineage_v1",
+  "payload_inventories": {
+    "ground_truth": {
+      "case_ids_sha256": "8fba054d7813e9f24a4d86557787f2d9df6c95cc108aab923a3bca33ab494438",
+      "count": 1452,
+      "names_and_sizes_sha256": "aef1fb74e98ad2d35cfd487f20ea62f4a39d5319b7bf35292bcf2eb2b8e254c8",
+      "total_bytes": 146553429
+    },
+    "preprocessed_data": {
+      "case_ids_sha256": "8fba054d7813e9f24a4d86557787f2d9df6c95cc108aab923a3bca33ab494438",
+      "count": 1452,
+      "names_and_sizes_sha256": "d766cb4304e1b5c8160cc54d988325a5311c6a099470feda372bdc7553e4f311",
+      "total_bytes": 10135840617
+    },
+    "preprocessed_properties": {
+      "case_ids_sha256": "8fba054d7813e9f24a4d86557787f2d9df6c95cc108aab923a3bca33ab494438",
+      "count": 1452,
+      "names_and_sizes_sha256": "084e591ab465e1c40e85b45715da0eea48298aeddadaff34ce1f47139cfe0d26",
+      "total_bytes": 260425925
+    },
+    "preprocessed_segmentations": {
+      "case_ids_sha256": "8fba054d7813e9f24a4d86557787f2d9df6c95cc108aab923a3bca33ab494438",
+      "count": 1452,
+      "names_and_sizes_sha256": "9b5894ddeeb3272459585d00361ac5debff08f0b09166a64715ac274cea2e733",
+      "total_bytes": 64837892
+    },
+    "raw_images": {
+      "case_ids_sha256": "8fba054d7813e9f24a4d86557787f2d9df6c95cc108aab923a3bca33ab494438",
+      "count": 1452,
+      "names_and_sizes_sha256": "0d48b68387571fc3386f2001a6077b32d00c3d669a90d3b0b927582710debbb9",
+      "total_bytes": 6299662811
+    },
+    "raw_labels": {
+      "case_ids_sha256": "8fba054d7813e9f24a4d86557787f2d9df6c95cc108aab923a3bca33ab494438",
+      "count": 1452,
+      "names_and_sizes_sha256": "aef1fb74e98ad2d35cfd487f20ea62f4a39d5319b7bf35292bcf2eb2b8e254c8",
+      "total_bytes": 146553429
+    }
+  },
+  "schema_version": 1,
+  "splits": {
+    "assignment_input_sha256": "168683caeabdb8bb7000b431972e4493f5b030e28ed223c4d839bb5d0b390492",
+    "case_ids_sha256": "8fba054d7813e9f24a4d86557787f2d9df6c95cc108aab923a3bca33ab494438",
+    "centers": 55,
+    "folds": 5,
+    "validation": {
+      "center_exclusive_train_val_in_every_fold": true,
+      "each_case_in_validation_exactly_once": true,
+      "each_center_in_one_validation_fold": true,
+      "n_cases": 1452,
+      "n_centers": 55,
+      "n_folds": 5,
+      "passed": true,
+      "train_is_validation_complement_in_every_fold": true,
+      "train_val_disjoint_in_every_fold": true
+    }
+  }
+}
