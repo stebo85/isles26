@@ -128,6 +128,7 @@ export function formatEventDate(value: string): string {
   return new Intl.DateTimeFormat("en", {
     day: "numeric",
     month: "short",
+    timeZone: "UTC",
     year: "numeric",
   }).format(date);
 }

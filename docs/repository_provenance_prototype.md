@@ -52,6 +52,10 @@ Selecting a node exposes its question, evidence, decision or operation,
 consequence, confidence, and source trace. The current-truth control can remove
 superseded, retracted, and negative nodes without erasing their history.
 
+Visible event dates use an explicit UTC display timezone. Any text rendered on
+both the server and client must avoid process-local date formatting, otherwise a
+timestamp near midnight can produce different HTML and fail React hydration.
+
 ## Why the storage model should not be a DAG
 
 Repositories contain cyclic dependencies, parallel branches, conflicting
