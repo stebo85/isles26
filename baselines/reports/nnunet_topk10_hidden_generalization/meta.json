@@ -1,0 +1,15 @@
+{
+  "method": "nnunet_topk10_hidden_generalization",
+  "display_name": "TopK10 out-of-fold, grouped by center / chronicity / lesion size",
+  "model_family": "nnunet",
+  "eval_set": "atlas_r30_5fold_cv",
+  "input_modalities": [
+    "T1w"
+  ],
+  "trained_on": "ATLAS R3.0 / ISLES'26 public training release, Dataset502_ATLASR30",
+  "status": "complete",
+  "pipeline_dir": "baselines/models/nnunet_atlas_t1w",
+  "evaluator": "nnunet_summary_grouped (analysis_nnunet_29_report_generalization_cv.sh)",
+  "n_cases": 1450,
+  "notes": "TRIAGE ONLY, not a model row: this is the SAME TopK10 out-of-fold prediction set as nnunet_topk10_crossval, re-aggregated by center / chronicity / lesion-size group to find which groups are weak. It reports Dice only (n_valid 1447 of 1450), and its folds are stratified-RANDOM, so the per-center numbers still contain center leakage - 52 of 55 centers appear on both sides of every fold. For an honest per-center estimate use the center-grouped Dataset507 reports instead. Its chronicity strata are also affected by the CHRONICITY-parsing bug: 270 cases binned 'unknown' are in fact chronic."
+}

@@ -26,7 +26,7 @@ organizers.
 |---|---|
 | Batch 1 release | 2026-04-24 |
 | Batch 2 release | 2026-06-12 |
-| Submission system opens, sanity phase | 2026-07-15 |
+| Submission system opens, sanity phase | **2026-07-30** (was recorded here as 2026-07-15 — wrong by 15 days; corrected 2026-07-28 against the live challenge page) |
 | Challenge closes, Docker submission | 2026-08-15 23:59 CET |
 
 ## Public Training Release

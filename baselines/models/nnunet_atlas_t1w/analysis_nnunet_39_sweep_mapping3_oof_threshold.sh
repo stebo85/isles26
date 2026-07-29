@@ -14,7 +14,7 @@
 #   bash baselines/models/nnunet_atlas_t1w/analysis_nnunet_39_sweep_mapping3_oof_threshold.sh
 #
 # Tunables:
-#   MAPPING3_THRESHOLDS=0.35:0.55:0.01
+#   MAPPING3_THRESHOLDS=0.15:0.75:0.01
 #   MAPPING3_SWEEP_PRIMARY_SCORE=lesion_f1_mean
 #     choices: lesion_f1_mean, lesion_f1_pooled, dice_lesion_f1_hmean
 
@@ -90,7 +90,11 @@ if [[ "$actual" != "$expected" ]]; then
   exit 1
 fi
 
-THRESHOLDS="${MAPPING3_THRESHOLDS:-0.35:0.55:0.01}"
+# Widened from 0.35:0.55 (audit finding 11). Dice was still monotonically
+# RISING at the old 0.35 boundary (0.6589 at 0.35 vs 0.6539 at 0.55), so the
+# optimum was never inside the searched range, and sweep_prob_thresholds.py
+# now exits 3 when the selected value lands on a grid edge.
+THRESHOLDS="${MAPPING3_THRESHOLDS:-0.15:0.75:0.01}"
 PRIMARY_SCORE="${MAPPING3_SWEEP_PRIMARY_SCORE:-lesion_f1_mean}"
 SWEEP_WORK="${MAPPING3_SWEEP_WORK:-$REPO/work/nnunet_mapping3_oof_threshold_sweep}"
 REPORT_DIR="${MAPPING3_SWEEP_REPORT_DIR:-$REPO/baselines/reports/nnunet_mapping3_oof_ensemble_threshold_tuned}"

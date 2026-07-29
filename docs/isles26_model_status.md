@@ -1,18 +1,31 @@
 # ISLES'26 Model Status — Living Leaderboard
 
-Goal: a model that is **extremely good on the training data (ATLAS T1w)** and
-**works OK on the SOOP benchmark** (DWI-defined OOD proxy, `data/soop_bench`,
-n=12). Challenge task: native T1w -> binary infarct mask. Docker submission
-closes 2026-08-15 23:59 CET.
+Challenge task: native-space T1w -> binary infarct mask. **Sanity/submission
+phase opens 2026-07-30**; Docker submission closes 2026-08-15 23:59 CET.
 
-Metrics:
-- **In-dist** = ATLAS R3.0 5-fold cross-validation over all 1450 cases.
-  nnU-Net's own consolidated summaries are retained as `crossval_summary.json`;
-  leaderboard/report rows use the repo evaluator when available so Dice,
-  lesion-F1, HD95, surface Dice, and volume error are head-to-head comparable.
-- **OOD proxy** = mean Dice on `data/soop_bench` (predicted, warped to TRACE).
-  CAVEAT: R3.0 training INCLUDED the 169 `sub-soop*` subjects, so soop numbers
-  may be optimistically biased.
+> **READ [isles26_official_metrics.md](isles26_official_metrics.md) FIRST.**
+> The challenge ranks on five metrics — Dice, absolute volume difference,
+> absolute lesion count difference, lesion-wise F1 (panoptica RQ at **one-to-one
+> IoU >= 0.25**), and **PR-AUC over a soft map**. Every `lesion_f1` number
+> written in this repo before 2026-07-28 used a *lenient* 1-voxel any-overlap
+> many-to-many criterion and is NOT the challenge metric. PR-AUC had never been
+> measured at all. See the Retractions section below before trusting any
+> historical row.
+
+Evaluation surfaces, in decreasing order of how much you should believe them:
+
+- **Center-held-out CV** (`Dataset507`, n=1452) — folds hold out whole CENTERS.
+  This is the honest estimate, because the hidden test set spans 60+ centers.
+  **Dice 0.6347.**
+- **Random-fold CV** (`Dataset502`, n=1450) — stratified random folds in which
+  52 of 55 centers appear on both sides of every fold. **Dice 0.6558, and this
+  is center-leaking.** It is the number this project quoted as its headline for
+  weeks; the honest figure is 2.1 points lower, and absolute volume difference
+  is 27% worse (4.94 -> 6.28 mL).
+- **soop_bench** (n=12, DWI-defined) — **retired as a decision surface.** R3.0
+  training included the SOOP subjects, the labels are defined on a modality we
+  do not see at test time, and every "win" measured on it was an in-sample
+  argmax over a 49-point grid on twelve cases.
 
 ## Current standings
 
@@ -93,55 +106,78 @@ Metrics:
 
 ## Production recommendation (current)
 
-- **Primary submission (T1w in-dist):** nnU-Net R3.0, **Dice+TopK10 loss, 1000
-  epochs**, 5-fold ensemble + TTA. **~0.656 CV** (best). (Plain 1000ep 0.653 is
-  a near-equivalent fallback.)
-- **For OOD robustness:** add synth-plus and blend probabilities in native T1w
-  space (w_nn≈0.4, thr≈0.30) before warping. Improves soop without DWI.
+- **Ship:** nnU-Net 3D fullres, Dice+TopK10 loss, 1000 epochs, **5-fold
+  ensemble + mirroring TTA**, from **Dataset507** (center-grouped folds,
+  corrected 1452-case conversion). Weights staged by
+  `analysis_nnunet_50_export_submission_weights.sh` (596 MB, tensor-identity
+  verified).
+- **Emit BOTH** a binary mask and a float32 probability map. PR-AUC is one of
+  the five ranked metrics and a mask-only submission forfeits it.
+- **Operating point** (threshold, min-component-size) is selected on the
+  center-held-out surface against all five official metrics, not on Dice —
+  see `baselines/reports/official_metrics_d507_topk10/`.
+- **Do NOT ship the 3-family MAPPING ensemble.** Measured on the same 1450 cases
+  it is worse than TopK10 alone on Dice (-0.0005), lenient lesion-F1 (-0.0005)
+  and absolute volume difference (+0.217 mL) at 3x the inference cost and 5x the
+  weight bytes, because its weakest member (ResEnc-L, Dice 0.639) is averaged in
+  at equal weight.
+- **Do NOT put a second network in the container for OOD.** The synth-plus blend
+  "win" is an in-sample grid maximum: 0.3006 in-sample vs **0.2827** under honest
+  leave-one-out selection, paired difference +0.0140 with SE 0.0179 (t=0.78),
+  and dropping the single best-responding subject leaves -0.0015.
+
+## Retractions (2026-07-28)
+
+Each of these was believed, is wrong or unsupported, and is corrected here.
+
+| Claim | Status | Why |
+|---|---|---|
+| "lesion-F1 0.6735" (and every `lesion_f1` in `baselines/reports/` and the leaderboard) | **RETRACTED — relabelled** | Computed with 1-voxel any-overlap many-to-many matching. The challenge uses one-to-one IoU >= 0.25. A bound reconstructed from the committed per-case artifacts puts the official value at <= 0.6015; the bias is model-dependent (-0.070 to -0.084), i.e. 6-14x larger than the 0.0025-0.003 deltas model selection was being made on. |
+| "Connected-component postprocessing: none chosen (pruning hurts)" | **RETRACTED** | `nnUNetv2_find_best_configuration` only ever tests `remove_all_but_largest_component`, and only accepts it on a Dice gain. **Min-size pruning was never a candidate.** Two ranked metrics depend on it directly. Being re-tested by `analysis_nnunet_47_official_metric_sweep.sh`. |
+| Threshold 0.54 | **RETRACTED** | Selected in-sample on the lenient F1 by +0.0025 (z=1.69, not significant) while losing Dice by -0.0011 (z=-5.62, significant). The 0.35-0.55 grid was also truncated at its own Dice optimum — Dice was still rising at the 0.35 edge. Grid widened to 0.15-0.75 and selection is now nested. |
+| "CV Dice 0.6558 estimates test performance" | **RETRACTED** | Center-held-out is **0.6347**, and AVD is 27% worse. Quote 0.635. |
+| "MSL / DBL are the small-lesion recall levers to promote" | **ABANDONED** | Their recall gains were measured with the 1-voxel criterion; 52% of the lesions counted as "detected" under that rule have overlap/|gt| < 0.25 and cannot match officially. `msl_fold0` and `dbl_fold0` have no `per_case.json`, so they cannot even be re-scored. Do not spend GPU-days here. |
+| "Synthetic-lesion insertion: neutral" | **WORSE THAN NEUTRAL, and confounded** | Under the official criterion it loses RQ -0.0158 and |Δcount| +0.0993. Separately, its `contrast_std` parameter was **inert** — a `torch.minimum` clamp against a global low quantile dominated the local contrast term, so every synthetic lesion was painted near the brain's low quantile and the augmentation could not produce the subtle lesions it existed to produce. Fixed; the committed CV result tested a degenerate corner and is void. |
+| "soop_bench is our OOD compass" | **RETIRED** | Contaminated (SOOP subjects are in R3.0 training), n=12, DWI-defined labels. The center-held-out Dataset507 out-of-fold surface (n=1452) is the correct compass and existed all along. |
+| "1450 usable cases / 3 conversion skips" | **CORRECTED** | Dataset507 has 1452 usable, 1 skip (ATLAS_1424). |
+| Chronicity distribution {ge180d 649, lt180d 433, unknown 371} | **CORRECTED** | The `CHRONICITY` column the challenge supplies was never parsed. 270 of the 369 cases with missing/non-positive `DAYS_POST_STROKE` carry CHRONICITY=1. True distribution is approximately {919, 433, 101}. NOTE: CHRONICITY=1 means **chronic (>=180d)** — verified on the 26 cases where both fields exist — so `docs/challenge.md` is the document that is wrong. |
+| "5-fold ensemble + TTA, ~0.656 CV" | **MISATTRIBUTED** | 0.656 is a single-model out-of-fold number; nnU-Net predicts each case with the one fold that held it out. The 5-fold test-time ensemble has never been measured. |
+| "Dice+TopK10 is a WIN over 1000ep" | **RIGHT CALL, WRONG EVIDENCE** | The Dice delta is +0.0026 at t=1.16 (a tie). TopK10 is still the right primary because it wins significantly on AVD (-0.352 mL, t=-3.10) and lesion precision (t=+2.47). Cite those. |
 
 ## Next levers (priority)
 
-Everything cheap/obvious has now been tried (see "What worked / didn't" above
-and Problem 16 in `problems_and_lessons.md`). The recurring blocker is now
-clear: **every small-lesion recall lever we have tried (MSL, DBL, synth-lesion
-insertion) trades precision for recall and leaves Dice flat-to-worse.** So the
-next levers split into (a) ensembling/packaging proven members, and (b) one
-last attempt to convert recall into Dice rather than chasing more recall.
+The model is essentially done; nothing available in the remaining time beats it
+by more than noise. **All remaining value is in packaging, geometry correctness,
+and choosing the operating point against the right five metrics on the right
+surface.**
 
-Remaining untested ideas, in rough priority:
+1. **Ship a valid container on day one of the sanity phase (2026-07-30).** This
+   is the only existential risk. `submission/isles26_algorithm/` now contains a
+   Dockerfile, a Grand Challenge entrypoint, exact-inverse geometry handling and
+   a passing 48-orientation round-trip test. The remaining blocker is that
+   **no container can be built on Sherlock** — no docker/podman/buildah/skopeo,
+   and apptainer cannot emit a `docker save` tarball. A build host is needed.
+2. **Answer the open interface questions** in
+   `submission/isles26_algorithm/FORUM_QUESTIONS.md` — output socket slugs, and
+   whether a soft map is a required second output.
+3. **Select threshold and min-component-size** on the center-held-out surface
+   using all five official metrics (`analysis_nnunet_47`/`49`).
+4. **Nested holdout:** predict the Dataset502 fold-0 validation cases with folds
+   1-4 only. This is the first honest measurement of the 5-fold test-time
+   ensembling gain, and it recalibrates the threshold for an *ensembled* softmax
+   (averaging pulls probability mass off 0 and 1; every operating point we own
+   was fitted on single-model softmax).
+5. **10-model ensemble at zero training cost:** average Dataset502 and
+   Dataset507 TopK10 folds. Free split diversity; validate on (4) and adopt only
+   if non-losing.
+6. **Use the sanity phase as a measurement instrument** — one variable per
+   submission, V1 as control. It is the only out-of-distribution signal we will
+   ever get, and it costs no compute.
 
-0. **Decide whether recall even matters for ranking.** Before spending more
-   compute on recall levers, confirm the hidden challenge metric. If it is
-   Dice/overlap-weighted, stop tuning recall and ship TopK10 as-is; if it is
-   lesion-wise detection (F1/recall), then MSL — not synth-lesion — is the
-   strongest recall lever measured so far and should be promoted to a full CV.
-1. **Tune synth-lesion to keep recall without the precision bleed (cheap):**
-   the augmentation works mechanically — the loss is false positives. Re-run a
-   single fold with a lower insertion rate / smaller synthetic lesions, or add a
-   small-component FP penalty at inference (min-size pruning on *added* detections
-   only), and check whether F1 recovers above 0.6735 while holding recall. Only
-   promote to full CV if fold-0 beats plain TopK10 on F1 *and* Dice.
-2. **Package the TopK10 OOD blend:** the actual TopK10 blend is complete and is
-   now the best T1w-only OOD result: `baselines/reports/ood_ensemble_topk10/`.
-3. **Self-training / pseudo-labels** on opt-in unlabeled T1w. Scripts
-   `analysis_nnunet_26_selftrain_pseudolabels.sh` and
-   `analysis_nnunet_27_prepare_selftrain_dataset.sh` build Dataset504 with
-   TopK10 pseudo-labels and train-only pseudo cases; `analysis_nnunet_33_train_selftrain.sh`
-   trains the self-training model once legitimate unlabeled inputs are staged.
-4. **MAPPING-style softmax ensemble package:** `analysis_nnunet_34_mapping_ensemble_predict.sh`
-   now runs TopK10 + default 1000ep + ResEnc-L + Dataset504 self-training members
-   on nnU-Net-format T1w inputs, saves each member's softmax, and averages them via
-   `nnunet_helpers/average_softmax_ensemble.py`. It is blocked only on the Dataset504
-   checkpoints if self-training has not been run yet.
-5. **True hidden-generalization retraining:** use the generated split plan to
-   run leave-center-out and leave-chronicity-out jobs for the worst/high-risk
-   groups surfaced by the TopK10 grouped report (not every tiny center first).
-6. **MSL+DBL only if we want another small-lesion gamble:** DBL fold-0 is
-   complete and only modestly helps tiny/small recall while costing Dice. Try
-   `DBL_SCHEME=msl_dbl` only if we decide the small-lesion objective is worth
-   another fold-0 experiment.
-7. **Package the final container:** TopK10 5-fold ensemble + any proven
-   OOD/self-training/DBL additions into the submission container.
+Explicitly NOT doing: metadata conditioning (measured post-hoc gain 0.0000;
+CHRONICITY is fully redundant with DAYS_POST_STROKE where both exist), further
+MSL/DBL/synth-lesion work, self-training/Dataset504, the 3-family MAPPING
+ensemble.
 
 ## Git Note
 

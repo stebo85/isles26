@@ -28,6 +28,17 @@ class SyntheticLesionInsertionTransform(BasicTransform):
 
     The default size bins intentionally over-represent the challenge-risk region:
     tiny (<10 voxels) and small (10-100 voxels).
+
+    Contrast is expressed as a contrast-to-noise ratio against the *global*
+    brain standard deviation, following LesionContrastD in the SynthStroke
+    pipeline. An earlier version measured contrast against the standard
+    deviation of the 1-voxel perilesional ring and then took the elementwise
+    minimum with a low brain quantile. Inside a homogeneous tissue the ring std
+    collapses to ~0.05-0.5 z while the low quantile of a z-scored brain sits far
+    below any tissue mean, so the minimum always selected the quantile and the
+    contrast randomization had no effect on the output: every lesion was painted
+    at the same near-floor intensity, which is precisely the opposite of the
+    subtle near-isointense lesions this transform exists to synthesize.
     """
 
     default_size_bins: Tuple[SizeBin, ...] = (
@@ -50,6 +61,8 @@ class SyntheticLesionInsertionTransform(BasicTransform):
         axis_log_sigma: float = 0.45,
         contrast_std: Tuple[float, float] = (0.8, 1.8),
         low_quantile: Tuple[float, float] = (0.03, 0.20),
+        floor_margin_std: float = 1.0,
+        min_hypointensity_std: float = 0.25,
         texture_std_fraction: Tuple[float, float] = (0.05, 0.18),
         boundary_blend: Tuple[float, float] = (0.35, 0.75),
         rim_shift_std_fraction: Tuple[float, float] = (-0.10, 0.20),
@@ -69,6 +82,16 @@ class SyntheticLesionInsertionTransform(BasicTransform):
             raise ValueError("at least one size bin must have positive weight")
         if not 0 <= candidate_low_quantile <= 1:
             raise ValueError("candidate_low_quantile must be in [0, 1]")
+        # A negative contrast would paint a hyperintense lesion, which is not the
+        # T1w appearance model this transform claims to implement.
+        if contrast_std[0] < 0 or contrast_std[1] < contrast_std[0]:
+            raise ValueError("contrast_std must satisfy 0 <= lo <= hi")
+        if not 0 <= low_quantile[0] <= low_quantile[1] <= 1:
+            raise ValueError("low_quantile must satisfy 0 <= lo <= hi <= 1")
+        if floor_margin_std < 0:
+            raise ValueError("floor_margin_std must be >= 0")
+        if min_hypointensity_std < 0:
+            raise ValueError("min_hypointensity_std must be >= 0")
 
         self.apply_probability = float(apply_probability)
         self.lesion_label = int(lesion_label)
@@ -81,13 +104,17 @@ class SyntheticLesionInsertionTransform(BasicTransform):
         self.axis_log_sigma = float(axis_log_sigma)
         self.contrast_std = contrast_std
         self.low_quantile = low_quantile
+        self.floor_margin_std = float(floor_margin_std)
+        self.min_hypointensity_std = float(min_hypointensity_std)
         self.texture_std_fraction = texture_std_fraction
         self.boundary_blend = boundary_blend
         self.rim_shift_std_fraction = rim_shift_std_fraction
         self.last_inserted_voxels: list[int] = []
+        self.last_requested_contrast: list[float] = []
 
     def apply(self, data_dict: dict, **params) -> dict:
         self.last_inserted_voxels = []
+        self.last_requested_contrast = []
         if torch.rand((), device="cpu").item() >= self.apply_probability:
             return data_dict
 
@@ -248,6 +275,14 @@ class SyntheticLesionInsertionTransform(BasicTransform):
         if bbox is None:
             return False
 
+        # Drawn once per lesion, not per channel: one lesion has one appearance,
+        # and channels of a multi-modal patch must agree on it.
+        contrast = self._uniform(*self.contrast_std)
+        q = self._uniform(*self.low_quantile)
+        alpha = self._uniform(*self.boundary_blend)
+        texture_fraction = self._uniform(*self.texture_std_fraction)
+        rim_fraction = self._uniform(*self.rim_shift_std_fraction)
+
         changed_any = False
         for ch in range(image.shape[0]):
             img = image[ch]
@@ -259,16 +294,35 @@ class SyntheticLesionInsertionTransform(BasicTransform):
             if ref_vals.numel() < 8:
                 ref_vals = brain_vals
             ref_mean = ref_vals.mean()
-            ref_std = torch.clamp(ref_vals.std(unbiased=False), min=0.05)
-            q = self._uniform(*self.low_quantile)
-            low_ref = torch.quantile(brain_vals.float(), q)
-            contrast = self._uniform(*self.contrast_std)
-            target_mean = torch.minimum(ref_mean - contrast * ref_std, low_ref)
+            # Scale of the whole brain, not of the perilesional ring: the ring is
+            # a thin shell usually contained in a single tissue, so its std is a
+            # degenerate noise estimate that makes the requested contrast-to-noise
+            # ratio unreachable (see class docstring).
+            brain_std = torch.clamp(brain_vals.float().std(unbiased=False), min=0.05).to(ref_mean.dtype)
+
+            target_mean = ref_mean - contrast * brain_std
+            # Plausibility floor only: sitting a full brain_std below an already
+            # low brain quantile, it is clear of the normal operating range
+            # (ref_mean - 0.8..1.8 * brain_std) for all but the darkest
+            # neighbourhoods -- measured on mask-z-scored ATLAS T1w it binds for
+            # ~2-3% of insertions (ring means near CSF), where capping the lesion
+            # at a plausible tissue intensity is the intent, and otherwise only
+            # for absurd contrast requests. It is itself capped to remain
+            # hypointense so the T1w appearance model holds even for a
+            # near-constant volume.
+            floor = torch.quantile(brain_vals.float(), q).to(ref_mean.dtype) - self.floor_margin_std * brain_std
+            floor = torch.minimum(floor, ref_mean - self.min_hypointensity_std * brain_std)
+            target_mean = torch.maximum(target_mean, floor)
 
             local_slices = tuple(bbox)
             local_shape = image[ch][local_slices].shape
             texture = self._low_frequency_texture(local_shape, image.device, image.dtype)
-            texture = texture * (ref_std * self._uniform(*self.texture_std_fraction)).to(image.dtype)
+            lesion_l = lesion[local_slices]
+            if bool(lesion_l.any().item()):
+                # Zero-mean over the lesion so the texture cannot bias the
+                # realized contrast away from the requested one.
+                texture = texture - texture[lesion_l].mean()
+            texture = texture * (brain_std * texture_fraction).to(image.dtype)
             target = (target_mean.to(image.dtype) + texture).to(image.dtype)
 
             img_local = img[local_slices].clone()
@@ -277,13 +331,14 @@ class SyntheticLesionInsertionTransform(BasicTransform):
             ring_l = ring[local_slices]
             img_local[core_l] = target[core_l]
             if bool(boundary_l.any().item()):
-                alpha = self._uniform(*self.boundary_blend)
                 img_local[boundary_l] = (1.0 - alpha) * img_local[boundary_l] + alpha * target[boundary_l]
             if bool(ring_l.any().item()):
-                rim_shift = ref_std.to(image.dtype) * self._uniform(*self.rim_shift_std_fraction)
+                rim_shift = (brain_std * rim_fraction).to(image.dtype)
                 img_local[ring_l] = img_local[ring_l] + rim_shift
             img[local_slices] = img_local
             changed_any = True
+        if changed_any:
+            self.last_requested_contrast.append(contrast)
         return changed_any
 
     @staticmethod

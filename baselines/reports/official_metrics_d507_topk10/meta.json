@@ -1,0 +1,15 @@
+{
+  "method": "official_metrics_d507_topk10",
+  "display_name": "ISLES'26 official metrics -- TopK10 out-of-fold, Dataset507 center-grouped folds (HONEST)",
+  "model_family": "nnunet",
+  "eval_set": "atlas_r30_center_grouped_cv",
+  "input_modalities": [
+    "T1w"
+  ],
+  "trained_on": "ATLAS R3.0 / ISLES'26 public training release",
+  "status": "complete",
+  "pipeline_dir": "baselines/models/nnunet_atlas_t1w",
+  "evaluator": "isles26_official (work/isles26_upstream/utils/eval_utils.py)",
+  "n_cases": 1452,
+  "notes": "Official five-metric scoring on folds that hold out whole CENTERS. This is the honest generalization surface and the one the shipped operating point is selected on, because the hidden ISLES'26 test set spans 60+ centers."
+}

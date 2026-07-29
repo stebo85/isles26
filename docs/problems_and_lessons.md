@@ -272,6 +272,103 @@ of the R3.0 campaign so the conclusions are not lost if that file is trimmed:
   (0.6298 → 0.6186) and small recall (0.486 → 0.454); the FP penalty suppressed
   true positives. Do not pursue Tversky-on-MSL.
 
+## Problem 17 — We optimised a metric the challenge does not use (2026-07-28)
+
+**Symptom.** Nine months of model selection, threshold tuning and go/no-go calls
+on "lesion-F1", against a criterion the leaderboard does not use.
+
+**Cause.** `eval/metrics.py` matches lesions at **1-voxel any-overlap,
+many-to-many** — the ATLAS convention, and also what the organizers' code did in
+its first published version. The organizers **rewrote `eval_utils.py` on
+2026-07-24** to use panoptica Recognition Quality under **one-to-one IoU >= 0.25**
+matching, and to score **PR-AUC** (which we had never computed) instead of
+ROC-AUC. We were reasoning from a nine-day-old snapshot.
+
+**Magnitude.** 52% of the GT lesions our harness counted as "detected" have
+overlap/|gt| < 0.25 and cannot match officially; 77 were credited on a single
+voxel. The reconstructed bound puts official lesion-F1 at <= 0.6015 against a
+reported 0.6735, and the bias is **model-dependent** (-0.070 to -0.084), i.e.
+6-14x larger than the 0.0025-0.003 deltas we were selecting models on.
+
+**Lessons.**
+1. **Pin the evaluator, not your reading of it.** Clone the organizers' code and
+   `import` it. `eval/official_metrics.py` never reimplements a formula.
+2. **Re-check the upstream metric code before every decision milestone.**
+   Challenge evaluation code is not frozen. A `git log` on it is five seconds.
+3. **Measure the semantics you depend on.** We *assumed* 26-connectivity and an
+   IoU threshold. `eval/probe_panoptica_semantics.py` now proves both with
+   phantoms that have known answers. Had connectivity been 6, every lesion count
+   in the repo would have been wrong.
+4. **Keep the diagnostic harness, demote it.** `eval/metrics.py` still provides
+   size-binned recall, boundary metrics and per-center strata that the official
+   scorer does not. The official one *decides*; the rich one *explains*.
+
+## Problem 18 — A decision made on a search space that never contained the option
+
+**Symptom.** "Connected-component postprocessing: none chosen — pruning hurts"
+was recorded as a settled negative result and generalised in the docs.
+
+**Cause.** `nnUNetv2_find_best_configuration` tests exactly one operation,
+`remove_all_but_largest_component`, and accepts it only on a foreground-Dice
+gain. **Min-size pruning was never a candidate.** Meanwhile two of the five
+ranked metrics — absolute lesion count difference, and RQ under one-to-one
+matching — are directly sensitive to spurious small components, and neither was
+being measured.
+
+**Lesson.** When a tool reports "no configuration selected", write down *what it
+searched*. A negative result is only as broad as its search space, and
+generalising it is how a lever stays untried for months.
+
+## Problem 19 — Geometry is the highest-risk part of a segmentation submission
+
+**Symptom.** Every number this project ever produced was computed on the
+RAS-canonicalised copy in `work/nnunet/nnUNet_raw/`. There was no end-to-end
+raw-file to prediction path anywhere in the repo, 19 days before the deadline.
+
+**Why it matters.** The models were trained on `nib.as_closest_canonical` output
+and nnU-Net does **not** reorient at inference (`transpose_forward [0,1,2]`),
+while the release stores volumes as RAS 869 / LAS 575 / PSR 8 / PSL 1. A
+permutation error produces a well-formed mask of plausible size — it fails
+*silently*. This project already paid for it once (commit `f8d88c1`: 0.016 Dice
+where 0.2576 was correct).
+
+**What we built.** `submission/isles26_algorithm/geometry.py` derives the exact
+inverse of the canonicalisation rather than guessing it, and asserts the
+round-trip per case. `test_geometry.py` proves exactness over all 48
+axis-aligned orientations plus real ATLAS cases in every orientation present in
+the release.
+
+**The lesson about the TEST, not the code.** The first version of
+`analysis_nnunet_51` compared container-on-raw Dice against the recorded
+out-of-fold Dice and reported MISMATCH on 4 of 7 cases (-0.011 to -0.042). That
+looked like a geometry bug and was not. Adding a **control** — feed the same case
+from the already-canonical copy, which exercises the identical code path with an
+identity orientation transform — showed geometry deltas of **exactly 0.000000**
+on every case including PSR/PSL, and isolated the residual as a different effect
+(Problem 20). *A test that cannot separate two candidate causes will indict the
+wrong one.*
+
+## Problem 20 — nnU-Net's training-time validation is not the deployment path
+
+**Symptom.** Predicting a case through `predict_from_files` scores a mean
+**-0.017 Dice** (range -0.042 to 0.000, n=7) versus the number nnU-Net recorded
+for that same case, same fold, during training-time validation.
+
+**Cause (measured, not assumed).** Not geometry — the control above pins the
+geometry delta at exactly zero. Training-time validation predicts from the cached
+preprocessed arrays in `nnUNet_preprocessed`, while `predict_from_files`
+re-preprocesses from the NIfTI. These are different code paths and they do not
+agree exactly.
+
+**Consequence.** Every cross-validation number in this repo is a
+*training-time-validation* number, and the container will score systematically
+lower than it. Quote CV Dice as an upper bound on deployed performance, not an
+estimate of it.
+
+**Lesson.** Validate the artifact you ship, through the path you ship it on. An
+internal validation score is a property of the training harness, not of the
+model.
+
 ## Sources
 
 - ISLES'22 dataset paper: https://www.nature.com/articles/s41597-022-01875-5

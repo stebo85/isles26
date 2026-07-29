@@ -2,7 +2,14 @@ Participants are challenged to develop automated segmentation algorithms that ac
 
 Inputs
 Native space T1w MRI
-Metadata (.json): Includes stroke lesion covariates such as DAYS_POST_STROKE, CHRONICITY (1 if < 180 days), and CENTER code.
+Metadata (.json): Includes stroke lesion covariates such as DAYS_POST_STROKE, CHRONICITY, and CENTER code.
+
+> CORRECTION (2026-07-28): an earlier version of this line said CHRONICITY is
+> "1 if < 180 days". That is backwards. Measured over the 26 public training
+> cases where both fields are present and valid, CHRONICITY=1 occurs only when
+> DAYS_POST_STROKE >= 180 — i.e. **1 means CHRONIC**. Follow
+> [isles26_data_status.md](isles26_data_status.md). Getting this backwards
+> would invert the chronicity label on 270 training cases.
 Outputs
 Binary infarct segmentation mask.
 

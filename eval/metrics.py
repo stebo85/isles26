@@ -10,8 +10,14 @@ Design notes:
   documented in each function's docstring. The convention is:
     - Dice/IoU/F1: empty-on-both -> 1.0 (perfect match of "no lesion"),
       empty-on-one -> 0.0.
+    - Precision/recall (voxel- and lesion-wise): NaN whenever their own
+      denominator is zero, i.e. undefined rather than vacuously perfect.
+      Returning 1.0 there would hand an all-background prediction the best
+      precision in the benchmark.
     - HD95/ASSD: NaN if either mask is empty. Reporting code aggregates with
       nanmean so empty-on-both cases do not penalize boundary metrics.
+      Because that means different models are averaged over different case
+      subsets, every aggregate in `eval/report.py` carries its own n_valid.
 - All "lesion-wise" metrics are computed on connected components from a 26-
   neighbourhood (3x3x3 connectivity structure). A GT component is "detected"
   when ANY predicted component overlaps it by at least `min_overlap` voxels
@@ -258,11 +264,21 @@ def lesion_wise_metrics(pred: np.ndarray, gt: np.ndarray, min_overlap_voxels: in
     overlaps any GT component by at least `min_overlap_voxels`. (This is the
     ATLAS convention.) An empty mask contributes 0 lesions in that direction.
 
-    Conventions when both counts are zero:
-        precision = recall = f1 = 1.0
-    When only one side is empty:
-        the metrics that divide by zero are returned as 0.0 (consistent with
-        Dice/IoU empty-mismatch convention).
+    Conventions for empty masks (see audit finding 17):
+        A direction whose denominator is zero is UNDEFINED and returned as
+        math.nan, not as a free 1.0: recall is NaN when there are no GT
+        lesions, precision is NaN when there are no predicted lesions. The
+        reporting layer aggregates with nanmean, so such cases drop out of the
+        mean instead of inflating it. This mirrors the voxel-wise
+        sensitivity/precision convention in `overlap_metrics` above. The
+        earlier "vacuously perfect = 1.0" convention made the all-background
+        null model the best-scoring model in the repo on lesion precision,
+        and inflated every model's reported lesion precision.
+
+        lesion_f1 deliberately does NOT follow that rule: it is 1.0 when both
+        sides are empty and 0.0 when exactly one side is empty, matching the
+        official ISLES'26 scorer's empty_value=1.0 convention so that our F1
+        stays comparable to the leaderboard's.
 
     Many-to-many caveat (per Codex adversarial review #2):
         This is "any-overlap" detection, not a one-to-one matching. A single
@@ -316,20 +332,15 @@ def lesion_wise_metrics(pred: np.ndarray, gt: np.ndarray, min_overlap_voxels: in
     fp = n_pred - tp_pred
     # For precision/recall we follow the convention that the per-direction
     # "TP" can differ (one pred can cover multiple GTs, and vice versa). This
-    # matches the ATLAS reference implementation.
+    # matches the ATLAS reference implementation. Each direction is NaN exactly
+    # when its own denominator is zero; see the docstring for why not 1.0.
+    precision = tp_pred / n_pred if n_pred > 0 else math.nan
+    recall = tp_gt / n_gt if n_gt > 0 else math.nan
     if n_gt == 0 and n_pred == 0:
-        precision = recall = f1 = 1.0
-    elif n_gt == 0:
-        precision = 0.0
-        recall = 1.0  # nothing to find; all "found"
-        f1 = 0.0
-    elif n_pred == 0:
-        precision = 1.0  # vacuously no FPs
-        recall = 0.0
+        f1 = 1.0  # official empty_value convention: agreeing on "no lesion"
+    elif n_gt == 0 or n_pred == 0:
         f1 = 0.0
     else:
-        precision = tp_pred / n_pred
-        recall = tp_gt / n_gt
         f1 = 0.0 if (precision + recall) == 0 else 2 * precision * recall / (precision + recall)
 
     return LesionWiseMetrics(

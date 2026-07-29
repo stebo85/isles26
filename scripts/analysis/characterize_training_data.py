@@ -1,20 +1,24 @@
 """Per-session characterization of ATLAS R2.1 raw training data.
 
 For each session, record:
-  - subject_id, session_id, site, days_post_stroke, chronicity (computed: <180d => 1)
+  - subject_id, session_id, site, days_post_stroke, raw CHRONICITY flag, and the
+    derived chronicity bin (DAYS_POST_STROKE first, CHRONICITY==1 as fallback)
   - T1w voxel sizes (mm), shape, orientation, affine determinant, data dtype, intensity stats
   - lesion mask shape match, voxel count, lesion volume (mL), connected-component count,
     largest-CC volume (mL), background match with T1, label uniqueness
   - file sizes (bytes)
 
 Writes one CSV row per session to OUT_CSV (created if missing, appended otherwise).
-This is parallelizable: each worker handles a slice of the subject list.
+This is parallelizable: each worker handles a slice of the subject list. Each shard
+also drops a small chronicity audit JSON beside OUT_CSV so the DAYS_POST_STROKE vs
+CHRONICITY agreement can be checked without re-reading every metadata file.
 """
 from __future__ import annotations
 
 import argparse
 import csv
 import json
+import math
 import os
 import sys
 from pathlib import Path
@@ -26,6 +30,7 @@ from scipy import ndimage as ndi
 
 FIELDS = [
     "site", "subject", "session", "days_post_stroke", "chronicity_lt180d",
+    "chronicity_raw", "chronicity_bin", "chronicity_source",
     "t1_path", "lesion_path",
     "t1_shape", "lesion_shape",
     "vox_mm_x", "vox_mm_y", "vox_mm_z", "vox_mm3",
@@ -73,22 +78,71 @@ def find_sessions(root: Path):
                 yield site, subject, session, t1, mask, meta
 
 
+_MISSING_TOKENS = frozenset({"", "na", "n/a", "nan", "none", "null"})
+
+
+def _parse_float(raw: str | None) -> float | None:
+    """Parse a metadata cell to float, mapping the release's missing tokens to None.
+
+    Case-insensitive and non-finite-rejecting so this agrees with the downstream
+    readers (convert_atlas_r21_to_nnunet.parse_float, run_atlas_eval.parse_float).
+    Without the isfinite guard a cell spelled "Nan" would slip past the token list
+    and become a float NaN, which compares False against every threshold and would
+    be silently binned as ge180d by any consumer that only tests `dps < 180`.
+    """
+    text = (raw or "").strip()
+    if text.lower() in _MISSING_TOKENS:
+        return None
+    try:
+        out = float(text)
+    except ValueError:
+        return None
+    return out if math.isfinite(out) else None
+
+
 def parse_metadata(path: Path):
-    """Return (days_post_stroke or None, site or None) from the per-session csv."""
+    """Return (days_post_stroke, site, chronicity_raw, chronicity_value) from the csv.
+
+    chronicity_raw is the verbatim CHRONICITY cell (kept so the derived bin stays
+    auditable); chronicity_value is that cell as a float, or None when absent.
+    """
     if path is None or not path.is_file():
-        return None, None
+        return None, None, "", None
     try:
         with open(path, newline="") as f:
             rows = list(csv.DictReader(f))
         if not rows:
-            return None, None
+            return None, None, "", None
         r = rows[0]
-        dps_raw = r.get("DAYS_POST_STROKE", "").strip()
-        dps = float(dps_raw) if dps_raw not in ("", "NA", "NaN") else None
-        site = r.get("SITE", "").strip() or None
-        return dps, site
+        dps = _parse_float(r.get("DAYS_POST_STROKE"))
+        site = (r.get("SITE") or "").strip() or None
+        chron_raw = (r.get("CHRONICITY") or "").strip()
+        return dps, site, chron_raw, _parse_float(chron_raw)
     except Exception:
-        return None, None
+        return None, None, "", None
+
+
+def chronicity_bin(dps: float | None, chronicity: float | None):
+    """Return (bin, source) for one session: bin in {lt180d, ge180d, unknown}.
+
+    DAYS_POST_STROKE is authoritative whenever it is usable. DPS<=0 counts as
+    missing (R049/R050 encode missing as 0; one R049 session is -4).
+
+    CHRONICITY==1 means CHRONIC (>=180 days), so it can only ever rescue a case
+    into ge180d. This direction was established empirically over all 1453
+    per-session metadata CSVs of the ATLAS R3.0 raw release: CHRONICITY is only
+    ever 1 (296 cases) or blank, and of the 26 cases carrying BOTH a usable
+    DAYS_POST_STROKE and CHRONICITY==1, all 26 have DAYS_POST_STROKE >= 180.
+    docs/isles26_data_status.md documents the same rule. Note this contradicts
+    the parenthetical "CHRONICITY (1 if < 180 days)" in docs/challenge.md, which
+    the data does not support; the audit counters emitted by main() will fire if
+    a future release actually flips the encoding.
+    """
+    if dps is not None and dps > 0:
+        return ("lt180d" if dps < 180 else "ge180d"), "days_post_stroke"
+    if chronicity is not None and chronicity == 1:
+        return "ge180d", "chronicity_flag"
+    return "unknown", ""
 
 
 def affine_orient(affine: np.ndarray) -> str:
@@ -119,14 +173,14 @@ def analyze_session(site, subject, session, t1_path, lesion_path, meta_path):
     row.update({"site": site, "subject": subject, "session": session,
                 "t1_path": str(t1_path) if t1_path else "",
                 "lesion_path": str(lesion_path) if lesion_path else ""})
-    dps, meta_site = parse_metadata(meta_path)
+    dps, meta_site, chron_raw, chron_val = parse_metadata(meta_path)
     row["days_post_stroke"] = "" if dps is None else f"{dps:g}"
-    # Treat DPS<=0 as missing/unknown (R049/R050 encode missing as 0; one R049
-    # session is -4). Anything in (0, 180) is lt180d; everything else is ge180d.
-    if dps is None or dps <= 0:
-        row["chronicity_lt180d"] = ""
-    else:
-        row["chronicity_lt180d"] = "1" if dps < 180 else "0"
+    row["chronicity_raw"] = chron_raw
+    cbin, csource = chronicity_bin(dps, chron_val)
+    row["chronicity_bin"] = cbin
+    row["chronicity_source"] = csource
+    # Legacy column, kept for downstream readers: "" when the bin is unknown.
+    row["chronicity_lt180d"] = "" if cbin == "unknown" else ("1" if cbin == "lt180d" else "0")
     if meta_site and meta_site != site:
         # Folder name vs csv site disagreement — surface but trust folder name.
         row["error"] = f"site_csv={meta_site}!=folder={site}"
@@ -203,6 +257,58 @@ def analyze_session(site, subject, session, t1_path, lesion_path, meta_path):
     return row
 
 
+def new_chronicity_audit() -> dict:
+    return {
+        "n_sessions": 0,
+        "dps_usable": 0,                 # DAYS_POST_STROKE present and > 0
+        "chronicity_present": 0,         # CHRONICITY cell non-empty
+        "both_present": 0,               # usable DPS *and* CHRONICITY
+        "both_agree_ge180d": 0,          # CHRONICITY==1 and DPS >= 180
+        "both_disagree": 0,              # CHRONICITY==1 but DPS < 180
+        "rescued_by_chronicity": 0,      # no usable DPS, CHRONICITY==1 -> ge180d
+        "unexpected_chronicity_values": {},  # anything other than 1 / blank
+        "bins": {"lt180d": 0, "ge180d": 0, "unknown": 0},
+    }
+
+
+def update_chronicity_audit(audit: dict, dps: float | None, chron_raw: str,
+                            chron_val: float | None, cbin: str) -> None:
+    """Accumulate the DPS-vs-CHRONICITY consistency counts for one session.
+
+    both_disagree and unexpected_chronicity_values must stay at 0 / empty. If a
+    future data release flips the CHRONICITY encoding (or adds a second code),
+    they go non-zero and the derived ge180d fallback in chronicity_bin() is no
+    longer safe — that is the whole point of carrying these counters.
+    """
+    audit["n_sessions"] += 1
+    audit["bins"][cbin] = audit["bins"].get(cbin, 0) + 1
+    dps_usable = dps is not None and dps > 0
+    if dps_usable:
+        audit["dps_usable"] += 1
+    if chron_raw:
+        audit["chronicity_present"] += 1
+    if chron_val is None:
+        if chron_raw:
+            # Non-empty but unparseable — still a deviation from the known encoding.
+            audit["unexpected_chronicity_values"][chron_raw] = (
+                audit["unexpected_chronicity_values"].get(chron_raw, 0) + 1
+            )
+        return
+    if chron_val != 1:
+        audit["unexpected_chronicity_values"][chron_raw] = (
+            audit["unexpected_chronicity_values"].get(chron_raw, 0) + 1
+        )
+        return
+    if dps_usable:
+        audit["both_present"] += 1
+        if dps >= 180:
+            audit["both_agree_ge180d"] += 1
+        else:
+            audit["both_disagree"] += 1
+    else:
+        audit["rescued_by_chronicity"] += 1
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", required=True, help="Path to Training_Raw directory")
@@ -220,6 +326,7 @@ def main():
     print(f"[shard {args.shard_index}/{args.shard_count}] {len(sessions)} sessions",
           flush=True)
 
+    audit = new_chronicity_audit()
     write_header = not out_csv.exists() or out_csv.stat().st_size == 0
     with open(out_csv, "a", newline="") as f:
         w = csv.DictWriter(f, fieldnames=FIELDS)
@@ -227,10 +334,23 @@ def main():
             w.writeheader()
         for i, (site, subject, session, t1, mask, meta) in enumerate(sessions):
             row = analyze_session(site, subject, session, t1, mask, meta)
+            update_chronicity_audit(
+                audit, _parse_float(row["days_post_stroke"]), row["chronicity_raw"],
+                _parse_float(row["chronicity_raw"]), row["chronicity_bin"],
+            )
             w.writerow(row)
             if (i + 1) % 25 == 0:
                 f.flush()
                 print(f"[shard {args.shard_index}] {i+1}/{len(sessions)} done", flush=True)
+
+    # Per-shard sidecar (shards append to one CSV, so they must not share a file).
+    audit_path = out_csv.with_suffix(f".chronicity_audit.shard{args.shard_index}.json")
+    audit_path.write_text(json.dumps(audit, indent=2, sort_keys=True) + "\n")
+    print(f"[shard {args.shard_index}] chronicity audit: {json.dumps(audit, sort_keys=True)}",
+          flush=True)
+    if audit["both_disagree"] or audit["unexpected_chronicity_values"]:
+        print(f"[shard {args.shard_index}] WARNING: CHRONICITY encoding assumption "
+              f"violated — chronicity_bin() fallback needs review", flush=True)
     print(f"[shard {args.shard_index}] complete", flush=True)
 
 

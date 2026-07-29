@@ -1,0 +1,13 @@
+{
+  "method": "nnunet_r30_corrected_center_grouped_topk10_cv_raw",
+  "display_name": "nnU-Net corrected R3.0 Dice+TopK10, held-CENTER 5-fold CV (raw)",
+  "model_family": "nnunet",
+  "eval_set": "atlas_r30_center_grouped_cv",
+  "input_modalities": ["T1w"],
+  "trained_on": "Corrected ATLAS R3.0 / ISLES'26 public training release, Dataset507_ATLASR30_CORRECTED (1452 cases, 55 centers)",
+  "status": "complete",
+  "pipeline_dir": "baselines/models/nnunet_atlas_t1w",
+  "evaluator": "repo_harness",
+  "empty_case_convention": "empty_on_both_scored_1.0",
+  "notes": "HONEST GENERALIZATION ESTIMATE: the five folds hold out whole CENTERS (each of the 55 ATLAS sites appears in exactly one validation fold), so no scanner/site is shared between train and validation. Dice 0.6347 / lesion-F1 0.6498 / HD95 20.47 mm / AVD 6.28 mL over n=1452. Not comparable with the atlas_r30_5fold_cv rows, which leak centers across folds and are ~2 Dice points optimistic; the case set also differs (1452 corrected Dataset507 cases vs 1450 in Dataset502). Identical to nnunet_center_grouped_topk10_crossval (postprocessed) because nnU-Net selected no postprocessing (postprocessing_fns == []). Lesion F1 here is the repo harness's lenient 1-voxel many-to-many criterion, not the official panoptica RQ."
+}

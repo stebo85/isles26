@@ -1,0 +1,13 @@
+{
+  "method": "nnunet_r30_corrected_center_grouped_topk10_cv",
+  "display_name": "nnU-Net corrected R3.0 Dice+TopK10, held-CENTER 5-fold CV (postprocessed)",
+  "model_family": "nnunet",
+  "eval_set": "atlas_r30_center_grouped_cv",
+  "input_modalities": ["T1w"],
+  "trained_on": "Corrected ATLAS R3.0 / ISLES'26 public training release, Dataset507_ATLASR30_CORRECTED (1452 cases, 55 centers)",
+  "status": "incomplete",
+  "pipeline_dir": "baselines/models/nnunet_atlas_t1w",
+  "evaluator": "repo_harness",
+  "empty_case_convention": "empty_on_both_scored_1.0",
+  "notes": "HONEST GENERALIZATION ESTIMATE: the five folds hold out whole CENTERS (each of the 55 ATLAS sites appears in exactly one validation fold). No report.json: analysis_nnunet_45 was OOM-killed inside the second run_eval call, so only the raw variant was scored. Nothing is lost -- nnU-Net selected no postprocessing (postprocessing.json postprocessing_fns == [], and crossval_summary.json is byte-identical to crossval_postprocessed_summary.json), so this variant's numbers are exactly those of nnunet_center_grouped_topk10_crossval_raw: Dice 0.6347 / lesion-F1 0.6498 / HD95 20.47 mm / AVD 6.28 mL over n=1452. Deliberately left without a report.json so the leaderboard shows the held-center result once, not twice."
+}

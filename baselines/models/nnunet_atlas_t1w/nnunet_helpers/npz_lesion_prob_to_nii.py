@@ -61,7 +61,16 @@ def mismatch_fraction(probs: np.ndarray, seg: np.ndarray, spatial_axes: tuple[in
     return float(np.count_nonzero(pred != seg_labels) / pred.size)
 
 
-def resolve_spatial_axes(probs: np.ndarray, seg_shape: tuple[int, ...], seg: np.ndarray) -> tuple[int, ...]:
+class AmbiguousAxesError(ValueError):
+    """The segmentation cannot discriminate between candidate permutations."""
+
+
+def resolve_spatial_axes(
+    probs: np.ndarray,
+    seg_shape: tuple[int, ...],
+    seg: np.ndarray,
+    fallback_axes: tuple[int, ...] | None = None,
+) -> tuple[int, ...]:
     spatial_shape = tuple(probs.shape[1:])
     candidates = [
         axes
@@ -88,9 +97,25 @@ def resolve_spatial_axes(probs: np.ndarray, seg_shape: tuple[int, ...], seg: np.
         )
     if len(ordered) > 1 and mismatch_by_axes[ordered[1]] <= best_mismatch:
         details = ", ".join(f"{axes}: {mismatch_by_axes[axes]:.6g}" for axes in ordered)
-        raise ValueError(
-            f"ambiguous spatial axis permutation (tie at minimal mismatch); "
-            f"mismatch fractions: {details}"
+        # A tie means the segmentation cannot discriminate. Overwhelmingly this
+        # is because the segmentation is ENTIRELY BACKGROUND: argmax == 0
+        # everywhere agrees with seg == 0 everywhere under every permutation, so
+        # the mismatch metric carries no information at all. That is different
+        # from a genuinely contradictory case, and it must not be resolved by
+        # picking candidates[0] -- an arbitrary transpose silently corrupts the
+        # soft map, which is the input to the official PR-AUC metric.
+        #
+        # The caller can supply a `fallback_axes` derived from the cases in the
+        # same batch whose segmentations DO discriminate; the geometry is a
+        # property of how nnU-Net wrote the NPZ, so it is constant within a fold.
+        if fallback_axes is not None and fallback_axes in candidates and not seg.any():
+            return tuple(fallback_axes)
+        reason = (
+            "segmentation is entirely background, so no permutation can be "
+            "distinguished" if not seg.any() else "several permutations agree equally well"
+        )
+        raise AmbiguousAxesError(
+            f"ambiguous spatial axis permutation ({reason}); mismatch fractions: {details}"
         )
     return best
 
@@ -101,7 +126,8 @@ def convert_case(
     ref_dir: Path,
     out_dir: Path,
     lesion_channel: int,
-) -> None:
+    fallback_axes: tuple[int, ...] | None = None,
+) -> tuple[int, ...]:
     case_id = npz_path.stem
     seg_path = seg_dir / f"{case_id}.nii.gz"
     ref_path = ref_dir / f"{case_id}.nii.gz"
@@ -124,7 +150,7 @@ def convert_case(
     if seg.ndim != probs.ndim - 1:
         raise ValueError(f"seg ndim {seg.ndim} is incompatible with probability shape {probs.shape}")
 
-    spatial_axes = resolve_spatial_axes(probs, tuple(seg.shape), seg)
+    spatial_axes = resolve_spatial_axes(probs, tuple(seg.shape), seg, fallback_axes=fallback_axes)
     permuted_probs = np.transpose(probs, axes=(0,) + tuple(axis + 1 for axis in spatial_axes))
     lesion = np.ascontiguousarray(permuted_probs[lesion_channel], dtype=np.float32)
 
@@ -132,6 +158,7 @@ def convert_case(
         raise ValueError(f"final lesion shape {lesion.shape} does not match reference shape {ref.shape[:3]}")
 
     save_nifti_atomic(lesion, ref, out_path)
+    return spatial_axes
 
 
 def write_report(path: Path, n_cases: int, ok: int, failed: dict[str, str]) -> None:
@@ -149,10 +176,23 @@ def main(argv: list[str] | None = None) -> int:
     failed: dict[str, str] = {}
     ok = 0
 
+    # Two passes. The first converts every case that its own segmentation can
+    # disambiguate and records which permutation was chosen. The axis layout is a
+    # property of how nnU-Net serialised the NPZ, so it is constant across a
+    # batch; if the unambiguous cases agree unanimously, that consensus is used
+    # to rescue the cases whose segmentation is entirely background (13 of 1452
+    # in Dataset507). If they do NOT agree unanimously, something is wrong at a
+    # level a fallback must not paper over, and every ambiguous case stays failed.
+    deferred: list[Path] = []
+    observed: set[tuple[int, ...]] = set()
+
     for npz_path in npz_paths:
         case_id = npz_path.stem
         try:
-            convert_case(npz_path, args.seg_dir, args.ref_dir, args.out_dir, args.lesion_channel)
+            axes = convert_case(npz_path, args.seg_dir, args.ref_dir, args.out_dir, args.lesion_channel)
+        except AmbiguousAxesError:
+            deferred.append(npz_path)
+            continue
         except Exception as exc:
             out_path = args.out_dir / f"{case_id}.nii.gz"
             if out_path.exists():
@@ -160,8 +200,39 @@ def main(argv: list[str] | None = None) -> int:
             failed[case_id] = str(exc)
             print(f"[fail] {case_id}: {exc}")
             continue
+        observed.add(tuple(axes))
         ok += 1
         print(f"[ok] {case_id} -> {args.out_dir / f'{case_id}.nii.gz'}")
+
+    consensus = next(iter(observed)) if len(observed) == 1 else None
+    if deferred:
+        if consensus is None:
+            print(
+                f"[warn] {len(deferred)} case(s) are ambiguous and the unambiguous cases "
+                f"do NOT agree on one permutation (saw {sorted(observed)}); refusing to guess"
+            )
+        else:
+            print(f"[info] rescuing {len(deferred)} all-background case(s) with consensus axes {consensus}")
+        for npz_path in deferred:
+            case_id = npz_path.stem
+            if consensus is None:
+                failed[case_id] = "ambiguous axes and no unanimous consensus available"
+                print(f"[fail] {case_id}: {failed[case_id]}")
+                continue
+            try:
+                convert_case(
+                    npz_path, args.seg_dir, args.ref_dir, args.out_dir, args.lesion_channel,
+                    fallback_axes=consensus,
+                )
+            except Exception as exc:
+                out_path = args.out_dir / f"{case_id}.nii.gz"
+                if out_path.exists():
+                    out_path.unlink()
+                failed[case_id] = str(exc)
+                print(f"[fail] {case_id}: {exc}")
+                continue
+            ok += 1
+            print(f"[ok] {case_id} -> {args.out_dir / f'{case_id}.nii.gz'} (consensus axes)")
 
     write_report(args.out_dir / "_convert_report.json", len(npz_paths), ok, failed)
     print(f"[done] converted {ok}/{len(npz_paths)} case(s); failed={len(failed)}")

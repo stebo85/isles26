@@ -1,5 +1,18 @@
 """Synthetic-mask unit tests for metrics.py.
 
+SCOPE: these tests pin the behaviour of THIS REPO'S DIAGNOSTIC harness, which
+matches lesions at 1-voxel any-overlap, many-to-many. That is NOT how the
+ISLES'26 leaderboard scores lesion detection: the challenge uses panoptica with
+ConnectedComponentsInstanceApproximator + NaiveThresholdMatching, i.e. ONE-TO-ONE
+matching at IoU >= 0.25, and reports Recognition Quality
+RQ = TP / (TP + 0.5*FP + 0.5*FN). A green run here therefore says "the
+diagnostic is self-consistent", never "we would score this on the leaderboard".
+
+The official metrics are implemented in `eval/official_metrics.py` (a thin
+wrapper over the organizers' own code) and the agreement/divergence between the
+two harnesses is pinned in `eval/tests/test_official_agreement.py`. Read that
+file before drawing any conclusion about lesion-wise F1 from this one.
+
 Run with:
     cd /scratch/users/sciget/isles26challenge
     source .venv-eval/bin/activate
@@ -206,23 +219,40 @@ def test_lesionwise_empty_both():
     lm = lesion_wise_metrics(_empty(), _empty())
     assert lm.gt_lesion_count == 0
     assert lm.pred_lesion_count == 0
+    # F1 keeps the official empty_value=1.0 convention, but neither direction
+    # is defined, so precision and recall are NaN (audit finding 17).
     assert lm.lesion_f1 == 1.0
+    assert math.isnan(lm.lesion_precision)
+    assert math.isnan(lm.lesion_recall)
 
 
 def test_lesionwise_empty_pred_only():
     lm = lesion_wise_metrics(_empty(), _cube())
     assert lm.lesion_recall == 0.0
+    # No predicted lesions => precision undefined, NOT a free 1.0. Returning
+    # 1.0 here made the all-background null model the best-scoring model in the
+    # repo on lesion precision.
+    assert math.isnan(lm.lesion_precision)
+    assert lm.lesion_f1 == 0.0
 
 
 def test_lesionwise_empty_gt_only():
     lm = lesion_wise_metrics(_cube(), _empty())
     assert lm.lesion_precision == 0.0
+    assert math.isnan(lm.lesion_recall)  # nothing to find => recall undefined
+    assert lm.lesion_f1 == 0.0
 
 
 def test_lesionwise_one_pred_overlaps_two_gt():
-    """Many-to-many caveat (Codex review #2): one predicted CC that overlaps
-    two GT CCs gets recall credit on both. Both GT lesions count as detected;
-    the single prediction counts as one TP."""
+    """Merge phantom, and the clearest place our harness flatters a failure.
+
+    One predicted CC bridging two GT CCs gets recall credit on both under the
+    any-overlap rule, so this harness reports F1 = 1.0. The OFFICIAL scorer
+    matches one-to-one at IoU >= 0.25: the bridge matches one reference, the
+    other reference is an unmatched FN, and RQ = 1/(1 + 0.5) = 0.667. The
+    numbers below are this harness's, not the leaderboard's -- the 0.333 gap is
+    asserted in eval/tests/test_official_agreement.py.
+    """
     gt = _empty((30, 30, 30))
     gt[2:5, 2:5, 2:5] = 1            # GT 1
     gt[6:9, 2:5, 2:5] = 1            # GT 2 (separated by 1 voxel gap on x axis)
@@ -239,15 +269,19 @@ def test_lesionwise_one_pred_overlaps_two_gt():
     assert lm.fp_lesions == 0
     assert math.isclose(lm.lesion_recall, 1.0)
     assert math.isclose(lm.lesion_precision, 1.0)
+    assert math.isclose(lm.lesion_f1, 1.0)  # official RQ on this phantom: 0.667
     # |count diff| surfaces the merge:
     assert lm.signed_lesion_count_diff == -1  # pred missed one component
     assert lm.abs_lesion_count_diff == 1
 
 
 def test_lesionwise_two_pred_overlap_one_gt():
-    """Inverse: one big GT lesion split into two predictions. Recall on the
-    single GT is 1; both predictions count as TPs (precision = 1). |count
-    diff| surfaces the split."""
+    """Split phantom, the mirror image. One big GT lesion covered by two
+    predicted CCs: recall on the single GT is 1 and both predictions count as
+    TPs, so this harness again reports F1 = 1.0. The OFFICIAL scorer matches one
+    prediction and charges the other as an unmatched FP, RQ = 1/(1 + 0.5) =
+    0.667 (see eval/tests/test_official_agreement.py). |count diff| is the only
+    metric here that surfaces the split."""
     gt = _empty((30, 30, 30))
     gt[2:9, 2:5, 2:5] = 1            # one big GT
     pred = _empty((30, 30, 30))
@@ -260,6 +294,7 @@ def test_lesionwise_two_pred_overlap_one_gt():
     assert lm.fp_lesions == 0        # both predictions overlap the GT
     assert math.isclose(lm.lesion_recall, 1.0)
     assert math.isclose(lm.lesion_precision, 1.0)
+    assert math.isclose(lm.lesion_f1, 1.0)  # official RQ on this phantom: 0.667
     assert lm.signed_lesion_count_diff == 1
     assert lm.abs_lesion_count_diff == 1
 

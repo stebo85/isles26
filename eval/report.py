@@ -14,6 +14,16 @@ Aggregation rules
 - We aggregate with `nanmean` and `nanmedian` to skip cases where a metric is
   undefined (e.g. HD95 on empty masks). Counts of valid cases are reported
   alongside each aggregate.
+- That skipping is not neutral: HD95/ASSD/surface-Dice are undefined whenever
+  either mask is empty, so a model that predicts nothing on the hard cases is
+  scored on a smaller, easier subset than one that always predicts something
+  (audit finding 18: measured n_valid 1422 / 1419 / 1428 across three models
+  compared head-to-head). We do not "fix" this by imputing a value — there is
+  no defensible finite HD95 for an empty mask — but EVERY aggregate, including
+  the stratified ones, carries its own n_valid in both the JSON and the
+  Markdown so two means over different denominators can never be silently
+  compared. If the n_valid columns differ, the means do not answer the same
+  question.
 - For per-bin recall, we sum n_gt and n_detected across cases, then divide.
   This avoids the "average of ratios" pitfall when bin counts are small per
   case (one case with 1/1 detected would otherwise have the same weight as a
@@ -32,14 +42,33 @@ from typing import Iterable
 import numpy as np
 
 
+def _finite(xs: Iterable[float]) -> np.ndarray:
+    return np.asarray(
+        [x for x in xs if x is not None and not (isinstance(x, float) and math.isnan(x))],
+        dtype=np.float64,
+    )
+
+
 def _safe_mean(xs: Iterable[float]) -> float:
-    arr = np.asarray([x for x in xs if x is not None and not (isinstance(x, float) and math.isnan(x))], dtype=np.float64)
+    arr = _finite(xs)
     return float(arr.mean()) if arr.size else float("nan")
 
 
 def _safe_median(xs: Iterable[float]) -> float:
-    arr = np.asarray([x for x in xs if x is not None and not (isinstance(x, float) and math.isnan(x))], dtype=np.float64)
+    arr = _finite(xs)
     return float(np.median(arr)) if arr.size else float("nan")
+
+
+def _n_valid(xs: Iterable[float]) -> int:
+    """How many cases actually contributed to an aggregate.
+
+    Boundary metrics (HD95/ASSD/surface-Dice) are NaN whenever either mask is
+    empty, and lesion precision/recall are NaN when their direction is
+    undefined. A model that abstains more therefore gets averaged over fewer,
+    easier cases. Two means with different n_valid are not comparable, so every
+    aggregate ships its n_valid next to it (audit finding 18).
+    """
+    return int(_finite(xs).size)
 
 
 def _summary_metric(name: str, values: list[float]) -> dict:
@@ -55,6 +84,44 @@ def _summary_metric(name: str, values: list[float]) -> dict:
         "min": float(arr.min()),
         "max": float(arr.max()),
     }
+
+
+def _geometry_block() -> dict:
+    """Grid-mismatch bookkeeping from the loader, so report.json records how
+    many predictions had to be resampled onto the GT grid (audit finding 20).
+
+    Counters are process-wide and accumulate over the run that produced these
+    cases; all-zero means no volumes were loaded in THIS process, not that
+    nothing was resampled. That happens for real: a report re-aggregated from a
+    cached per_case.json never touches a NIfTI, and `run_atlas_eval.py --workers
+    N>1` loads every volume inside a ProcessPoolExecutor child, whose counters
+    die with it. So n_checked == 0 carries an explicit note rather than a row of
+    reassuring zeros a reader could mistake for "nothing was resampled".
+    The import is local because report.py is otherwise pure-Python and we do
+    not want importing it to pull in nibabel.
+    """
+    from eval.loader import geometry_stats
+
+    stats = geometry_stats()
+    if not stats.get("n_checked"):
+        stats["note"] = (
+            "no volumes were loaded in the aggregating process, so nothing was "
+            "counted; this says nothing about whether predictions were resampled "
+            "(multi-worker runners load in child processes)"
+        )
+    return stats
+
+
+def _with_n(info: dict, metric: str, fmt: str) -> str:
+    """Render "mean (n_valid)" for a stratified cell.
+
+    Falls back to the group size when a caller supplied a report produced by an
+    older version of `aggregate_minimal` that had no per-metric n_valid.
+    """
+    value = info.get(f"{metric}_mean", float("nan"))
+    n_valid = info.get(f"{metric}_n_valid", info.get("n", 0))
+    rendered = fmt.format(value) if isinstance(value, (int, float)) else "n/a"
+    return f"{rendered} ({n_valid})"
 
 
 def aggregate(cases: list[dict]) -> dict:
@@ -122,6 +189,7 @@ def aggregate(cases: list[dict]) -> dict:
 
     return {
         "n_cases": len(cases),
+        "geometry": _geometry_block(),
         "overall": overall,
         "size_bins_voxels_pooled": _finalize_bins(bins_pooled_vox),
         "size_bins_ml_pooled": _finalize_bins(bins_pooled_ml),
@@ -170,6 +238,16 @@ def aggregate_minimal(cases: list[dict]) -> dict:
         "lesion_recall_mean": _safe_mean(recall),
         "hd95_mm_mean": _safe_mean(hd95),
         "abs_volume_diff_ml_mean": _safe_mean(avd),
+        # Per-metric denominators: `n` is the group size, these are the numbers
+        # of cases each mean was actually computed over. They differ whenever a
+        # metric is undefined for some case (empty mask -> NaN HD95, no GT
+        # lesion -> NaN lesion recall), and a mean is only comparable across
+        # models at equal n_valid.
+        "dice_n_valid": _n_valid(dice),
+        "lesion_f1_n_valid": _n_valid(f1),
+        "lesion_recall_n_valid": _n_valid(recall),
+        "hd95_mm_n_valid": _n_valid(hd95),
+        "abs_volume_diff_ml_n_valid": _n_valid(avd),
     }
 
 
@@ -179,6 +257,15 @@ def write_json(report: dict, out_path: Path) -> None:
 
 def write_markdown(report: dict, out_path: Path, title: str = "Benchmark report") -> None:
     lines = [f"# {title}", "", f"Subjects evaluated: **{report['n_cases']}**", ""]
+
+    geom = report.get("geometry") or {}
+    if geom.get("n_checked"):
+        lines.append(
+            f"Grid check: {geom['n_on_grid']}/{geom['n_checked']} predictions were already on the "
+            f"GT grid; **resampled onto it: {geom['n_resampled']}** "
+            f"(the official scorer raises on a grid mismatch rather than resampling)."
+        )
+        lines.append("")
 
     lines.append("## Overall metrics")
     lines.append("")
@@ -208,24 +295,29 @@ def write_markdown(report: dict, out_path: Path, title: str = "Benchmark report"
 
     lines.append("## By chronicity")
     lines.append("")
-    lines.append("| group | n | Dice mean | Dice median | Lesion F1 mean | Lesion recall mean | HD95 mm mean | AVD mL mean |")
+    lines.append("| group | n | Dice mean (n_valid) | Dice median | Lesion F1 mean (n_valid) | Lesion recall mean (n_valid) | HD95 mm mean (n_valid) | AVD mL mean (n_valid) |")
     lines.append("|---|---:|---:|---:|---:|---:|---:|---:|")
     for grp, info in report["by_chronicity"].items():
-        lines.append("| {grp} | {n} | {d_m:.4f} | {d_med:.4f} | {f1:.4f} | {rec:.4f} | {hd95:.3f} | {avd:.3f} |".format(
-            grp=grp, n=info["n"], d_m=info["dice_mean"], d_med=info["dice_median"],
-            f1=info["lesion_f1_mean"], rec=info["lesion_recall_mean"],
-            hd95=info["hd95_mm_mean"], avd=info["abs_volume_diff_ml_mean"]))
+        lines.append("| {grp} | {n} | {d_m} | {d_med:.4f} | {f1} | {rec} | {hd95} | {avd} |".format(
+            grp=grp, n=info["n"],
+            d_m=_with_n(info, "dice", "{:.4f}"), d_med=info["dice_median"],
+            f1=_with_n(info, "lesion_f1", "{:.4f}"),
+            rec=_with_n(info, "lesion_recall", "{:.4f}"),
+            hd95=_with_n(info, "hd95_mm", "{:.3f}"),
+            avd=_with_n(info, "abs_volume_diff_ml", "{:.3f}")))
     lines.append("")
 
     lines.append("## By center (Manufacturer | Model)")
     lines.append("")
-    lines.append("| center | n | Dice mean | Lesion F1 mean | HD95 mm mean | AVD mL mean |")
+    lines.append("| center | n | Dice mean (n_valid) | Lesion F1 mean (n_valid) | HD95 mm mean (n_valid) | AVD mL mean (n_valid) |")
     lines.append("|---|---:|---:|---:|---:|---:|")
     for grp, info in report["by_center"].items():
-        lines.append("| {grp} | {n} | {d:.4f} | {f1:.4f} | {hd95:.3f} | {avd:.3f} |".format(
-            grp=grp, n=info["n"], d=info["dice_mean"],
-            f1=info["lesion_f1_mean"], hd95=info["hd95_mm_mean"],
-            avd=info["abs_volume_diff_ml_mean"]))
+        lines.append("| {grp} | {n} | {d} | {f1} | {hd95} | {avd} |".format(
+            grp=grp, n=info["n"],
+            d=_with_n(info, "dice", "{:.4f}"),
+            f1=_with_n(info, "lesion_f1", "{:.4f}"),
+            hd95=_with_n(info, "hd95_mm", "{:.3f}"),
+            avd=_with_n(info, "abs_volume_diff_ml", "{:.3f}")))
     lines.append("")
 
     lines.append("## Per-case table (sorted by Dice, worst first)")
