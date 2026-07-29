@@ -1,0 +1,83 @@
+{
+  "n_subjects": 1452,
+  "baseline_config": "thr0.35_k20",
+  "policies": {
+    "fixed_baseline": {
+      "dice": 0.6282608662938568,
+      "abs_volume_diff_ml": 6.373232697459599,
+      "abs_lesion_count_diff": 1.868457300275482,
+      "lesion_f1": 0.5790927364561584,
+      "pr_auc": 0.7417191515939985
+    },
+    "oracle_upper_bound": {
+      "dice": 0.6432642185279307,
+      "abs_volume_diff_ml": 4.677261418078108,
+      "abs_lesion_count_diff": 1.5172176308539944,
+      "lesion_f1": 0.6117902909597743,
+      "pr_auc": 0.7417191515939985
+    },
+    "volume": {
+      "dice": 0.6273297673339151,
+      "abs_volume_diff_ml": 6.540800207725033,
+      "abs_lesion_count_diff": 1.8836088154269972,
+      "lesion_f1": 0.580023606070405,
+      "pr_auc": 0.7417191515939985
+    },
+    "volume+k": {
+      "dice": 0.6270625889626479,
+      "abs_volume_diff_ml": 6.540279447933803,
+      "abs_lesion_count_diff": 1.8849862258953167,
+      "lesion_f1": 0.5805455533349954,
+      "pr_auc": 0.7417191515939985
+    },
+    "learned": {
+      "dice": 0.6271562592283187,
+      "abs_volume_diff_ml": 6.549683897887926,
+      "abs_lesion_count_diff": 1.9882920110192837,
+      "lesion_f1": 0.5652137113653047,
+      "pr_auc": 0.7417191515939985
+    },
+    "volume_pct_of_headroom": {
+      "dice": -6.205939482158496,
+      "abs_volume_diff_ml": -9.88032712007624,
+      "abs_lesion_count_diff": -4.313725490196074,
+      "lesion_f1": 2.8469089764607864,
+      "pr_auc": NaN
+    },
+    "volume+k_pct_of_headroom": {
+      "dice": -7.986730648684823,
+      "abs_volume_diff_ml": -9.849621423726258,
+      "abs_lesion_count_diff": -4.70588235294116,
+      "lesion_f1": 4.443197361063362,
+      "pr_auc": NaN
+    },
+    "learned_pct_of_headroom": {
+      "dice": -7.362401737322394,
+      "abs_volume_diff_ml": -10.404138476488647,
+      "abs_lesion_count_diff": -34.11764705882351,
+      "lesion_f1": -42.44667621647019,
+      "pr_auc": NaN
+    },
+    "volume_config_usage_top5": {
+      "thr0.20_k20": 602,
+      "thr0.60_k20": 562,
+      "thr0.55_k20": 52,
+      "thr0.25_k20": 47,
+      "thr0.30_k20": 45
+    },
+    "volume+k_config_usage_top5": {
+      "thr0.60_k20": 266,
+      "thr0.20_k10": 242,
+      "thr0.20_k20": 174,
+      "thr0.60_k35": 169,
+      "thr0.20_k35": 115
+    },
+    "learned_config_usage_top5": {
+      "thr0.20_k0": 628,
+      "thr0.60_k0": 548,
+      "thr0.20_k10": 36,
+      "thr0.20_k20": 34,
+      "thr0.20_k35": 33
+    }
+  }
+}

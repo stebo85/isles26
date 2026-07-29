@@ -348,26 +348,103 @@ on every case including PSR/PSL, and isolated the residual as a different effect
 (Problem 20). *A test that cannot separate two candidate causes will indict the
 wrong one.*
 
-## Problem 20 — nnU-Net's training-time validation is not the deployment path
+## Problem 20 — A claimed deployment-path gap that did not reproduce (CORRECTED)
 
-**Symptom.** Predicting a case through `predict_from_files` scores a mean
-**-0.017 Dice** (range -0.042 to 0.000, n=7) versus the number nnU-Net recorded
-for that same case, same fold, during training-time validation.
+**What was originally recorded here (2026-07-28, morning).** That predicting a
+case through `predict_from_files` scores a mean **-0.017 Dice** versus the number
+nnU-Net recorded during training-time validation, on 7 cases, and therefore that
+every cross-validation number in this repo is optimistic relative to the shipped
+container.
 
-**Cause (measured, not assumed).** Not geometry — the control above pins the
-geometry delta at exactly zero. Training-time validation predicts from the cached
-preprocessed arrays in `nnUNet_preprocessed`, while `predict_from_files`
-re-preprocesses from the NIfTI. These are different code paths and they do not
-agree exactly.
+**That claim is retracted.** A direct prediction-versus-prediction diagnostic
+(`analysis_nnunet_56_deployment_gap_diagnosis.sh`) on 40 cases spanning all five
+folds finds the two paths agree **exactly**: Dice(stored validation, deployed) =
+1.000000 on every case, with identical predicted volumes. Two supporting checks:
 
-**Consequence.** Every cross-validation number in this repo is a
-*training-time-validation* number, and the container will score systematically
-lower than it. Quote CV Dice as an upper bound on deployed performance, not an
-estimate of it.
+- `nnUNetTrainer.perform_actual_validation` constructs
+  `nnUNetPredictor(tile_step_size=0.5, use_gaussian=True, use_mirroring=True,
+  perform_everything_on_device=True)` -- identical settings to ours, verified in
+  the installed source. There was never a settings difference to find.
+- The raw ground truth and the converted ground truth are byte-identical in voxel
+  count for the disputed cases, so the conversion is not lossy either.
+- The stored fold validation, the consolidated cross-validation directory, and
+  the recorded `per_case.json` all agree to six decimals.
 
-**Lesson.** Validate the artifact you ship, through the path you ship it on. An
-internal validation score is a property of the training harness, not of the
-model.
+**Status: the -0.017 is unexplained but is NOT a systematic property of the
+deployment path.** The original measurement came from a 7-case sample selected
+for *largest lesion volume per storage orientation*; a re-run restricted to
+exactly those four disputed cases is still queued behind a congested GPU
+partition. Until it lands, treat the CV numbers as valid for the deployed
+configuration.
+
+**Lesson.** The original entry over-generalised from 7 non-randomly-selected
+cases to "every number in this repo is optimistic". A finding that sweeping
+deserved the direct A/B before it was written down, not after. The selection rule
+(largest lesion per orientation) was chosen to stress geometry, which makes it a
+biased sample for anything else.
+
+## Problem 21 — An oracle bound is not an achievability bound (2026-07-28)
+
+**What happened.** The official-metric sweep showed that a per-case oracle choice
+of (threshold, min-component-size) would score AVD 6.26 -> 4.50 mL and lesion
+count error 1.86 -> 1.26 versus the best fixed configuration, on two metrics that
+are nearly uncorrelated with Dice (Spearman -0.081 and +0.213). That looked like
+the largest untapped lever left, and it was pursued.
+
+**Result: negative.** Three policies (volume-regression threshold, plus a
+min-CC rule, plus a learned classifier over configurations), all fitted nested on
+the center-grouped folds, were **all worse than the fixed baseline** on the very
+metrics they targeted.
+
+**Why.** The oracle was a per-case minimum over 54 noisy configurations — a
+selection maximum, upward-biased exactly like an in-sample grid search. The
+diagnostic that settles it in one line: moving the threshold from 0.20 to 0.60
+changes predicted volume by a median of **0.739 mL**, while the median volume
+error is **1.532 mL**. The knob is half the size of the error it is meant to fix,
+and the true volume lies inside the achievable range on only **17.5%** of cases.
+The policy's own behaviour confirmed it — 602 cases pinned to the lowest
+threshold and 562 to the highest, i.e. saturating at both grid endpoints.
+
+**Lesson.** Before chasing an oracle gap, check that the knob has more leverage
+than the error it is supposed to correct. Compare the achievable range of the
+quantity you are steering against the size of the error. That is one line of
+arithmetic and it would have saved the whole experiment.
+
+**Corollary.** This also bounds a broader hope: the information needed to place
+the operating point per case is not in the soft map. The threshold-free softmax
+mass predicts true lesion volume at Spearman +0.916 — essentially identical to a
+fixed-threshold volume (+0.914) — with ~6.3 mL mean absolute error either way.
+Absolute volume difference is not improvable by post-hoc calibration; it needs a
+better model.
+
+## Problem 22 — Post-processing cannot recover structure the soft map lacks
+
+Three independent post-hoc attempts to improve the official metrics all failed,
+and they failed for the same underlying reason.
+
+| attempt | targeted | result |
+|---|---|---|
+| per-case adaptive threshold (volume regression) | AVD | worse than fixed |
+| per-case adaptive min-component size | count, RQ | worse than fixed |
+| blob splitting (h-maxima + watershed) | count, RQ | worse than fixed; fires on 5-13 of 1452 cases |
+
+The diagnostics converge:
+- The threshold moves predicted volume by a median of 0.739 mL against a median
+  volume error of 1.532 mL -- less leverage than the error it must fix.
+- The threshold-free softmax mass predicts true lesion volume at Spearman +0.916,
+  the same as a fixed-threshold volume (+0.914). Volume information is saturated.
+- Where the ground truth is fragmented, the probability map is a single smooth
+  confident region, not a multi-peaked one. There is no valley to split at.
+
+**Conclusion: absolute volume difference and the instance metrics are not
+reachable by post-processing. They need a model trained differently.** Since
+absolute volume difference is nearly uncorrelated with Dice (Spearman -0.081) and
+lesion-F1 only moderately so (+0.555), "train a better Dice model" is also not the
+answer -- the objective has to change.
+
+**Meta-lesson.** Three experiments, three negatives, ~1 CPU-day total. That is a
+good trade only because the official-metric harness made each one cheap to score
+honestly. Build the measuring instrument before the ideas, not after.
 
 ## Sources
 
