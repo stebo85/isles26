@@ -12,12 +12,14 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 import {
+  ArrowLeft,
   BookOpen,
   ChevronRight,
   CircleDot,
   FileJson,
   GitCommitHorizontal,
   History,
+  ListTree,
   RotateCcw,
   Route,
   ShieldCheck,
@@ -29,55 +31,205 @@ import { ProvenanceNodeCard, type ProvenanceFlowNode } from "./ProvenanceNodeCar
 import { layoutGraph } from "../lib/layoutGraph";
 import {
   formatEventDate,
+  isVisibleAtHistorySetting,
   lensLabels,
   MAX_ANALYSIS_FILE_BYTES,
+  projectGraph,
   relationLabels,
   repositoryAnalysisError,
   type Lens,
+  type ProvenanceNode,
   type RepositoryAnalysis,
 } from "../lib/provenance";
 
 const nodeTypes = { provenance: ProvenanceNodeCard };
 const lenses: Lens[] = ["story", "decisions", "pipeline"];
+const detailTabs = ["why", "how", "proof", "history"] as const;
+type DetailTab = (typeof detailTabs)[number];
+
+function WhyPanel({ item }: { item: ProvenanceNode }) {
+  return (
+    <div className="detail-tab-panel" id="detail-panel-why" role="tabpanel">
+      <div className="evidence-sections">
+        <section>
+          <h3>Question</h3>
+          <p>{item.question}</p>
+        </section>
+        <section>
+          <h3>Evidence</h3>
+          <p>{item.evidence}</p>
+        </section>
+        <section>
+          <h3>Decision or operation</h3>
+          <p>{item.decision}</p>
+        </section>
+        <section>
+          <h3>Consequence</h3>
+          <p>{item.consequence}</p>
+        </section>
+      </div>
+      {item.alternatives && item.alternatives.length > 0 && (
+        <section className="alternative-list" aria-labelledby="alternatives-heading">
+          <h3 id="alternatives-heading">Paths and outcomes</h3>
+          <ul>
+            {item.alternatives.map((alternative) => (
+              <li key={`${alternative.label}-${alternative.outcome}`}>
+                <div>
+                  <strong>{alternative.label}</strong>
+                  <span className={`outcome outcome-${alternative.outcome}`}>
+                    {alternative.outcome}
+                  </span>
+                </div>
+                <p>{alternative.rationale}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  );
+}
+
+function HowPanel({ item }: { item: ProvenanceNode }) {
+  const details = item.implementation ?? [
+    { label: "Operation or decision", value: item.decision },
+    { label: "Resulting contract", value: item.consequence },
+  ];
+  return (
+    <div className="detail-tab-panel" id="detail-panel-how" role="tabpanel">
+      <dl className="implementation-list">
+        {details.map((detail) => (
+          <div key={`${detail.label}-${detail.value}`}>
+            <dt>{detail.label}</dt>
+            <dd>{detail.value}</dd>
+            {detail.code && <code>{detail.code}</code>}
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+function ProofPanel({ item }: { item: ProvenanceNode }) {
+  return (
+    <div className="detail-tab-panel" id="detail-panel-proof" role="tabpanel">
+      <section className="source-list source-list-tab" aria-labelledby="source-heading">
+        <h3 id="source-heading">
+          <ShieldCheck size={15} aria-hidden="true" />
+          Evidence trace
+        </h3>
+        <ul>
+          {item.sources.map((source, index) => (
+            <li key={`${source.label}-${index}`}>
+              <ChevronRight size={14} aria-hidden="true" />
+              <div>
+                <div className="source-title-row">
+                  <strong>{source.label}</strong>
+                  {source.kind && <span className="source-type">{source.kind}</span>}
+                  {source.verification && (
+                    <span className="source-verification">{source.verification}</span>
+                  )}
+                </div>
+                {source.path && <code>{source.path}</code>}
+                <div className="source-location">
+                  {source.commit && (
+                    <span title={source.commit}>commit {source.commit.slice(0, 12)}</span>
+                  )}
+                  {source.lines && <span>lines {source.lines}</span>}
+                </div>
+                {source.excerpt && (
+                  <pre className="source-excerpt"><code>{source.excerpt}</code></pre>
+                )}
+                {source.url && /^https?:\/\//i.test(source.url) && (
+                  <a href={source.url} target="_blank" rel="noreferrer">
+                    Open source
+                  </a>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  );
+}
+
+function HistoryPanel({ item }: { item: ProvenanceNode }) {
+  const entries = item.history?.length
+    ? item.history
+    : [
+        {
+          at: item.eventAt,
+          label: "Event recorded",
+          summary: item.summary,
+          status: item.status,
+        },
+        ...(item.assertedAt && item.assertedAt !== item.eventAt
+          ? [{
+              at: item.assertedAt,
+              label: "Interpretation asserted",
+              summary: item.decision,
+              status: item.status,
+            }]
+          : []),
+      ];
+  return (
+    <div className="detail-tab-panel" id="detail-panel-history" role="tabpanel">
+      <ol className="history-list">
+        {entries.map((entry, index) => (
+          <li key={`${entry.at}-${entry.label}-${index}`}>
+            <div className="history-marker" aria-hidden="true" />
+            <div>
+              <div className="history-entry-heading">
+                <strong>{entry.label}</strong>
+                <time dateTime={entry.at}>{formatEventDate(entry.at)}</time>
+              </div>
+              <p>{entry.summary}</p>
+              {entry.status && <span className={`outcome outcome-${entry.status}`}>{entry.status}</span>}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
 
 function Explorer() {
   const [analysis, setAnalysis] = useState<RepositoryAnalysis>(isles26Analysis);
   const [lens, setLens] = useState<Lens>("story");
   const [showHistory, setShowHistory] = useState(true);
   const [selectedId, setSelectedId] = useState("official-metrics");
+  const [scopePath, setScopePath] = useState<string[]>([]);
+  const [detailTab, setDetailTab] = useState<DetailTab>("why");
   const [nodes, setNodes, onNodesChange] = useNodesState<ProvenanceFlowNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [loadError, setLoadError] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
   const { fitView } = useReactFlow();
 
-  const visibleItems = useMemo(() => {
-    return analysis.nodes.filter((node) => {
-      if (!node.lenses.includes(lens)) return false;
-      if (showHistory) return true;
-      return !["superseded", "retracted", "negative"].includes(node.status);
-    });
-  }, [analysis, lens, showHistory]);
+  const nodesById = useMemo(
+    () => new Map(analysis.nodes.map((node) => [node.id, node])),
+    [analysis.nodes],
+  );
+  const scopeId = scopePath.at(-1);
+  const scopeParent = scopeId ? nodesById.get(scopeId) : undefined;
+  const projection = useMemo(
+    () => projectGraph(analysis, lens, scopeId, showHistory),
+    [analysis, lens, scopeId, showHistory],
+  );
+  const graphLens = projection.lens;
+  const visibleItems = projection.nodes;
 
   const visibleIds = useMemo(
     () => new Set(visibleItems.map((item) => item.id)),
     [visibleItems],
   );
 
-  const visibleRelations = useMemo(
-    () =>
-      analysis.edges.filter(
-        (edge) =>
-          edge.lenses.includes(lens) &&
-          visibleIds.has(edge.source) &&
-          visibleIds.has(edge.target),
-      ),
-    [analysis, lens, visibleIds],
-  );
+  const visibleRelations = projection.edges;
 
   useEffect(() => {
     let cancelled = false;
-    layoutGraph(visibleItems, visibleRelations, lens)
+    layoutGraph(visibleItems, visibleRelations, graphLens)
       .then((graph) => {
         if (cancelled) return;
         setNodes(graph.nodes);
@@ -102,7 +254,7 @@ function Explorer() {
     return () => {
       cancelled = true;
     };
-  }, [fitView, lens, setEdges, setNodes, visibleIds, visibleItems, visibleRelations]);
+  }, [fitView, graphLens, setEdges, setNodes, visibleIds, visibleItems, visibleRelations]);
 
   const selected = useMemo(
     () => analysis.nodes.find((item) => item.id === selectedId) ?? visibleItems[0],
@@ -111,11 +263,15 @@ function Explorer() {
 
   const onNodeClick = useCallback((_: unknown, node: { id: string }) => {
     setSelectedId(node.id);
+    setDetailTab("why");
   }, []);
 
   const onSelectionChange = useCallback(
     ({ nodes: selectedNodes }: { nodes: Array<{ id: string }> }) => {
-      if (selectedNodes[0]) setSelectedId(selectedNodes[0].id);
+      if (selectedNodes[0]) {
+        setSelectedId(selectedNodes[0].id);
+        setDetailTab("why");
+      }
     },
     [],
   );
@@ -133,6 +289,8 @@ function Explorer() {
       setAnalysis(validAnalysis);
       setLens("story");
       setShowHistory(true);
+      setScopePath([]);
+      setDetailTab("why");
       setSelectedId(validAnalysis.nodes.find((node) => node.lenses.includes("story"))?.id ?? "");
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : "Could not read that analysis file.");
@@ -145,12 +303,47 @@ function Explorer() {
     setAnalysis(isles26Analysis);
     setLens("story");
     setShowHistory(true);
+    setScopePath([]);
+    setDetailTab("why");
     setSelectedId("official-metrics");
     setLoadError("");
   }, []);
 
   const isDemo = analysis.repository.name === isles26Analysis.repository.name &&
     analysis.repository.head === isles26Analysis.repository.head;
+
+  const childrenFor = useCallback((nodeId: string) => analysis.nodes.filter(
+    (node) => node.parentId === nodeId && isVisibleAtHistorySetting(node, showHistory),
+  ), [analysis.nodes, showHistory]);
+
+  const selectedChildren = useMemo(
+    () => selected ? childrenFor(selected.id) : [],
+    [childrenFor, selected],
+  );
+
+  const openDrilldown = useCallback((nodeId: string) => {
+    const children = childrenFor(nodeId);
+    if (children.length === 0) return;
+    setScopePath((current) => [...current, nodeId]);
+    setSelectedId(children[0].id);
+    setDetailTab("why");
+  }, [childrenFor]);
+
+  const closeDrilldown = useCallback(() => {
+    setScopePath((current) => {
+      const parentId = current.at(-1);
+      const next = current.slice(0, -1);
+      if (parentId) setSelectedId(parentId);
+      return next;
+    });
+    setDetailTab("why");
+  }, []);
+
+  const selectLens = useCallback((nextLens: Lens) => {
+    setLens(nextLens);
+    setScopePath([]);
+    setDetailTab("why");
+  }, []);
 
   return (
     <main className="app-shell">
@@ -239,7 +432,7 @@ function Explorer() {
               type="button"
               className={lens === item ? "lens-tab active" : "lens-tab"}
               aria-pressed={lens === item}
-              onClick={() => setLens(item)}
+              onClick={() => selectLens(item)}
             >
               <span>{index + 1}</span>
               {lensLabels[item]}
@@ -259,6 +452,47 @@ function Explorer() {
         )}
       </nav>
 
+      {scopeParent && (
+        <nav className="scope-bar" aria-label="Drill-down breadcrumb">
+          <button className="scope-back" type="button" onClick={closeDrilldown}>
+            <ArrowLeft size={14} aria-hidden="true" />
+            Back to {scopePath.length > 1 ? "parent" : lensLabels[lens]}
+          </button>
+          <ol className="scope-breadcrumb">
+            <li>
+              <button type="button" onClick={() => {
+                setScopePath([]);
+                setSelectedId(scopePath[0] ?? "");
+                setDetailTab("why");
+              }}>
+                {lensLabels[lens]}
+              </button>
+            </li>
+            {scopePath.map((id, index) => {
+              const item = nodesById.get(id);
+              const current = index === scopePath.length - 1;
+              return (
+                <li key={id} aria-current={current ? "page" : undefined}>
+                  <ChevronRight size={12} aria-hidden="true" />
+                  {current ? (
+                    <span>{item?.title ?? id}</span>
+                  ) : (
+                    <button type="button" onClick={() => {
+                      setScopePath(scopePath.slice(0, index + 1));
+                      setSelectedId(childrenFor(id)[0]?.id ?? "");
+                      setDetailTab("why");
+                    }}>
+                      {item?.title ?? id}
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+          <span className="scope-summary">{scopeParent.summary}</span>
+        </nav>
+      )}
+
       <section className="workspace" aria-label={`${lensLabels[lens]} graph and evidence`}>
         <div className="graph-panel">
           <div className="graph-caption">
@@ -266,7 +500,7 @@ function Explorer() {
               <CircleDot size={14} aria-hidden="true" />
               {visibleItems.length} nodes · {visibleRelations.length} relationships
             </span>
-            <span>Select a node to inspect its evidence</span>
+            <span>{scopeId ? "Inspect why, how, proof, and history" : "Select a node to inspect its evidence"}</span>
           </div>
           <div className="flow-canvas">
             <ReactFlow
@@ -323,51 +557,42 @@ function Explorer() {
               <h2>{selected.title}</h2>
               <p className="evidence-summary">{selected.summary}</p>
 
-              <div className="evidence-sections">
-                <section>
-                  <h3>Question</h3>
-                  <p>{selected.question}</p>
-                </section>
-                <section>
-                  <h3>Evidence</h3>
-                  <p>{selected.evidence}</p>
-                </section>
-                <section>
-                  <h3>Decision or operation</h3>
-                  <p>{selected.decision}</p>
-                </section>
-                <section>
-                  <h3>Consequence</h3>
-                  <p>{selected.consequence}</p>
-                </section>
+              {selectedChildren.length > 0 && (
+                <button
+                  className="drilldown-button"
+                  type="button"
+                  onClick={() => openDrilldown(selected.id)}
+                >
+                  <ListTree size={15} aria-hidden="true" />
+                  <span>
+                    <strong>{selected.drilldownLabel ?? "Open details"}</strong>
+                    <small>{selectedChildren.length} evidence nodes</small>
+                  </span>
+                  <ChevronRight size={15} aria-hidden="true" />
+                </button>
+              )}
+
+              <div className="detail-tabs" role="tablist" aria-label="Evidence detail">
+                {detailTabs.map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    role="tab"
+                    id={`detail-tab-${tab}`}
+                    aria-selected={detailTab === tab}
+                    aria-controls={`detail-panel-${tab}`}
+                    className={detailTab === tab ? "active" : ""}
+                    onClick={() => setDetailTab(tab)}
+                  >
+                    {tab}
+                  </button>
+                ))}
               </div>
 
-              <section className="source-list" aria-labelledby="source-heading">
-                <h3 id="source-heading">
-                  <ShieldCheck size={15} aria-hidden="true" />
-                  Evidence trace
-                </h3>
-                <ul>
-                  {selected.sources.map((source, index) => (
-                    <li key={`${source.label}-${index}`}>
-                      <ChevronRight size={14} aria-hidden="true" />
-                      <div>
-                        <strong>{source.label}</strong>
-                        {source.path && <code>{source.path}</code>}
-                        {source.commit && (
-                          <span title={source.commit}>commit {source.commit.slice(0, 12)}</span>
-                        )}
-                        {source.lines && <span>lines {source.lines}</span>}
-                        {source.url && /^https?:\/\//i.test(source.url) && (
-                          <a href={source.url} target="_blank" rel="noreferrer">
-                            Open source
-                          </a>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </section>
+              {detailTab === "why" && <WhyPanel item={selected} />}
+              {detailTab === "how" && <HowPanel item={selected} />}
+              {detailTab === "proof" && <ProofPanel item={selected} />}
+              {detailTab === "history" && <HistoryPanel item={selected} />}
             </>
           ) : (
             <div className="empty-evidence">
@@ -380,7 +605,7 @@ function Explorer() {
 
       <footer>
         <span>Read-only prototype · repository content is treated as untrusted evidence</span>
-        <span>Schema 0.1</span>
+        <span>Schema {analysis.schemaVersion}</span>
       </footer>
     </main>
   );

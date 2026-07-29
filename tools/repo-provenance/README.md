@@ -6,6 +6,12 @@ RepoTrace turns repository evidence into three progressively disclosed views:
 2. **Decisions** — what was selected, rejected, superseded, or corrected.
 3. **Current pipeline** — the artifacts and operations that produce today's result.
 
+Selected overview nodes can also expose a scoped evidence graph. The first
+schema 0.2 slices cover the official-metrics decision thread and the submitted
+component-filter operation. Their detail panel separates **Why**, **How**,
+**Proof**, and **History**, including structured alternatives, implementation
+parameters, commit-pinned excerpts, verification basis, and correction dates.
+
 The application ships with a curated ISLES26 analysis as a worked example. It
 also accepts schema-compatible JSON produced by the bundled deterministic
 indexer, so the viewer itself is repository-independent.
@@ -64,6 +70,17 @@ Each node records:
 - source paths, commits, line ranges, or URLs;
 - which progressive views should display it.
 
+Schema 0.2 is backward compatible with 0.1 and optionally adds:
+
+- parent-child scope for semantic zoom, with an optional explicit projection lens;
+- a discoverable drill-down label;
+- structured implementation facts and decision alternatives;
+- event histories; and
+- bounded evidence excerpts, source type, and verification basis.
+
+The deterministic generic indexer still emits conservative schema 0.1. Schema
+0.2 fields currently come from reviewed, evidence-citing enrichment.
+
 The underlying data is a versioned directed property graph. The UI renders an
 acyclic projection appropriate to the selected view; it does not require the
 stored repository model itself to be a DAG.
@@ -76,6 +93,8 @@ Implemented:
 - commit classification and episode grouping;
 - conservative pipeline-candidate discovery;
 - interactive graph layout, evidence drill-down, and history/current filtering;
+- scoped semantic-zoom graphs with breadcrumb navigation;
+- Why / How / Proof / History detail views with commit-pinned excerpts;
 - bounded generic JSON import with complete schema, enum, ID, and edge checks;
 - curated ISLES26 evidence demonstrating corrections and retractions.
 

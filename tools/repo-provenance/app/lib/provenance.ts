@@ -24,12 +24,48 @@ export type ProvenanceKind =
   | "proof"
   | "blocker";
 
+export type VerificationBasis =
+  | "documented"
+  | "static-analysis"
+  | "runtime-observed"
+  | "human-reviewed";
+
+export type SourceKind =
+  | "code"
+  | "document"
+  | "report"
+  | "test"
+  | "commit"
+  | "url";
+
 export interface SourceReference {
   label: string;
   path?: string;
   commit?: string;
   lines?: string;
   url?: string;
+  excerpt?: string;
+  kind?: SourceKind;
+  verification?: VerificationBasis;
+}
+
+export interface ImplementationDetail {
+  label: string;
+  value: string;
+  code?: string;
+}
+
+export interface DecisionAlternative {
+  label: string;
+  outcome: "selected" | "retained" | "rejected" | "superseded" | "pending";
+  rationale: string;
+}
+
+export interface ProvenanceHistoryEntry {
+  at: string;
+  label: string;
+  summary: string;
+  status?: ProvenanceStatus;
 }
 
 export interface ProvenanceNode {
@@ -47,6 +83,12 @@ export interface ProvenanceNode {
   consequence: string;
   confidence: "explicit" | "strongly-inferred" | "speculative";
   sources: SourceReference[];
+  parentId?: string;
+  drilldownLabel?: string;
+  drilldownLens?: Lens;
+  implementation?: ImplementationDetail[];
+  alternatives?: DecisionAlternative[];
+  history?: ProvenanceHistoryEntry[];
 }
 
 export interface ProvenanceEdge {
@@ -70,7 +112,7 @@ export interface ProvenanceEdge {
 }
 
 export interface RepositoryAnalysis {
-  schemaVersion: "0.1";
+  schemaVersion: "0.1" | "0.2";
   repository: {
     name: string;
     path?: string;
@@ -115,6 +157,48 @@ export const relationLabels: Record<ProvenanceEdge["relation"], string> = {
 
 export function isRepositoryAnalysis(value: unknown): value is RepositoryAnalysis {
   return repositoryAnalysisError(value) === null;
+}
+
+export function isVisibleAtHistorySetting(
+  node: ProvenanceNode,
+  includeHistory: boolean,
+): boolean {
+  return includeHistory || !["superseded", "retracted", "negative"].includes(node.status);
+}
+
+export function projectGraph(
+  analysis: RepositoryAnalysis,
+  lens: Lens,
+  scopeId: string | undefined,
+  includeHistory: boolean,
+): { lens: Lens; nodes: ProvenanceNode[]; edges: ProvenanceEdge[] } {
+  const scopeParent = scopeId
+    ? analysis.nodes.find((node) => node.id === scopeId)
+    : undefined;
+  const nodes = analysis.nodes.filter((node) => {
+    if (scopeId ? node.parentId !== scopeId : node.parentId) return false;
+    if (!scopeId && !node.lenses.includes(lens)) return false;
+    return isVisibleAtHistorySetting(node, includeHistory);
+  });
+  const nodeIds = new Set(nodes.map((node) => node.id));
+  const internalEdges = analysis.edges.filter(
+    (edge) => nodeIds.has(edge.source) && nodeIds.has(edge.target),
+  );
+  const projectionLens = scopeParent
+    ? scopeParent.drilldownLens ?? (["story", "decisions", "pipeline"] as Lens[])
+      .reduce((best, candidate) => {
+        const score = internalEdges.filter((edge) => edge.lenses.includes(candidate)).length * 1_000 +
+          nodes.filter((node) => node.lenses.includes(candidate)).length;
+        const bestScore = internalEdges.filter((edge) => edge.lenses.includes(best)).length * 1_000 +
+          nodes.filter((node) => node.lenses.includes(best)).length;
+        return score > bestScore ? candidate : best;
+      }, lens)
+    : lens;
+  const edges = analysis.edges.filter(
+    (edge) => edge.lenses.includes(projectionLens) &&
+      nodeIds.has(edge.source) && nodeIds.has(edge.target),
+  );
+  return { lens: projectionLens, nodes, edges };
 }
 
 export function nodeDate(node: ProvenanceNode): Date {

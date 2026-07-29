@@ -40,7 +40,7 @@ All edge labels read literally as `source relation target`; forward dataflow use
 
 ### Interactive evidence viewer
 
-The web application imports schema 0.1 JSON and renders three projections. The
+The web application imports schema 0.1 or 0.2 JSON and renders three overview projections. The
 importer fully checks the schema, enums, unique IDs, endpoints, and bounded
 sizes (5 MB / 1,000 nodes / 5,000 edges) before graph layout:
 
@@ -51,6 +51,27 @@ sizes (5 MB / 1,000 nodes / 5,000 edges) before graph layout:
 Selecting a node exposes its question, evidence, decision or operation,
 consequence, confidence, and source trace. The current-truth control can remove
 superseded, retracted, and negative nodes without erasing their history.
+
+Schema 0.2 adds semantic zoom without turning the overview into an unreadable
+graph. A node may own child nodes through `parentId` and may declare the child
+graph's `drilldownLens`; otherwise the viewer infers the lens from internal
+relationships and child membership. Opening it replaces the overview with that
+local subgraph and adds a breadcrumb back to the originating lens. The evidence
+panel uses four stable disclosure axes:
+
+- **Why:** question, evidence, decision, consequence, and considered paths;
+- **How:** structured inputs, outputs, parameters, entrypoints, and operations;
+- **Proof:** commit-pinned sources, bounded excerpts, source kind, and whether
+  the evidence was documented, statically inspected, runtime-observed, or
+  human-reviewed;
+- **History:** event time, assertion time, status changes, and corrections.
+
+The curated ISLES26 graph currently proves this interaction with two vertical
+slices: the official-metrics correction expands into the changing scorer
+contract and evaluator role split; the component filter expands into its
+probability input, threshold, connected-component semantics, size pruning,
+sweep evidence, and binary output. The generic deterministic indexer remains on
+schema 0.1 until it can populate the richer fields without inventing evidence.
 
 Visible event dates use an explicit UTC display timezone. Any text rendered on
 both the server and client must avoid process-local date formatting, otherwise a

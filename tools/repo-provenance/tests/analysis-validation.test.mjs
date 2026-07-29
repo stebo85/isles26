@@ -36,6 +36,44 @@ test("accepts a complete schema 0.1 analysis", () => {
   assert.equal(repositoryAnalysisError(valid), null);
 });
 
+test("accepts schema 0.2 drill-down details and commit-pinned excerpts", () => {
+  const detailedParent = {
+    ...node,
+    drilldownLabel: "Open decision thread",
+    drilldownLens: "decisions",
+    implementation: [{ label: "Entrypoint", value: "Run the scorer", code: "score_case()" }],
+    alternatives: [{ label: "Official scorer", outcome: "selected", rationale: "It is authoritative." }],
+    history: [{ at: node.eventAt, label: "Selected", summary: "The contract changed.", status: "current" }],
+    sources: [{
+      label: "Pinned code",
+      path: "eval/official_metrics.py",
+      commit: "a".repeat(40),
+      lines: "1-5",
+      excerpt: "The exact evidence.",
+      kind: "code",
+      verification: "static-analysis",
+    }],
+  };
+  const child = { ...node, id: "two", parentId: "one" };
+  assert.equal(repositoryAnalysisError({
+    ...valid,
+    schemaVersion: "0.2",
+    nodes: [detailedParent, child],
+    edges: [{ id: "edge", source: "one", target: "two", relation: "supports", lenses: ["story"] }],
+  }), null);
+});
+
+test("rejects an invalid explicit drill-down lens", () => {
+  assert.match(
+    repositoryAnalysisError({
+      ...valid,
+      schemaVersion: "0.2",
+      nodes: [{ ...node, drilldownLens: "operations" }],
+    }),
+    /nodes/i,
+  );
+});
+
 test("rejects missing fields and invalid enums", () => {
   assert.match(repositoryAnalysisError({ ...valid, stats: undefined }), /statistics/i);
   assert.match(
@@ -52,6 +90,24 @@ test("rejects duplicate IDs and dangling edges", () => {
       edges: [{ id: "edge", source: "one", target: "missing", relation: "precedes", lenses: ["story"] }],
     }),
     /missing node/i,
+  );
+});
+
+test("rejects missing and cyclic drill-down parents", () => {
+  assert.match(
+    repositoryAnalysisError({ ...valid, schemaVersion: "0.2", nodes: [{ ...node, parentId: "missing" }] }),
+    /missing parent/i,
+  );
+  assert.match(
+    repositoryAnalysisError({
+      ...valid,
+      schemaVersion: "0.2",
+      nodes: [
+        { ...node, parentId: "two" },
+        { ...node, id: "two", parentId: "one" },
+      ],
+    }),
+    /cyclic parent/i,
   );
 });
 

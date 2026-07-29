@@ -9,6 +9,9 @@ const KINDS = new Set([
   "pipeline-step", "input", "output", "proof", "blocker",
 ]);
 const CONFIDENCE = new Set(["explicit", "strongly-inferred", "speculative"]);
+const SOURCE_KINDS = new Set(["code", "document", "report", "test", "commit", "url"]);
+const VERIFICATION = new Set(["documented", "static-analysis", "runtime-observed", "human-reviewed"]);
+const ALTERNATIVE_OUTCOMES = new Set(["selected", "retained", "rejected", "superseded", "pending"]);
 const RELATIONS = new Set([
   "motivated", "measured", "supports", "contradicts", "selects", "supersedes",
   "produces", "consumes", "feeds", "precedes", "guards", "blocks",
@@ -29,10 +32,28 @@ function validLensList(value) {
 function validSource(source) {
   if (!isRecord(source) || !isText(source.label, 500)) return false;
   if (!isOptionalText(source.path, 4_096) || !isOptionalText(source.commit, 64) ||
-      !isOptionalText(source.lines, 128) || !isOptionalText(source.url, 4_096)) return false;
+      !isOptionalText(source.lines, 128) || !isOptionalText(source.url, 4_096) ||
+      !isOptionalText(source.excerpt, 20_000)) return false;
   if (source.commit !== undefined && !/^[0-9a-f]{40}$/i.test(source.commit)) return false;
+  if (source.kind !== undefined && !SOURCE_KINDS.has(source.kind)) return false;
+  if (source.verification !== undefined && !VERIFICATION.has(source.verification)) return false;
   if (source.path && !source.commit) return false;
   return Boolean(source.path || source.commit || source.url);
+}
+
+function validImplementation(item) {
+  return isRecord(item) && isText(item.label, 500) && isText(item.value) &&
+    isOptionalText(item.code, 4_096);
+}
+
+function validAlternative(item) {
+  return isRecord(item) && isText(item.label, 500) &&
+    ALTERNATIVE_OUTCOMES.has(item.outcome) && isText(item.rationale);
+}
+
+function validHistoryEntry(item) {
+  return isRecord(item) && isDate(item.at) && isText(item.label, 500) &&
+    isText(item.summary) && (item.status === undefined || STATUSES.has(item.status));
 }
 
 function validNode(node) {
@@ -42,7 +63,15 @@ function validNode(node) {
     isOptionalDate(node.assertedAt) && validLensList(node.lenses) &&
     isText(node.question) && isText(node.evidence) && isText(node.decision) &&
     isText(node.consequence) && CONFIDENCE.has(node.confidence) &&
-    Array.isArray(node.sources) && node.sources.length <= 50 && node.sources.every(validSource);
+    Array.isArray(node.sources) && node.sources.length <= 50 && node.sources.every(validSource) &&
+    isOptionalText(node.parentId, 256) && isOptionalText(node.drilldownLabel, 500) &&
+    (node.drilldownLens === undefined || LENSES.has(node.drilldownLens)) &&
+    (node.implementation === undefined || (Array.isArray(node.implementation) &&
+      node.implementation.length <= 100 && node.implementation.every(validImplementation))) &&
+    (node.alternatives === undefined || (Array.isArray(node.alternatives) &&
+      node.alternatives.length <= 50 && node.alternatives.every(validAlternative))) &&
+    (node.history === undefined || (Array.isArray(node.history) &&
+      node.history.length <= 100 && node.history.every(validHistoryEntry)));
 }
 
 function validEdge(edge) {
@@ -50,10 +79,10 @@ function validEdge(edge) {
     isText(edge.target, 256) && RELATIONS.has(edge.relation) && validLensList(edge.lenses);
 }
 
-/** Return a user-facing validation error, or null when schema 0.1 is valid. */
+/** Return a user-facing validation error, or null when a supported schema is valid. */
 export function repositoryAnalysisError(value) {
-  if (!isRecord(value) || value.schemaVersion !== "0.1") {
-    return "The file does not match RepoTrace schema 0.1.";
+  if (!isRecord(value) || !["0.1", "0.2"].includes(value.schemaVersion)) {
+    return "The file does not match a supported RepoTrace schema (0.1 or 0.2).";
   }
   const repository = value.repository;
   const stats = value.stats;
@@ -83,5 +112,17 @@ export function repositoryAnalysisError(value) {
   if (edgeIds.size !== value.edges.length) return "Provenance edge IDs must be unique.";
   const broken = value.edges.find((edge) => !nodeIds.has(edge.source) || !nodeIds.has(edge.target));
   if (broken) return `Edge ${broken.id} refers to a missing node.`;
+  const missingParent = value.nodes.find((node) => node.parentId && !nodeIds.has(node.parentId));
+  if (missingParent) return `Node ${missingParent.id} refers to a missing parent.`;
+  const nodesById = new Map(value.nodes.map((node) => [node.id, node]));
+  for (const node of value.nodes) {
+    const ancestors = new Set([node.id]);
+    let parentId = node.parentId;
+    while (parentId) {
+      if (ancestors.has(parentId)) return `Node ${node.id} has a cyclic parent chain.`;
+      ancestors.add(parentId);
+      parentId = nodesById.get(parentId)?.parentId;
+    }
+  }
   return null;
 }

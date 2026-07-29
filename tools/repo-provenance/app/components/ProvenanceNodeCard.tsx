@@ -64,7 +64,7 @@ export function ProvenanceNodeCard({ data, selected }: NodeProps<ProvenanceFlowN
       <p>{item.summary}</p>
       <div className="node-status">
         <span>{item.status}</span>
-        <span>{item.confidence}</span>
+        <span>{item.drilldownLabel ? "drill down" : item.confidence}</span>
       </div>
       <Handle
         type="source"

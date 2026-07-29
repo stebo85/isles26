@@ -36,6 +36,9 @@ test("server-renders the RepoTrace application shell", async () => {
   assert.match(html, /RepoTrace/);
   assert.match(html, /Load analysis/);
   assert.match(html, /isles26/);
+  assert.match(html, /Open decision thread/);
+  assert.match(html, />why</i);
+  assert.match(html, />proof</i);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape|react-loading-skeleton/i);
 });
 
@@ -52,6 +55,8 @@ test("keeps the bounded generic importer and evidence contract in the client", a
   assert.match(explorer, /accept="application\/json,\.json"/);
   assert.match(explorer, /repository content is treated as untrusted evidence/);
   assert.match(schema, /schemaVersion:\s*"0\.1"/);
+  assert.match(schema, /"0\.2"/);
+  assert.match(schema, /drilldownLabel/);
   assert.match(schema, /"superseded"/);
   assert.match(schema, /"retracted"/);
   assert.match(validator, /MAX_ANALYSIS_NODES = 1_000/);
