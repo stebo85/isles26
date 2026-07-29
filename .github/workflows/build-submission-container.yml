@@ -1,0 +1,133 @@
+name: Build ISLES'26 submission container
+
+# Sherlock has no docker, podman, buildah or skopeo, and its apptainer cannot
+# emit the `docker save` tarball Grand Challenge requires. So the image is built
+# here instead. Model weights are NOT in the image -- Grand Challenge mounts them
+# separately from model.tar.gz at /opt/ml/model -- so this needs no GPU, no
+# secrets and no access to the cluster.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'submission/isles26_algorithm/**'
+      - '.github/workflows/build-submission-container.yml'
+  pull_request:
+    paths:
+      - 'submission/isles26_algorithm/**'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Image tag to publish (e.g. v1-sanity)'
+        required: false
+        default: 'dev'
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  geometry-tests:
+    # Runs before the image build and gates it. A silent orientation flip emits a
+    # well-formed mask of plausible size and costs ~94% of Dice -- this project
+    # has already hit that once (commit f8d88c1: 0.016 vs 0.2576). It is the one
+    # failure mode that must never reach a submission.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install the geometry test's dependencies only
+        run: python -m pip install --upgrade pip "numpy<2.1" "scipy<1.14" nibabel==5.4.2 SimpleITK==2.5.5
+      - name: Orientation round-trip over all 48 axis-aligned orientations
+        working-directory: submission/isles26_algorithm
+        # The real ATLAS volumes are not in the repo, so the real-case checks skip
+        # cleanly; the synthetic all-orientation and NIfTI round-trip checks are
+        # the ones that must pass here.
+        run: PYTHONPATH=. python test_geometry.py --per-session-csv /nonexistent
+
+  build:
+    needs: geometry-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk space
+        # The CUDA base image is large; hosted runners need the headroom.
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: submission/isles26_algorithm
+          load: true
+          tags: isles26-algorithm:${{ github.event.inputs.tag || 'dev' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Verify the Grand Challenge label is present
+        run: |
+          IMG=isles26-algorithm:${{ github.event.inputs.tag || 'dev' }}
+          LABEL=$(docker inspect --format '{{ index .Config.Labels "org.grand-challenge.api-method" }}' "$IMG")
+          echo "api-method label: '$LABEL'"
+          test "$LABEL" = "invoke"
+
+      - name: Smoke-test the entrypoint on a synthetic case
+        # No weights are available here, so the model cannot load. What this DOES
+        # verify is that the image starts, imports nnU-Net, finds the input, and
+        # fails in the intended way rather than silently producing nothing.
+        run: |
+          set -x
+          # This runner is not the one that ran geometry-tests, so it has neither
+          # numpy nor SimpleITK yet. `python` is also not guaranteed to exist on
+          # ubuntu-latest; `python3` is.
+          python3 -m pip install --quiet "numpy<2.1" SimpleITK==2.5.5
+          mkdir -p /tmp/in/images/t1w-brain-mri /tmp/out
+          python3 - <<'PY'
+          import numpy as np, SimpleITK as sitk
+          img = sitk.GetImageFromArray(np.random.rand(32, 40, 48).astype(np.float32))
+          img.SetSpacing((1.0, 1.0, 1.0))
+          img.SetDirection((0.0, 0.0, 1.0, -1.0, 0.0, 0.0, 0.0, -1.0, 0.0))  # a PSR-like storage orientation
+          sitk.WriteImage(img, "/tmp/in/images/t1w-brain-mri/case.mha", useCompression=True)
+          PY
+          docker run --rm -v /tmp/in:/input:ro -v /tmp/out:/output \
+            -e ISLES26_MODEL_DIR=/opt/ml/model \
+            isles26-algorithm:${{ github.event.inputs.tag || 'dev' }} 2>&1 | tee /tmp/run.log || true
+          grep -q "\[init\]" /tmp/run.log
+        env:
+          DOCKER_BUILDKIT: '1'
+
+      - name: Push to ghcr.io
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v6
+        with:
+          context: submission/isles26_algorithm
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/isles26-algorithm:${{ github.event.inputs.tag || 'dev' }}
+          cache-from: type=gha
+
+      - name: Export the Grand Challenge upload tarball
+        # Grand Challenge wants a `docker save` gzip, not a registry reference.
+        run: |
+          IMG=isles26-algorithm:${{ github.event.inputs.tag || 'dev' }}
+          docker save "$IMG" | gzip -c > isles26-algorithm.tar.gz
+          ls -lh isles26-algorithm.tar.gz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: isles26-algorithm-image
+          path: isles26-algorithm.tar.gz
+          retention-days: 30

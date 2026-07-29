@@ -125,14 +125,36 @@ def main(argv=None) -> int:
             for p in sorted(Path(d).glob("*.nii.gz")):
                 probs[p.name[: -len(".nii.gz")]] = p
     gt_dir = Path(args.gt_dir)
+
+    # Resume support. This job runs on a preemptible partition and takes ~20
+    # minutes; without incremental persistence a preemption at minute 19 throws
+    # away everything. Partial rows are appended as they complete and reloaded on
+    # restart, so a requeue costs only the in-flight cases.
+    out = Path(args.out)
+    partial = out.with_suffix(".partial.jsonl")
+    done: dict[str, dict] = {}
+    if partial.is_file():
+        for line in partial.read_text().splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                r = json.loads(line)
+            except json.JSONDecodeError:
+                continue  # a torn final line from a kill mid-write
+            done[r["subject_id"]] = r
+        print(f"[resume] {len(done)} cases already extracted", flush=True)
+
     tasks = [
         (sid, str(p), str(gt_dir / f"{sid}.nii.gz"))
         for sid, p in sorted(probs.items())
-        if (gt_dir / f"{sid}.nii.gz").is_file()
+        if (gt_dir / f"{sid}.nii.gz").is_file() and sid not in done
     ]
-    print(f"[info] {len(tasks)} cases, {args.workers} workers", flush=True)
+    print(f"[info] {len(tasks)} cases to do, {args.workers} workers", flush=True)
 
-    rows, errors = [], []
+    rows, errors = list(done.values()), []
+    partial.parent.mkdir(parents=True, exist_ok=True)
+    sink = partial.open("a")
     with ProcessPoolExecutor(max_workers=args.workers) as ex:
         futs = [ex.submit(_worker, t) for t in tasks]
         for i, fut in enumerate(as_completed(futs), 1):
@@ -142,16 +164,20 @@ def main(argv=None) -> int:
                 print(f"[error] {err}", file=sys.stderr)
             else:
                 rows.append(r)
+                sink.write(json.dumps(r) + "\n")
+                sink.flush()
             if i % 100 == 0:
                 print(f"[progress] {i}/{len(tasks)}", flush=True)
+    sink.close()
 
     rows.sort(key=lambda r: r["subject_id"])
-    out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=list(rows[0]))
         w.writeheader()
         w.writerows(rows)
+    if not errors:
+        partial.unlink(missing_ok=True)
     print(f"[done] wrote {out} ({len(rows)} rows, {len(errors)} errors)")
     return 1 if errors else 0
 

@@ -40,10 +40,18 @@ this was written — see `FORUM_QUESTIONS.md`.
 
 ## Build
 
-**Not on Sherlock.** The cluster has no `docker`/`podman`/`buildah`/`skopeo`,
+**Not on Sherlock** — the cluster has no `docker`/`podman`/`buildah`/`skopeo`,
 and its apptainer cannot emit the `docker save` tarball Grand Challenge needs.
-Build on a workstation or a small cloud VM; no GPU is required to build or to
-run the local test.
+
+The image is built by **GitHub Actions**:
+[`.github/workflows/build-submission-container.yml`](../../.github/workflows/build-submission-container.yml).
+It runs the 48-orientation geometry test as a gate *before* building, verifies
+the `org.grand-challenge.api-method=invoke` label, smoke-tests the entrypoint,
+pushes to ghcr.io, and uploads `isles26-algorithm.tar.gz` as a workflow artifact
+— which is the file Grand Challenge wants. Trigger a tagged build with
+`workflow_dispatch` (input `tag`, e.g. `v1-sanity`). No GPU and no secrets beyond
+the default `GITHUB_TOKEN` are needed, because the weights ride separately in
+`model.tar.gz`.
 
 ```bash
 # 1. stage the weights (on the cluster)
