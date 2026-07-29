@@ -96,6 +96,11 @@ jobs:
           # ubuntu-latest; `python3` is.
           python3 -m pip install --quiet "numpy<2.1" SimpleITK==2.5.5
           mkdir -p /tmp/in/images/t1w-brain-mri /tmp/out
+          # The image drops to the non-root `algorithm` user, whose uid is not
+          # the runner's, so a plain mkdir leaves /output unwritable for it and
+          # inference.py dies on its first mkdir. Grand Challenge mounts /output
+          # writable for the image's own user; this reproduces that.
+          chmod 777 /tmp/out
           python3 - <<'PY'
           import numpy as np, SimpleITK as sitk
           img = sitk.GetImageFromArray(np.random.rand(32, 40, 48).astype(np.float32))
@@ -105,8 +110,22 @@ jobs:
           PY
           docker run --rm -v /tmp/in:/input:ro -v /tmp/out:/output \
             -e ISLES26_MODEL_DIR=/opt/ml/model \
-            isles26-algorithm:${{ github.event.inputs.tag || 'dev' }} 2>&1 | tee /tmp/run.log || true
-          grep -q "\[init\]" /tmp/run.log
+            isles26-algorithm:${{ github.event.inputs.tag || 'dev' }} 2>&1 | tee /tmp/run.log
+          status=${PIPESTATUS[0]}
+          echo "container exit code: $status"
+
+          # There is exactly one outcome that passes: the container reached
+          # predictor initialisation and then failed because the weights Grand
+          # Challenge would have mounted at /opt/ml/model are not on this runner.
+          # `|| true` on the docker run used to swallow every other outcome, so a
+          # crash after [init] could pass on the log line alone -- hence checking
+          # the exit code and the failure reason, not just that we got started.
+          grep -q "\[init\] device=" /tmp/run.log
+          grep -q "/opt/ml/model" /tmp/run.log
+          if [ "$status" -eq 0 ]; then
+            echo "::error::container exited 0 with no weights present -- this test can no longer tell a real run from a silent no-op"
+            exit 1
+          fi
         env:
           DOCKER_BUILDKIT: '1'
 
