@@ -60,6 +60,43 @@ Upload the image and `model.tar.gz` separately: Grand Challenge mounts the
 archive at `/opt/ml/model`, which keeps the image small and lets the weights be
 swapped without a rebuild.
 
+## Publish a shareable image with GitHub Actions
+
+The workflow in `.github/workflows/publish-container.yml` builds the image on
+GitHub's runner, runs the synthetic geometry regression tests as part of the
+Docker build, and publishes it to GitHub Container Registry (GHCR). It needs no
+repository secrets: GitHub's built-in `GITHUB_TOKEN` supplies package write
+access.
+
+- A push to `main` publishes `ghcr.io/<owner>/isles26-algorithm:latest` and an
+  immutable `sha-<full-commit-sha>` tag.
+- A tag such as `v1.0.0` also publishes that version tag.
+- A pull request builds and tests the container without publishing it.
+- The workflow can also be started manually from **Actions -> Build and publish
+  challenge container -> Run workflow**.
+
+GitHub creates a new GHCR package as **private**, even when it is linked to a
+public repository. After the first successful workflow run, make it public once:
+
+1. Open the repository on GitHub and select the `isles26-algorithm` package.
+2. Open **Package settings**, scroll to **Danger Zone**, and choose **Change
+   visibility -> Public**.
+3. Confirm anonymous access from a logged-out shell:
+
+   ```bash
+   docker pull ghcr.io/<owner>/isles26-algorithm:latest
+   ```
+
+Share the digest shown in the workflow's job summary for an immutable challenge
+submission, for example:
+
+```text
+ghcr.io/<owner>/isles26-algorithm@sha256:<digest>
+```
+
+The package contains the inference code but not the model weights; continue to
+upload `model.tar.gz` separately as described above.
+
 ## Test locally before every submission
 
 ```bash

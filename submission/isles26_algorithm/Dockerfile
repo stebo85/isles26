@@ -52,7 +52,12 @@ if p.is_file():
     print(f"neutralised {p}")
 PY
 
-COPY --chown=algorithm:algorithm geometry.py inference.py ./
+COPY --chown=algorithm:algorithm geometry.py inference.py test_geometry.py ./
+
+# Fail the image build if native-space orientation handling regresses. The real
+# ATLAS cases are not part of the build context, so this runs the synthetic
+# all-orientation and NIfTI round-trip checks only.
+RUN python test_geometry.py --per-session-csv /nonexistent
 
 USER algorithm
 
