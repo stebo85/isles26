@@ -133,8 +133,8 @@ def chronicity_bin(dps: float | None, chronicity: float | None):
     per-session metadata CSVs of the ATLAS R3.0 raw release: CHRONICITY is only
     ever 1 (296 cases) or blank, and of the 26 cases carrying BOTH a usable
     DAYS_POST_STROKE and CHRONICITY==1, all 26 have DAYS_POST_STROKE >= 180.
-    docs/isles26_data_status.md documents the same rule. Note this contradicts
-    the parenthetical "CHRONICITY (1 if < 180 days)" in docs/challenge.md, which
+    docs/challenge/overview.md documents the same rule. Note this contradicts
+    the parenthetical "CHRONICITY (1 if < 180 days)" in docs/challenge/overview.md, which
     the data does not support; the audit counters emitted by main() will fire if
     a future release actually flips the encoding.
     """

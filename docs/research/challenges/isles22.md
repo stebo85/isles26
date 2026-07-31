@@ -1,3 +1,9 @@
+---
+name: ISLES'22 multimodal challenge context
+tags: [research, challenge, isles22]
+description: Adjacent DWI/ADC/FLAIR evidence about generalization and ensemble construction.
+---
+
 # ISLES'22 Multimodal Challenge Context
 
 This file covers the ISLES'22 DWI/ADC/FLAIR task only as adjacent context. ISLES'26 is closer to ATLAS R2.0 because it uses T1w MRI, but the ISLES'22 task gives useful lessons about challenge design, generalization, and ensemble construction.
@@ -72,3 +78,6 @@ Important findings:
 - ISLES'22 dataset paper: https://www.nature.com/articles/s41597-022-01875-5
 - DeepISLES paper: https://www.nature.com/articles/s41467-025-62373-x
 - DeepISLES code: https://github.com/ezequieldlrosa/DeepIsles
+
+Related fibers: [[research/methods]], [[research/challenges/atlas-r2]],
+[[challenge/overview]].

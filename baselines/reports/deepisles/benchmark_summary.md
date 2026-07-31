@@ -17,7 +17,7 @@ interpolation), FLAIR. Container ran with `--skull_strip`.
 **Ground truth**: `derivatives/lesion_masks/<sub>/dwi/<sub>_space-TRACE_desc-lesion_mask.nii.gz`
 (union of acute + chronic lesions where both are annotated).
 
-**Evaluation framework**: `eval/run_eval.py` (see [docs/evaluation_framework.md](../../../docs/evaluation_framework.md)).
+**Evaluation framework**: `eval/run_eval.py` (see [docs/evaluation/framework.md](../../../docs/evaluation/framework.md)).
 
 ## Headline numbers (n=12)
 

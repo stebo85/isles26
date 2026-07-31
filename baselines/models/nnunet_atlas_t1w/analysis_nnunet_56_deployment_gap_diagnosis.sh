@@ -64,7 +64,34 @@ REPO = Path("/scratch/users/sciget/isles26challenge")
 
 splits = json.loads((Path(os.environ["nnUNet_preprocessed"]) / raw_dir.name / "splits_final.json").read_text())
 per_fold = max(1, n_cases // len(splits))
-forced = [c for c in os.environ.get("CASES", "").split(",") if c]
+# NOTE: do not pass case lists via `sbatch --export=ALL,CASES=a,b,c` -- sbatch
+# treats every comma as a variable separator, so only the first case survives.
+# Use CASES_FILE, or the SELECT strata below.
+forced = [c for c in os.environ.get("CASES", "").replace(";", ",").split(",") if c]
+cases_file = os.environ.get("CASES_FILE", "")
+if cases_file and Path(cases_file).is_file():
+    forced = [l.strip() for l in Path(cases_file).read_text().splitlines() if l.strip()]
+
+select = os.environ.get("SELECT", "")
+if select and not forced:
+    # Stratify by ground-truth lesion volume. The first run of this diagnostic
+    # sampled small lesions and found EXACT agreement (Dice 1.000000 on 40
+    # cases); a large-lesion case then disagreed (0.9465, volume -9.3%). Whether
+    # the deployment path differs is therefore a question about SIZE, and the
+    # sample has to span it. This matters for the ranking: the top 5% of cases by
+    # absolute volume difference hold 41.5% of all AVD mass.
+    import csv as _csv
+    man = {r["nnunet_id"]: r for r in _csv.DictReader(
+        open(str(raw_dir / "conversion_manifest.csv")))}
+    fold_of_all = {c: k for k, s_ in enumerate(splits) for c in s_["val"]}
+    ranked = sorted((c for c in man if c in fold_of_all),
+                    key=lambda c: -float(man[c]["lesion_volume_ml"] or 0))
+    n = int(os.environ.get("SELECT_N", "15"))
+    if select == "large":
+        forced = ranked[:n]
+    elif select == "spread":
+        step = max(1, len(ranked) // n)
+        forced = ranked[::step][:n]
 if forced:
     fold_of = {c: k for k, s in enumerate(splits) for c in s["val"]}
     sel = [(fold_of[c], c) for c in forced if c in fold_of]

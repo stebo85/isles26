@@ -20,7 +20,7 @@ Gaussian noise and blur, brightness/contrast/gamma, and -- directly relevant to
 the spacing spread above -- more aggressive simulate-low-resolution. Rather than
 write an augmentation policy from scratch (the SynthStroke campaign in this repo
 is a cautionary tale about hand-rolled augmentation with silently inert knobs,
-see docs/problems_and_lessons.md), this composes the shipped, tested DA5
+see docs/lessons/problems.md), this composes the shipped, tested DA5
 transforms with our best loss.
 
 Method resolution order note: DA5 does not define `_build_loss`, and

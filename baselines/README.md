@@ -39,7 +39,7 @@ target. We currently have two eval sets:
 - **`soop_bench`** — 12 subjects, GT defined on **DWI/TRACE** (acute infarcts).
   This is the out-of-distribution challenge benchmark. Note: a T1w-only model is
   handicapped here because the lesions are DWI-defined (see the nnU-Net method
-  card and `docs/problems_and_lessons.md` Problem 3).
+  card and `docs/lessons/problems.md` Problem 3).
 - **`atlas_r21_fold0_val`** — 194 held-out ATLAS R2.1 cases, GT defined on
   **T1w** (chronic). In-distribution for any ATLAS-trained T1w model.
 - **`atlas_r30_5fold_cv`** — 1450 usable ATLAS R3.0 / ISLES'26 public-training
@@ -95,6 +95,6 @@ A report dir without `meta.json` is skipped by the leaderboard (that is how
   method card.
 - Keep `oracle` and `empty` present for every eval set as anchors.
 - Don't select models on Dice alone; report lesion-F1 and size-binned recall too
-  (`docs/problems_and_lessons.md` Problem 1).
+  (`docs/lessons/problems.md` Problem 1).
 - Validate splits by site × chronicity × lesion-size; never random k-fold
   (leaks center/chronicity structure).

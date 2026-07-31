@@ -6,7 +6,7 @@
 # the cluster (interactive browser auth). A human must download it via browser,
 # then stage it here. This script only (a) documents the procedure and
 # (b) validates + summarizes whatever has been staged, so the ingestion pipeline
-# can pick it up. See docs/isles26_data_status.md.
+# can pick it up. See docs/challenge/overview.md.
 #
 # Manual steps (human, in a browser):
 #   1. Verify your account at https://grand-challenge.org/ and JOIN
@@ -51,4 +51,4 @@ find "$DEST" -type f -name '*.json' | head -5
 echo ""
 echo "[next] Once the layout is known, wire it into the (pattern/config-driven)"
 echo "       characterizer + nnU-Net converter and build a combined Batch1+Batch2"
-echo "       dataset with stratified splits. See docs/isles26_data_status.md."
+echo "       dataset with stratified splits. See docs/challenge/overview.md."

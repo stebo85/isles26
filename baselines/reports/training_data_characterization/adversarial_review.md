@@ -4,7 +4,7 @@ Reviewer: Codex (gpt-5.x via `codex:rescue`).
 Source artifacts reviewed (commit prior to fixes):
 - [scripts/analysis/characterize_training_data.py](../../../scripts/analysis/characterize_training_data.py)
 - [scripts/analysis/aggregate_training_data.py](../../../scripts/analysis/aggregate_training_data.py)
-- [docs/atlas_r21_training_data_characterization.md](../../../docs/atlas_r21_training_data_characterization.md)
+- [docs/data/atlas-r21-characterization.md](../../../docs/data/atlas-r21-characterization.md)
 - This directory's `per_session.csv` and `summary.json`.
 
 Priority order (highest to lowest severity):
@@ -33,7 +33,7 @@ Claims verification against per_session.csv / summary.json:
 | 3 | `ndi.label(lesion_bin, structure=_CC26)` with `_CC26 = ndi.generate_binary_structure(3, 3)` to match `eval/metrics.py:_CONNECTIVITY_26` | `scripts/analysis/characterize_training_data.py` |
 | 4 | `chronicity = unknown if dps is NaN or dps <= 0 else (lt180d if dps < 180 else ge180d)` — applied in both the per-session script (`chronicity_lt180d` column) and the aggregator (`chronicity` derived column) | both analysis scripts |
 | 5 | New CSV columns `t1_brain_p50`, `t1_brain_p99` computed over non-zero voxels; `t1_p50` retained for backwards comparison and documented as whole-volume | `scripts/analysis/characterize_training_data.py` |
-| 6 | Preprocessing recommendation in the doc reordered so re-binarize (`> 0.5`) comes first; tiny-lesion post-resampling guard added (≥30 voxels) | `docs/atlas_r21_training_data_characterization.md` |
-| 7 | Same fix as 6 (re-binarize first in the preprocessing block) | `docs/atlas_r21_training_data_characterization.md` |
+| 6 | Preprocessing recommendation in the doc reordered so re-binarize (`> 0.5`) comes first; tiny-lesion post-resampling guard added (≥30 voxels) | `docs/data/atlas-r21-characterization.md` |
+| 7 | Same fix as 6 (re-binarize first in the preprocessing block) | `docs/data/atlas-r21-characterization.md` |
 
 After the re-run, `chronicity_counts` in `summary.json` is expected to shift from `{ge180d: 540, lt180d: 289, unknown: 126}` to `{ge180d: 540, lt180d: 264, unknown: 151}` (25 sessions reclassified from `lt180d → unknown`). CC distribution will tighten (26-conn merges previously-split edge-touching voxel groups).

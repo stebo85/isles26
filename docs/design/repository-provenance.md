@@ -1,4 +1,11 @@
-# Repository provenance explorer prototype
+---
+name: Repository provenance explorer prototype
+status: active
+tags: [design, provenance, tooling]
+description: Architecture, trust boundary, and roadmap for the repository provenance explorer.
+---
+
+# Repository Provenance Explorer Prototype
 
 ## Purpose
 
@@ -162,3 +169,5 @@ SQLite recursive queries are insufficient.
 - Scanning trusted Git metadata cannot execute repository hooks or project code;
   arbitrary remote Git metadata is isolated in a sanitized clone first.
 - A new commit updates only affected episodes and preserves reviewed history.
+
+Related fibers: [[models/status]], [[lessons/problems]].

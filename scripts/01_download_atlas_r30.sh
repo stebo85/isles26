@@ -15,7 +15,7 @@
 #
 # ATLAS R2.1 (Batch 1, 955 scans) already lives at data/ATLAS_R2.1_raw/. R3.0 is
 # the larger expansion; once extracted, inspect its layout before wiring it into
-# the characterizer / nnU-Net converter (see docs/isles26_data_status.md).
+# the characterizer / nnU-Net converter (see docs/challenge/overview.md).
 
 set -euo pipefail
 
@@ -61,4 +61,4 @@ echo "[info] top-level entries created under $EXTRACT_DIR:"
 tar -tzf "$DEC" | awk -F/ '{print $1}' | sort -u | head
 
 echo "[done] ATLAS R3.0 downloaded + decrypted + extracted. Inspect the new dir, then"
-echo "       wire it into the characterizer + nnU-Net converter (docs/isles26_data_status.md)."
+echo "       wire it into the characterizer + nnU-Net converter (docs/challenge/overview.md)."

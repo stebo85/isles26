@@ -1,6 +1,14 @@
-# Existing Stroke Segmentation Algorithms
+---
+name: Stroke segmentation methods
+tags: [research, methods, literature]
+description: Canonical literature survey of relevant preprocessing, model, robustness, and deployment methods.
+---
 
-This document surveys stroke lesion segmentation algorithms and tools relevant to ISLES'26 preparation. The emphasis is on methods that could inform a T1w MRI infarct segmentation entry, but the broader stroke literature is included where it gives reusable lessons about architecture, preprocessing, generalization, or deployment.
+# Stroke Segmentation Methods
+
+This is the canonical literature survey for the project. It records external
+evidence and experiment options; [the model status](../models/status.md) owns
+current project decisions and results.
 
 ## Executive Summary
 
@@ -451,3 +459,6 @@ These are ideas that should not distract the first phase:
 - 2024 deep learning stroke segmentation survey: https://doi.org/10.1016/j.compbiomed.2024.108509
 - Stroke lesion segmentation deep learning review: https://www.mdpi.com/2306-5354/11/1/86
 - MMStrokeNet code: https://github.com/LounesMD/MMStrokeNet
+
+Related fibers: [[research/challenges/atlas-r2]],
+[[research/challenges/isles22]], [[models/status]], [[lessons/problems]].

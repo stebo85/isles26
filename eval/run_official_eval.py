@@ -10,7 +10,7 @@ Two modes:
   reduce  merge the shards, aggregate by configuration (means AND
           rank-then-aggregate), and write report.json / report.md / per_case.csv.
 
-Why a sweep and not a single score: `docs/isles26_model_status.md` recorded
+Why a sweep and not a single score: `docs/models/status.md` recorded
 "connected-component postprocessing: none chosen" and threshold 0.54, but both
 decisions were made against Dice and against this repo's LENIENT 1-voxel
 lesion-F1 respectively. Two of the five official metrics (absolute lesion count
@@ -118,7 +118,7 @@ def load_binarised_gt(path: Path) -> tuple[np.ndarray, float]:
     """Load a ground-truth mask and its voxel volume in mL.
 
     Re-binarising is mandatory, not defensive: ATLAS site R039 stores masks as
-    float64 0.9999... (documented in docs/atlas_r21_training_data_characterization.md).
+    float64 0.9999... (documented in docs/data/atlas-r21-characterization.md).
     """
     img = nib.load(str(path))
     data = np.asanyarray(img.dataobj)

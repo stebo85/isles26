@@ -1,9 +1,16 @@
+---
+name: ISLES'26 model status
+status: active
+tags: [isles26, models, decisions]
+description: Canonical current standings, retractions, production choice, and next actions.
+---
+
 # ISLES'26 Model Status — Living Leaderboard
 
 Challenge task: native-space T1w -> binary infarct mask. **Sanity/submission
 phase opens 2026-07-30**; Docker submission closes 2026-08-15 23:59 CET.
 
-> **READ [isles26_official_metrics.md](isles26_official_metrics.md) FIRST.**
+> **READ [the official metrics reference](../evaluation/official-metrics.md) FIRST.**
 > The challenge ranks on five metrics — Dice, absolute volume difference,
 > absolute lesion count difference, lesion-wise F1 (panoptica RQ at **one-to-one
 > IoU >= 0.25**), and **PR-AUC over a soft map**. Every `lesion_f1` number
@@ -144,6 +151,32 @@ Each of these was believed, is wrong or unsupported, and is corrected here.
 | "5-fold ensemble + TTA, ~0.656 CV" | **MISATTRIBUTED** | 0.656 is a single-model out-of-fold number; nnU-Net predicts each case with the one fold that held it out. The 5-fold test-time ensemble has never been measured. |
 | "Dice+TopK10 is a WIN over 1000ep" | **RIGHT CALL, WRONG EVIDENCE** | The Dice delta is +0.0026 at t=1.16 (a tie). TopK10 is still the right primary because it wins significantly on AVD (-0.352 mL, t=-3.10) and lesion precision (t=+2.47). Cite those. |
 
+## Retraining experiments (fold-0, center-grouped, 1000 epochs)
+
+Schedule-matched against the existing fold-0 TopK10 model, scored with the
+official five metrics, gate fixed before the runs (RQ >= +0.020 or AVD <= -0.30 mL,
+Dice drop <= 0.005).
+
+| arm | Dice | AVD mL | count diff | RQ | verdict |
+|---|---:|---:|---:|---:|---|
+| TopK10 (control) | 0.6605 | 6.515 | 1.157 | 0.6601 | — |
+| **R1+R2** blob + volume loss | 0.6664 | 6.532 | 1.342 | **0.6278** | **DO NOT PROMOTE** |
+| R3+R4 DA5 heavy augmentation | — | — | — | — | training |
+
+**R1+R2 moved its own target metric the wrong way:** RQ -0.0323 (paired t = -2.75)
+while Dice rose an insignificant +0.0059. Weighting every instance equally
+produces more predicted components, and under one-to-one IoU >= 0.25 matching an
+unmatched component is penalised twice. Full analysis:
+`baselines/reports/metric_aligned_fold0/R1R2_blob_volume_FINDING.md`.
+
+That is now the fourth recall-oriented intervention to lose under the real metric
+(MSL, DBL, synthetic-lesion insertion, blob loss). Treat as settled: **adding
+marginal detections loses on this task.**
+
+The volume term also did nothing (AVD +0.017 mL, t = +0.09). With post-hoc volume
+calibration already dead (Problems 21-22), absolute volume difference is resistant
+to both post-processing and a direct loss term, and should absorb no more effort.
+
 ## Next levers (priority)
 
 The model is essentially done; nothing available in the remaining time beats it
@@ -184,3 +217,6 @@ ensemble.
 `main` was synced with `origin/main` before this experiment. The current work is
 on branch `self-training-hidden-generalization`; push still requires human
 credentials outside the cluster.
+
+Related fibers: [[challenge/overview]], [[evaluation/official-metrics]],
+[[models/synthstroke-lessons]], [[lessons/problems]].

@@ -110,5 +110,5 @@ The current browser importer accepts at most 5 MB, 1,000 nodes, and 5,000 edges.
 For a deployed build, set `SITE_URL` to the canonical `https://` origin used by
 Open Graph metadata.
 
-See [the repository-level design note](../../docs/repository_provenance_prototype.md)
+See [the repository-level design note](../../docs/design/repository-provenance.md)
 for the architecture and next implementation slices.

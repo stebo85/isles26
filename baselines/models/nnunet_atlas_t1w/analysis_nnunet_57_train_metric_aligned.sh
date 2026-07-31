@@ -97,11 +97,23 @@ if cls is None:
 print(f"[ok] discovered {cls}")
 PYEOF
 
+# ALWAYS resume when a checkpoint exists. The USR1 trap requeues this job on
+# preemption, but SLURM re-runs the script from the top -- so without --c the
+# requeued job silently starts again from epoch 0 and throws away the work.
+# That is exactly what happened to the DA5 arm on 2026-07-30: ~14 hours lost,
+# and it only showed up as a second training_log_* file in the fold directory.
+CKPT="$nnUNet_results/$DATASET/${TRAINER}__nnUNetPlans__3d_fullres/fold_${FOLD}/checkpoint_latest.pth"
+CONTINUE_FLAG=()
+if [[ -f "$CKPT" ]]; then
+  echo "[resume] found $CKPT -- continuing training rather than restarting"
+  CONTINUE_FLAG=(--c)
+fi
+
 echo "[train] $TRAINER on $DATASET fold $FOLD (1000 epochs)"
 "$REPO/.venv-nnunet/bin/nnUNetv2_train" "$DATASET" 3d_fullres "$FOLD" \
   -tr "$TRAINER" \
   --npz \
-  ${NNUNET_CONTINUE:+--c} &
+  ${CONTINUE_FLAG[@]:+"${CONTINUE_FLAG[@]}"} &
 wait $!
 
 echo "[done] $TRAINER fold $FOLD"

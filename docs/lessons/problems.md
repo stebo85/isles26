@@ -1,3 +1,10 @@
+---
+name: Problems, failure modes, and lessons
+status: active
+tags: [lessons, failures, decisions]
+description: Durable cross-cutting lessons; campaign detail remains in model-specific notes.
+---
+
 # Problems, Failure Modes, And Lessons
 
 This file turns the ATLAS and ISLES'22 literature into concrete risks for ISLES'26.
@@ -138,7 +145,7 @@ Action:
   confounded by this bug; do not cite their absolute numbers as evidence
   about synth-prob, compact6, or fade.
 
-Full lineage: [docs/synthstroke_training_lessons.md](synthstroke_training_lessons.md).
+Full lineage: [the SynthStroke campaign note](../models/synthstroke-lessons.md).
 
 ## Problem 10: Skull-Stripped Inputs Need A Brain Mask At Inference
 
@@ -163,9 +170,9 @@ Action:
   better. Acceptable for now since the ATLAS gain dominates.
 
 Implementation: `--brain-mask` in
-[our_predict.py](../baselines/models/synthstroke/synthstroke_helpers/our_predict.py),
+[our_predict.py](../../baselines/models/synthstroke/synthstroke_helpers/our_predict.py),
 default-on in
-[analysis_synth_07_predict_eval.sh](../baselines/models/synthstroke/analysis_synth_07_predict_eval.sh)
+[analysis_synth_07_predict_eval.sh](../../baselines/models/synthstroke/analysis_synth_07_predict_eval.sh)
 via the `BRAIN_MASK` env.
 
 ## Problem 11: Patch-Cropping Before Normalization Mismatches Inference Stats
@@ -206,15 +213,6 @@ Action:
   `PY_PID=""` before launch and guard the trap with `if [[ -n "$PY_PID" ]]`
   to avoid trap-induced errors before the process starts.
 
-
-
-- Selecting models by Dice only.
-- Random k-fold validation that leaks center/chronicity structure.
-- Building a browser-small model before having a strong teacher.
-- Trusting a novel architecture without beating nnU-Net under identical folds.
-- Removing tiny components blindly in post-processing.
-- Ignoring metadata that the challenge explicitly provides.
-
 ## Problem 13: A Custom nnU-Net Trainer With `*args` __init__ Crashes At Instantiation
 
 nnU-Net's base `nnUNetTrainer.__init__` records its keyword arguments by
@@ -249,28 +247,14 @@ file type` because it dispatches on the filename suffix. Use a temp name that
 **ends in the real extension**, e.g. `<name>.tmp.nii.gz`, then `os.replace` to
 the final path. (Hit building the MSL relabeled dataset.)
 
-## Problem 16: Per-Lever Results (What Actually Moved The Number)
+## Problem 16: Results Were Copied Into A Second Source Of Truth
 
-Full table and operating points live in `docs/isles26_model_status.md`. Summary
-of the R3.0 campaign so the conclusions are not lost if that file is trimmed:
+This section previously duplicated the model leaderboard and became stale when
+the official metric changed. Per-lever numbers, retractions, and current model
+decisions now live only in [the model status](../models/status.md).
 
-- **WIN — longer schedule:** 250→1000 epochs lifted consolidated 5-fold CV Dice
-  0.6372 → 0.6528 (all folds up).
-- **WIN — Dice+TopK10 (MAPPING recipe) @ 1000ep:** nnU-Net consolidated CV
-  **0.6551**; rich repo-harness OOF report **Dice 0.6558 / lesion-F1 0.6735 /
-  surface Dice 0.7679 / HD95 18.10 mm**; postprocessing chose none.
-- **WIN — OOD T1w ensemble:** blending nnU-Net + synth-plus probabilities, both
-  on the T1w input only and warped to TRACE, lifted soop mean Dice 0.255 →
-  0.289 (median 0.04 → 0.20). synth-plus carries the acute-DWI cases.
-- **NEGATIVE — ResEnc-L:** 0.639 vs 0.638, a tie at 250ep (no gain on this task).
-- **NEGATIVE — connected-component postprocessing:** `find_best_configuration`
-  chose "no postprocessing" every time (ATLAS lesions are multifocal; pruning
-  components hurts CV Dice).
-- **TRADEOFF — MSL (size-stratified labels):** small-lesion recall 0.339 →
-  0.486, medium 0.589 → 0.641, but Dice 0.6374 → 0.6298 (precision cost).
-- **NEGATIVE — precision-aware MSL+Tversky(0.7/0.3):** worsened both Dice
-  (0.6298 → 0.6186) and small recall (0.486 → 0.454); the FP penalty suppressed
-  true positives. Do not pursue Tversky-on-MSL.
+**Lesson:** promote reusable failure mechanisms here, but leave changing scores
+and campaign verdicts in their owning model note.
 
 ## Problem 17 — We optimised a metric the challenge does not use (2026-07-28)
 
@@ -348,40 +332,50 @@ on every case including PSR/PSL, and isolated the residual as a different effect
 (Problem 20). *A test that cannot separate two candidate causes will indict the
 wrong one.*
 
-## Problem 20 — A claimed deployment-path gap that did not reproduce (CORRECTED)
+## Problem 20 — The deployment path under-predicts volume on large lesions
 
-**What was originally recorded here (2026-07-28, morning).** That predicting a
-case through `predict_from_files` scores a mean **-0.017 Dice** versus the number
-nnU-Net recorded during training-time validation, on 7 cases, and therefore that
-every cross-validation number in this repo is optimistic relative to the shipped
-container.
+**Final state after three rounds of measurement.** Predicting through
+`predict_from_files` (the container's path) versus nnU-Net's training-time
+validation (which predicts from cached preprocessed arrays), same weights, same
+fold, same predictor settings:
 
-**That claim is retracted.** A direct prediction-versus-prediction diagnostic
-(`analysis_nnunet_56_deployment_gap_diagnosis.sh`) on 40 cases spanning all five
-folds finds the two paths agree **exactly**: Dice(stored validation, deployed) =
-1.000000 on every case, with identical predicted volumes. Two supporting checks:
+| sample | n | GT volume | agreement Dice | Dice delta | volume delta |
+|---|---:|---|---:|---:|---:|
+| small | 40 | 0.01-7 mL | 1.0000 | 0.0000 | 0.0% |
+| spread | 24 | 0.14-26 mL | 0.9987 | -0.0008 | -1.5% |
+| largest | 15 | 241-388 mL | 0.9790 | -0.0154 | -4.1% |
 
-- `nnUNetTrainer.perform_actual_validation` constructs
-  `nnUNetPredictor(tile_step_size=0.5, use_gaussian=True, use_mirroring=True,
-  perform_everything_on_device=True)` -- identical settings to ours, verified in
-  the installed source. There was never a settings difference to find.
-- The raw ground truth and the converted ground truth are byte-identical in voxel
-  count for the disputed cases, so the conversion is not lossy either.
-- The stored fold validation, the consolidated cross-validation directory, and
-  the recorded `per_case.json` all agree to six decimals.
+Monotone in lesion size, and one-directional: the deployed path predicts LESS.
+Aggregate Dice correction ~-0.0014 (negligible), aggregate absolute-volume-
+difference correction **~+0.40 mL on 6.37, i.e. +6.2%** -- because the affected
+cases already under-segment and because the top 5% of cases hold 41.5% of all AVD
+mass. Full write-up in `work/deployment_gap/FINDING.md`.
 
-**Status: the -0.017 is unexplained but is NOT a systematic property of the
-deployment path.** The original measurement came from a 7-case sample selected
-for *largest lesion volume per storage orientation*; a re-run restricted to
-exactly those four disputed cases is still queued behind a congested GPU
-partition. Until it lands, treat the CV numbers as valid for the deployed
-configuration.
+**Excluded by measurement:** geometry (raw-vs-canonical delta exactly 0.000000),
+predictor settings (identical in the installed source), ground truth (raw and
+converted labels byte-identical), report bookkeeping (stored validation,
+consolidated CV and committed per_case.json agree to six decimals).
 
-**Lesson.** The original entry over-generalised from 7 non-randomly-selected
-cases to "every number in this repo is optimistic". A finding that sweeping
-deserved the direct A/B before it was written down, not after. The selection rule
-(largest lesion per orientation) was chosen to stress geometry, which makes it a
-biased sample for anything else.
+### Three lessons, all about the measurement rather than the bug
+
+1. **The first version of this entry was wrong in both directions.** It began as
+   "-0.017 Dice everywhere" from 7 cases selected for *largest lesion per storage
+   orientation* -- a sample chosen to stress geometry, and therefore biased for
+   anything else. It was then retracted as "does not reproduce" on the strength of
+   40 cases that happened to be small. Both readings came from non-stratified
+   samples. **Stratify by the variable the effect could plausibly depend on, or
+   the sample decides the conclusion for you.**
+2. **A control that separates candidate causes is worth more than more data.**
+   Feeding the same case from the already-canonical copy -- identical code path,
+   identity orientation transform -- pinned the geometry contribution at exactly
+   zero and is what stopped this being misdiagnosed as a mirror flip.
+3. **`sbatch --export=ALL,CASES=a,b,c` silently keeps only the first value.**
+   sbatch treats every comma as a variable separator. The run looked like it
+   honoured a 4-case list and processed 1. Pass lists via a file.
+
+**Practical consequence:** validation-derived absolute volume difference is not a
+deployment estimate. Quote ~6.8 mL for the shipped configuration, not 6.37, until
+the surface is re-scored through the container.
 
 ## Problem 21 — An oracle bound is not an achievability bound (2026-07-28)
 
@@ -453,3 +447,6 @@ honestly. Build the measuring instrument before the ideas, not after.
 - MAPPING winner report: https://arxiv.org/abs/2211.15486
 - DeepISLES paper: https://www.nature.com/articles/s41467-025-62373-x
 - MSL/DBL small-lesion paper: https://arxiv.org/abs/2408.02929
+
+Related fibers: [[models/status]], [[models/synthstroke-lessons]],
+[[evaluation/official-metrics]], [[research/methods]].

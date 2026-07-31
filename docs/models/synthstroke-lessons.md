@@ -1,48 +1,53 @@
-# SynthStroke Training Campaign — Lessons (2026-05-21 → 2026-05-27)
+---
+name: SynthStroke training campaign
+tags: [models, synthstroke, experiments]
+description: Detailed run history, diagnoses, fixes, and outcomes from the SynthStroke campaign.
+---
+
+# SynthStroke Training Campaign — Lessons (2026-05-21 → 2026-06-10)
 
 Hard-won lessons from the from-scratch SynthStroke training effort on ATLAS R2.1.
 Read this before iterating on `baselines/models/synthstroke/`. Some prior reports
 were confounded by a critical trainer bug — **anything reporting Run A / C / D
 ATLAS metrics from before 2026-05-27 must be re-read through the caveats below.**
 
-## TL;DR (what changed)
+## TL;DR
 
 - A critical bug made every from-scratch run before 2026-05-27 train on the
   **L2 warmup objective for all 500 epochs**, never on Dice+CE. Fixed by setting
-  `crit.epoch = epoch` each epoch in [our_train.py](../baselines/models/synthstroke/synthstroke_helpers/our_train.py).
+  `crit.epoch = epoch` each epoch in [our_train.py](../../baselines/models/synthstroke/synthstroke_helpers/our_train.py).
 - **Brain-masking at inference is a free, large win** on ATLAS T1w: Run A ATLAS
   Dice **0.280 → 0.375**, lesion-F1 **0.109 → 0.202** (full 194 val). Now
-  default in [analysis_synth_07](../baselines/models/synthstroke/analysis_synth_07_predict_eval.sh)
+  default in [analysis_synth_07](../../baselines/models/synthstroke/analysis_synth_07_predict_eval.sh)
   (`BRAIN_MASK=1`), driven by a new `--brain-mask` flag in
-  [our_predict.py](../baselines/models/synthstroke/synthstroke_helpers/our_predict.py).
-- **Run E** (corrected baseline = Run A config + L2 fix + normalize-before-crop
-  + brain-mask) is the first VALID from-scratch result: **ATLAS Dice 0.480 —
-  beats pretrained synth-plus (0.458)**, confirming the fix and the from-scratch
-  route. (The broken Run A reached val 0.198 at epoch 404; Run E hit 0.288 by
-  epoch 109 — ~5× faster climb.)
-- **But the cross-contrast goal is NOT met by the mix-real recipe**: Run E
-  scores only **soop_trace Dice 0.131 vs synth-plus 0.447**. Mixing 67% real
-  T1w anchors the model to T1w and destroys the contrast-agnostic property.
-  Run F (synth-only) is the pivotal test of whether dropping real mixing
-  recovers it.
-- Earlier conclusion "synth from-scratch can't beat synth-plus" was **premature**
-  (confounded by the L2 bug) — Run E disproves it on ATLAS. The "works on soop"
-  half remains open.
+  [our_predict.py](../../baselines/models/synthstroke/synthstroke_helpers/our_predict.py).
+- **Runs H/I are the best valid synth models in-domain:** H maximizes ATLAS Dice
+  (0.566); I maximizes the legacy lesion-F1 measure (0.479). Both remain below
+  the real-data nnU-Net teacher.
+- **The cross-contrast goal failed.** Synth-only mixing (F), a compact label
+  scheme (J), and lesion-only DWI contrast synthesis (K) all failed to approach
+  pretrained synth-plus on DWI. The missing ingredient is a true
+  multi-dataset/multi-contrast corpus or forward model, not another local knob.
+- **Probability averaging is not useful in-domain.** The synth variants are too
+  correlated and every tested blend diluted nnU-Net.
 
 ## Why this matters / context
 
 Goal: a single model strong on ATLAS T1w that also works on soop_bench
 (cross-contrast). Strategy chosen earlier: train our own SynthStroke-style
 MONAI UNet on ATLAS label maps with cornucopia GMM synthesis + `--mix-real`
-ATLAS T1w. See [relevance_to_isles26.md](relevance_to_isles26.md) and
-[challenge.md](challenge.md) for the broader plan.
+ATLAS T1w. See [the challenge overview](../challenge/overview.md) for the task
+and [the current model status](status.md) for the production decision.
+
+Related fibers: [[models/status]], [[lessons/problems]],
+[[challenge/overview]], [[evaluation/official-metrics]].
 
 ## The critical bug (root cause of all prior negative results)
 
-[work/synthstroke/repo/custom.py](../work/synthstroke/repo/custom.py)'s
+[work/synthstroke/repo/custom.py](../../work/synthstroke/repo/custom.py)'s
 `DiceCEL2Loss.__init__` does `self.epoch = 0`; `forward()` does
 `if self.epoch < self.l2_epochs: total_loss = self.l2(...) else Dice+CE`.
-Our adaptation [our_train.py](../baselines/models/synthstroke/synthstroke_helpers/our_train.py)
+Our adaptation [our_train.py](../../baselines/models/synthstroke/synthstroke_helpers/our_train.py)
 constructed the loss with `l2_epochs=50` but **never advanced `crit.epoch`**
 in the training loop. So `0 < 50` was always true → every step of every prior
 run trained on the **L2 regression objective**, never on the segmentation
@@ -84,7 +89,7 @@ and reduced to the largest 26-connected component, lifts ATLAS:
 | no mask (as originally reported)                  | 0.280 | 0.102 | 0.109 |
 | **+ brain mask**                                  | **0.375** | 0.351 | **0.202** |
 
-Implementation: `--brain-mask` in [our_predict.py](../baselines/models/synthstroke/synthstroke_helpers/our_predict.py)
+Implementation: `--brain-mask` in [our_predict.py](../../baselines/models/synthstroke/synthstroke_helpers/our_predict.py)
 applies after the existing CC removal:
 
 ```python
@@ -96,7 +101,7 @@ mask = mask & (labeled == largest_label)
 
 `analysis_synth_07_predict_eval.sh` now defaults `BRAIN_MASK=1` (set
 `BRAIN_MASK=0` to disable). The saved probability map is left raw so
-[tune_postproc.py](../baselines/models/synthstroke/synthstroke_helpers/tune_postproc.py)
+[tune_postproc.py](../../baselines/models/synthstroke/synthstroke_helpers/tune_postproc.py)
 can still tune on the unmasked prob.
 
 **Caveat.** `(input>0)` is the right brain definition for skull-stripped ATLAS
@@ -109,13 +114,13 @@ ATLAS gain dominates.
 
 1. **Voxel-count overlays first.** Compare `pred.sum()` vs `gt.sum()` per case —
    over-fill (pred ≫ gt) vs under-fill (pred ≪ gt) is the dominant signal.
-2. **Visual overlays of a handful of cases** ([work/synthstroke/diag_overlays.py](../work/synthstroke/diag_overlays.py))
+2. **Visual overlays of a handful of cases** ([work/synthstroke/diag_overlays.py](../../work/synthstroke/diag_overlays.py))
    reveal *where* the model is firing: inside vs outside brain, at the right
    anatomy or scattered, whether it traces lesion borders.
 3. **Offline reasoning on saved probability maps.** With prob maps saved by
    `analysis_synth_08` we can sweep thresholds + masking variants on the full
    194 val set without any GPU
-   ([work/synthstroke/diag_brainmask_sweep.py](../work/synthstroke/diag_brainmask_sweep.py)).
+   ([work/synthstroke/diag_brainmask_sweep.py](../../work/synthstroke/diag_brainmask_sweep.py)).
 4. **Compare to known-working references** (synth-plus, nnU-Net) at matched
    epochs and matched eval set.
 
@@ -133,9 +138,9 @@ Findings from this pipeline (interpret WITH the L2-bug caveat):
 
 ### Train/inference normalization mismatch (real path)
 
-[our_train.py](../baselines/models/synthstroke/synthstroke_helpers/our_train.py)
+[our_train.py](../../baselines/models/synthstroke/synthstroke_helpers/our_train.py)
 `real_transform` used to apply `HistogramNormalizeD` + `NormalizeIntensityD`
-**after** the random crop, while [our_predict.py](../baselines/models/synthstroke/synthstroke_helpers/our_predict.py)
+**after** the random crop, while [our_predict.py](../../baselines/models/synthstroke/synthstroke_helpers/our_predict.py)
 normalizes the **full volume** before sliding-window inference. Training stats
 were computed on a 128³ patch → shifted distribution at test time.
 
@@ -145,10 +150,10 @@ synthesis is inherently patch-based; the original repo does the same.
 
 ### Scripts no longer report success after Python failure
 
-[analysis_synth_06_train.sh](../baselines/models/synthstroke/analysis_synth_06_train.sh)
+[analysis_synth_06_train.sh](../../baselines/models/synthstroke/analysis_synth_06_train.sh)
 used `set -uo pipefail` and then `wait "$PY_PID"; echo "[done] ..."`, so a
 non-zero Python exit was masked. Fixed with `RC=0; wait "$PY_PID" || RC=$?;
-[[ $RC -ne 0 ]] && exit $RC`. [analysis_synth_08_tune_postproc.sh](../baselines/models/synthstroke/analysis_synth_08_tune_postproc.sh)
+[[ $RC -ne 0 ]] && exit $RC`. [analysis_synth_08_tune_postproc.sh](../../baselines/models/synthstroke/analysis_synth_08_tune_postproc.sh)
 got the same treatment + `if ! tune_postproc ...; then exit 1; fi`; both have
 been further hardened to full `set -euo pipefail` and `exit 2` on missing
 inputs.
@@ -157,17 +162,17 @@ inputs.
 
 Run D used a 6-class checkpoint; `our_predict.py` defaulted `--n-classes 34`,
 which would have silently failed to load the state-dict. Added `N_CLASSES`
-env to [analysis_synth_07](../baselines/models/synthstroke/analysis_synth_07_predict_eval.sh)
-and [analysis_synth_08](../baselines/models/synthstroke/analysis_synth_08_tune_postproc.sh)
+env to [analysis_synth_07](../../baselines/models/synthstroke/analysis_synth_07_predict_eval.sh)
+and [analysis_synth_08](../../baselines/models/synthstroke/analysis_synth_08_tune_postproc.sh)
 that flows to `--n-classes`. Default 34 preserves prior behaviour.
 
 ### compact6 label scheme + fade (added, but not yet validated)
 
-[build_labelmap.py](../baselines/models/synthstroke/synthstroke_helpers/build_labelmap.py)
+[build_labelmap.py](../../baselines/models/synthstroke/synthstroke_helpers/build_labelmap.py)
 gained `--scheme {fs34,compact6}`. compact6 groups the SynthSeg FreeSurfer
 aseg labels into 6 classes (0 background, 1 CSF/ventricles, 2 GM,
 3 WM, 4 cerebellum+brainstem, 5 lesion) to match synth-plus's 6-class style.
-[our_train.py](../baselines/models/synthstroke/synthstroke_helpers/our_train.py)
+[our_train.py](../../baselines/models/synthstroke/synthstroke_helpers/our_train.py)
 gained `--fade` (smooth multiplicative field on the lesion region post-
 synthesis, mirroring the repo's penumbra/inhomogeneity intent for our
 integer-label cornucopia pipeline). **Both were used in Run D, which was
@@ -307,17 +312,16 @@ MIN_CC_VOXELS      # override frozen op-point
 BRAIN_MASK         # 1 default; 0 disables --brain-mask
 ```
 
-## What to verify next (open items)
+## Verification Checklist And Dispositions
 
 1. ~~Final Run E eval~~ **DONE** — see the Run E table above. ATLAS Dice
    **0.480** (> synth-plus 0.458), soop_trace 0.131 (≪ synth-plus 0.447).
    From-scratch beats the pretrained weights in-domain but not cross-contrast.
-2. **Run F (synth-only, synth-prob 1.0)** — IN PROGRESS (job 26630839). Pivotal
-   test of whether dropping real-T1w mixing recovers synth-plus-like
-   cross-contrast on soop_trace (~0.447). ATLAS in-domain will drop (real
-   anchor removed) — the question is the soop trade.
-3. **Run G (Run E + `--fade`)** — IN PROGRESS (job 26630843). Isolates fade on a
-   correct trainer (Run D's fade verdict was L2-confounded, invalid).
+2. **Run F (synth-only, synth-prob 1.0) — DONE, negative.** Dropping
+   real-T1w mixing did not recover synth-plus-like cross-contrast and collapsed
+   ATLAS performance. See "Runs F & G" above.
+3. **Run G (Run E + `--fade`) — DONE, positive in-domain.** Fade improved
+   ATLAS performance on the corrected trainer. See "Runs F & G" above.
 4. **lesion-F1 / over-segmentation** — was the dominant weakness after the L2 fix
    (ATLAS precision 0.18 vs recall 0.76). **SOLVED by Run H** (lesion-targeted
    Tversky `--loss tverskycel2` α0.7/β0.3): precision 0.18 → 0.41 at held recall
@@ -337,7 +341,7 @@ BRAIN_MASK         # 1 default; 0 disables --brain-mask
 8. **DWI-aware synthesis / contrast augmentation** — **DONE (Run K, negative — DWI got worse).**
    Every cheap lever (loss, synth:real ratio, label scheme) has failed to close the
    modality gap. This one attacks the synthesis: `DWIContrastD` (`--dwi-prob p`,
-   [our_train.py](../baselines/models/synthstroke/synthstroke_helpers/our_train.py))
+   [our_train.py](../../baselines/models/synthstroke/synthstroke_helpers/our_train.py))
    forces the lesion hyperintense (tissue-p95 × U(1.5,3) × smooth texture, overriding
    the random GMM draw) on a fraction `p` of synthetic patches, so the model learns
    the restricted-diffusion bright-blob prior that DWI inference relies on. Synth-path
@@ -372,7 +376,7 @@ comparison (kept apples-to-apples by identical methodology). Fix before any
 final/absolute claim.
 
 8. **[F1] Prediction cache is config-blind**
-   ([analysis_synth_07_predict_eval.sh](../baselines/models/synthstroke/analysis_synth_07_predict_eval.sh)).
+   ([analysis_synth_07_predict_eval.sh](../../baselines/models/synthstroke/analysis_synth_07_predict_eval.sh)).
    `predict_one` skips any existing `<case>.nii.gz`, but the cache path is keyed
    only by `TAG`/case — not by checkpoint SHA, `N_CLASSES`, threshold, `min_cc`,
    or brain-mask. Re-running the same `SYNTH_TRAIN_NAME` after changing any of
@@ -380,7 +384,7 @@ final/absolute claim.
    `SYNTH_TRAIN_NAME`. Proper fix: checkpoint-SHA + config sidecars like the
    nnU-Net pipeline already has.
 9. **[F2] Tuning optimizes a different pipeline than deployment**
-   ([tune_postproc.py](../baselines/models/synthstroke/synthstroke_helpers/tune_postproc.py)).
+   ([tune_postproc.py](../../baselines/models/synthstroke/synthstroke_helpers/tune_postproc.py)).
    `analysis_synth_08` sweeps (thr, cc) on the **raw, unmasked** saved prob maps,
    but `analysis_synth_07` deploys with **brain-masking on** by default. The
    selected operating point can therefore be slightly off the masked pipeline it
@@ -388,7 +392,7 @@ final/absolute claim.
    apply the same brain mask during tuning and persist `brain_mask` in the
    operating-point JSON.
 10. **[F3] Requeue resume is not bit-deterministic**
-    ([our_train.py](../baselines/models/synthstroke/synthstroke_helpers/our_train.py)).
+    ([our_train.py](../../baselines/models/synthstroke/synthstroke_helpers/our_train.py)).
     The checkpoint restores global Python/NumPy/Torch/CUDA RNG + the synth/real
     mixing RNG, but **not** MONAI `Randomizable` transform states or the
     DataLoader sampler position. A preempted+requeued run resumes with different
@@ -443,7 +447,7 @@ Implementation notes (all via Codex + `/codex:adversarial-review`, 2026-06-01):
   branch): `region=0.98 ce=2.71`, no NaN, checkpoint written.
 - Default `--loss dicecel2` path is byte-identical to Run G.
 - Knobs: `LOSS=tverskycel2 TVERSKY_ALPHA=0.7 TVERSKY_BETA=0.3` in
-  [analysis_synth_06_train.sh](../baselines/models/synthstroke/analysis_synth_06_train.sh).
+  [analysis_synth_06_train.sh](../../baselines/models/synthstroke/analysis_synth_06_train.sh).
 
 ## Run J — compact6 label scheme (DONE — negative on cross-contrast, 2026-06-08)
 
@@ -535,9 +539,9 @@ lesion-only intensity override.
 
 Separate line of work: rather than build one better model, measure whether
 *combining* the models we already have beats the best single one. Tool:
-[ensemble_complementarity.py](../baselines/models/synthstroke/synthstroke_helpers/ensemble_complementarity.py);
+[ensemble_complementarity.py](../../baselines/models/synthstroke/synthstroke_helpers/ensemble_complementarity.py);
 reports under
-[baselines/reports/synthstroke/ensemble/](../baselines/reports/synthstroke/ensemble/).
+[baselines/reports/synthstroke/ensemble/](../../baselines/reports/synthstroke/ensemble/).
 It combines per-case native-space lesion-prob maps, tunes every candidate on the
 same (thr × cc) grid, and reports the per-case **oracle** ceiling (perfect model
 routing) + pairwise complementarity. All numbers are ATLAS fold-0 val (the scored
@@ -565,15 +569,15 @@ unchanged; loosen to ~1e-4 to recover them.)
 
 ## Sources / pointers
 
-- Trainer: [our_train.py](../baselines/models/synthstroke/synthstroke_helpers/our_train.py)
-- Inference: [our_predict.py](../baselines/models/synthstroke/synthstroke_helpers/our_predict.py)
-- Tuning: [tune_postproc.py](../baselines/models/synthstroke/synthstroke_helpers/tune_postproc.py)
-- Label-map build: [build_labelmap.py](../baselines/models/synthstroke/synthstroke_helpers/build_labelmap.py)
-- Scripts: [analysis_synth_05](../baselines/models/synthstroke/analysis_synth_05_build_labelmaps.sh)
-  · [06](../baselines/models/synthstroke/analysis_synth_06_train.sh)
-  · [07](../baselines/models/synthstroke/analysis_synth_07_predict_eval.sh)
-  · [08](../baselines/models/synthstroke/analysis_synth_08_tune_postproc.sh)
+- Trainer: [our_train.py](../../baselines/models/synthstroke/synthstroke_helpers/our_train.py)
+- Inference: [our_predict.py](../../baselines/models/synthstroke/synthstroke_helpers/our_predict.py)
+- Tuning: [tune_postproc.py](../../baselines/models/synthstroke/synthstroke_helpers/tune_postproc.py)
+- Label-map build: [build_labelmap.py](../../baselines/models/synthstroke/synthstroke_helpers/build_labelmap.py)
+- Scripts: [analysis_synth_05](../../baselines/models/synthstroke/analysis_synth_05_build_labelmaps.sh)
+  · [06](../../baselines/models/synthstroke/analysis_synth_06_train.sh)
+  · [07](../../baselines/models/synthstroke/analysis_synth_07_predict_eval.sh)
+  · [08](../../baselines/models/synthstroke/analysis_synth_08_tune_postproc.sh)
 - Diagnostic helpers (transient, in `work/`): `diag_overlays.py`, `diag_brainmask_sweep.py`
-- Pipeline status report: [baselines/reports/synthstroke/PIPELINE_STATUS.md](../baselines/reports/synthstroke/PIPELINE_STATUS.md)
-- Upstream DiceCEL2Loss (the bug-prone class): [work/synthstroke/repo/custom.py](../work/synthstroke/repo/custom.py)
+- Pipeline status report: [baselines/reports/synthstroke/PIPELINE_STATUS.md](../../baselines/reports/synthstroke/PIPELINE_STATUS.md)
+- Upstream DiceCEL2Loss (the bug-prone class): [work/synthstroke/repo/custom.py](../../work/synthstroke/repo/custom.py)
 - SynthStroke paper: Chalcroft et al., MELBA 2025 — http://dx.doi.org/10.59275/j.melba.2025-f3g6

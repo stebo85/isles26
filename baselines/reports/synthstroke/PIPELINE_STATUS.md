@@ -56,9 +56,9 @@
 > it (oracle ceiling only +0.020); ship nnU-Net alone in-distribution. The
 > remaining open ensembling question is cross-contrast (soop/DWI), not run yet.
 > Full numbers (Run K + ensemble sections) and next steps:
-> [docs/synthstroke_training_lessons.md](../../../docs/synthstroke_training_lessons.md)
+> [docs/models/synthstroke-lessons.md](../../../docs/models/synthstroke-lessons.md)
 > (Runs E and "F & G" sections); durable lessons in
-> [docs/problems_and_lessons.md](../../../docs/problems_and_lessons.md)
+> [docs/lessons/problems.md](../../../docs/lessons/problems.md)
 > Problems 9–12. Treat the historical table below (Runs A/C/D) as L2-confounded.
 
 **COMPLETED 2026-05-21.** Two tracks: (A) benchmark the released pretrained

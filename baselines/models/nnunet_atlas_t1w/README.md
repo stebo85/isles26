@@ -87,7 +87,7 @@ model learned **chronic** encephalomalacia appearance on T1w. soop_bench Dice is
 monotonic with chronicity (chronic 0.53 > mixed 0.33 > acute 0.12) and the model
 massively under-segments acute cases. See
 `baselines/reports/nnunet/PIPELINE_STATUS.md` and
-`docs/problems_and_lessons.md` Problems 3 & 8.
+`docs/lessons/problems.md` Problems 3 & 8.
 
 ## Known caveats / next steps
 

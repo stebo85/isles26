@@ -1,10 +1,19 @@
-# Evaluation framework (eval/)
+---
+name: Diagnostic evaluation framework
+tags: [evaluation, diagnostics, metrics]
+description: Rich diagnostic metrics, aggregation, stratification, layout, and tests for eval/.
+---
+
+# Diagnostic Evaluation Framework
 
 Reproducible, sensitive evaluation of stroke lesion segmentation on
-`data/soop_bench/`. Built from the lessons in
-[problems_and_lessons.md](problems_and_lessons.md): Dice-only is misleading,
+`data/soop_bench/`. Built from the [cross-cutting lessons](../lessons/problems.md):
+Dice-only is misleading,
 small lesions dominate detection failures, and per-center / per-chronicity
 performance matters.
+
+This framework explains model behavior. It does not decide challenge model
+selection; [the official metrics reference](official-metrics.md) owns that role.
 
 ## Why these metrics
 
@@ -112,3 +121,6 @@ Inference is run via Apptainer on one GPU per subject (`gres=gpu:1`) in the
 SLURM `owners` partition. Each prediction is resampled (nearest neighbour) onto
 the GT TRACE grid before metrics are computed; in practice the DeepISLES
 output is already in the input DWI grid so this is a no-op.
+
+Related fibers: [[evaluation/official-metrics]], [[lessons/problems]],
+[[models/status]].

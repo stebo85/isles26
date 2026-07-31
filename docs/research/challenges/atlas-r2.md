@@ -1,3 +1,9 @@
+---
+name: ATLAS R2.0 challenge review
+tags: [research, challenge, atlas-r2]
+description: Dataset, evaluation, leaderboard, and lessons from the closest ISLES'26 predecessor.
+---
+
 # ATLAS R2.0 / ISLES'22-ATLAS Challenge Review
 
 This file reviews the T1-weighted MRI ATLAS R2.0 task that ran as Task 2 of ISLES'22. It is the closest predecessor of ISLES'26, which also asks for ischemic stroke infarct segmentation from T1w MRI, now at larger scale and with acute, sub-acute, and chronic coverage.
@@ -111,3 +117,6 @@ For ISLES'26, the baseline should be boring and strong before becoming novel:
 - Huo et al. 2022, "MAPPING: Model Average with Post-processing for Stroke Lesion Segmentation": https://arxiv.org/abs/2211.15486
 - CTRL/MAPPING code: https://github.com/King-HAW/ATLAS-R2-Docker-Submission
 - Shang et al. 2024, "Segmenting Small Stroke Lesions with Novel Labeling Strategies": https://arxiv.org/abs/2408.02929
+
+Related fibers: [[research/methods]], [[research/challenges/isles22]],
+[[challenge/overview]].

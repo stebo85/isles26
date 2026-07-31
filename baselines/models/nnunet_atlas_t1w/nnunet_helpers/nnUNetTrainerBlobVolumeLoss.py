@@ -11,7 +11,7 @@ recovered -- a 3-voxel lesion counts exactly as much as a 200 mL one.
 Separately, absolute volume difference is one of the five ranked metrics and is
 essentially uncorrelated with Dice (Spearman -0.081 on 1452 cases). Nothing in
 the current objective optimises it, and three independent post-hoc attempts to
-fix it after the fact all failed (see docs/problems_and_lessons.md Problem 22) --
+fix it after the fact all failed (see docs/lessons/problems.md Problem 22) --
 the information simply is not in the predicted probability map. It has to be
 trained in.
 

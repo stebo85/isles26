@@ -1,4 +1,11 @@
-# ISLES'26 official metrics — the definitive reference
+---
+name: ISLES'26 official metrics
+status: active
+tags: [isles26, evaluation, official]
+description: Definitive semantics and execution path for the five ranked challenge metrics.
+---
+
+# ISLES'26 Official Metrics — The Definitive Reference
 
 **This document is the arbiter.** Where it disagrees with any other doc in this
 repo, or with any number in `baselines/reports/`, this document is right.
@@ -115,3 +122,6 @@ The reduce step reports **two** aggregates: per-case means (what the organizers'
 ISLES ranking convention). We do not have the ISLES'26 ranking document — the
 README links Zenodo 10991145, which is the ISLES'24 document — so prefer a
 configuration that is non-losing under both.
+
+Related fibers: [[evaluation/framework]], [[models/status]],
+[[lessons/problems]].
