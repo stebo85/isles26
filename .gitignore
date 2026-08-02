@@ -5,3 +5,6 @@ logs
 DeepIsles
 __pycache__/
 *.pyc
+# Legacy QC archives are local-only. New native-space QC volumes are written
+# under the already-ignored work/ tree.
+baselines/reports/qc_test_predictions/*.npz

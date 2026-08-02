@@ -1,0 +1,3 @@
+# 596 MB of nnU-Net checkpoints; published to Hugging Face and
+# downloaded by CI (or by hand) before `docker build`. Never commit.
+model/

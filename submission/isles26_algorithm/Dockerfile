@@ -54,6 +54,45 @@ PY
 
 COPY --chown=algorithm:algorithm geometry.py inference.py test_geometry.py ./
 
+# Model weights are baked in rather than mounted from Grand Challenge's separate
+# model.tar.gz. Trade-off, stated deliberately: the image grows by ~600 MB, but
+# the container becomes self-contained and there is no second upload that can go
+# stale or be forgotten against a hard deadline.
+#
+# `model/` is NOT in git (it is 596 MB). CI populates it by downloading the
+# public Hugging Face release and verifying every file's sha256 against the
+# published manifest BEFORE this build runs -- see
+# .github/workflows/publish-container.yml. A local build must do the same, or the
+# COPY below fails loudly rather than producing a weightless container.
+COPY --chown=algorithm:algorithm model/ /opt/ml/model/
+
+# Fail the build if the weights are not what we published. A truncated or stale
+# download yields a container that starts, segments, and produces plausible
+# nonsense -- the same silent-failure class as the orientation bug.
+RUN python - <<'PY'
+import hashlib, json, pathlib, sys
+root = pathlib.Path("/opt/ml/model")
+mf = root / "hf_manifest.json"
+if not mf.is_file():
+    sys.exit("hf_manifest.json missing from the weights: refusing to build")
+manifest = json.loads(mf.read_text())
+bad = []
+for rel, meta in manifest["files"].items():
+    f = root / rel
+    if not f.is_file():
+        bad.append(f"{rel}: missing"); continue
+    h = hashlib.sha256()
+    with f.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    if h.hexdigest() != meta["sha256"]:
+        bad.append(f"{rel}: sha256 mismatch")
+if bad:
+    sys.exit("weight verification FAILED:\n  " + "\n  ".join(bad))
+print(f"verified {len(manifest['files'])} weight files, "
+      f"{manifest['total_bytes']/1e6:.1f} MB")
+PY
+
 # Fail the image build if native-space orientation handling regresses. The real
 # ATLAS cases are not part of the build context, so this runs the synthetic
 # all-orientation and NIfTI round-trip checks only.

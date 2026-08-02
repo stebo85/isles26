@@ -157,11 +157,26 @@ Schedule-matched against the existing fold-0 TopK10 model, scored with the
 official five metrics, gate fixed before the runs (RQ >= +0.020 or AVD <= -0.30 mL,
 Dice drop <= 0.005).
 
-| arm | Dice | AVD mL | count diff | RQ | verdict |
-|---|---:|---:|---:|---:|---|
-| TopK10 (control) | 0.6605 | 6.515 | 1.157 | 0.6601 | — |
-| **R1+R2** blob + volume loss | 0.6664 | 6.532 | 1.342 | **0.6278** | **DO NOT PROMOTE** |
-| R3+R4 DA5 heavy augmentation | — | — | — | — | training |
+| arm | Dice | AVD mL | count diff | RQ | PR-AUC | verdict |
+|---|---:|---:|---:|---:|---:|---|
+| TopK10 (control) | 0.6605 | 6.515 | 1.157 | 0.6601 | 0.7673 | — |
+| R1+R2 blob + volume loss | 0.6664 | 6.532 | 1.342 | **0.6278** | 0.7624 | **DO NOT PROMOTE** |
+| **R3+R4 DA5 heavy augmentation** | **0.6799** | **6.118** | 1.324 | 0.6727 | 0.7791 | **PROMOTED — folds 1-4 running** |
+
+**R3+R4 passes the gate**, on the AVD criterion (-0.397 mL). Four of five ranked
+metrics improve; absolute lesion count difference worsens (+0.167).
+
+Be careful how this is quoted: the AVD delta that fired the gate is **not**
+individually significant (t = -1.64). What carries the decision is the Dice gain
+**+0.0194 at t = +2.61**, plus the consistent positive direction across four
+metrics. Full 5-fold out-of-fold scoring must repeat the comparison before the
+container's weights are swapped — **do not ship the fold-0 result**. Analysis:
+`baselines/reports/metric_aligned_fold0/R3R4_DA5_FINDING.md`.
+
+Note that AVD moved here after resisting both post-hoc calibration (Problem 21)
+and a direct volume loss term (R1+R2). That is consistent with the diagnosis in
+Problem 22: volume error is a property of the model's domain robustness, not
+something recoverable at the output.
 
 **R1+R2 moved its own target metric the wrong way:** RQ -0.0323 (paired t = -2.75)
 while Dice rose an insignificant +0.0059. Weighting every instance equally

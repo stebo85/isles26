@@ -1,7 +1,25 @@
 name: Build and publish challenge container
 
+# Single source of truth for the ISLES'26 submission container.
+#
+# Sherlock cannot build containers (no docker/podman/buildah/skopeo, and its
+# apptainer cannot emit the `docker save` tarball Grand Challenge requires), so
+# the image is built here.
+#
+# Weights are NOT in git -- 596 MB of nnU-Net checkpoints. They are published to
+# a PUBLIC Hugging Face model repo and downloaded here, which means this
+# pipeline needs no credentials for the weights at all. Every file's sha256 is
+# checked against the published manifest before the build, and again inside the
+# Dockerfile, because a truncated or stale download produces a container that
+# starts, segments, and returns plausible nonsense.
+
 on:
   workflow_dispatch:
+    inputs:
+      weights_revision:
+        description: 'Hugging Face revision of the weights (branch, tag or commit sha)'
+        required: false
+        default: 'main'
   pull_request:
     paths:
       - "submission/isles26_algorithm/**"
@@ -22,10 +40,31 @@ concurrency:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository_owner }}/isles26-algorithm
+  WEIGHTS_REPO: sbollmann/isles26-nnunet-d507-topk10
 
 jobs:
+  geometry-tests:
+    # Gates the build. A silent orientation or mirror flip emits a well-formed
+    # mask of plausible size and costs ~94% of Dice; this project has hit it once
+    # already (commit f8d88c1: 0.016 vs 0.2576 correct). Run standalone first so
+    # a regression fails in ~30 s instead of after a multi-GB image build.
+    name: Orientation round-trip
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --upgrade pip "numpy<2.1" "scipy<1.14" nibabel==5.4.2 SimpleITK==2.5.5
+      - name: All 48 axis-aligned orientations + NIfTI round-trip
+        working-directory: submission/isles26_algorithm
+        # Real ATLAS volumes are not in the repo, so the real-case checks skip
+        # cleanly; the synthetic checks are the ones that must pass here.
+        run: PYTHONPATH=. python test_geometry.py --per-session-csv /nonexistent
+
   build-and-publish:
     name: Build, test, and publish
+    needs: geometry-tests
     runs-on: ubuntu-latest
     timeout-minutes: 120
     permissions:
@@ -35,6 +74,66 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+
+      - name: Free disk space
+        # The CUDA base image plus 600 MB of weights needs headroom on a hosted runner.
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download model weights from Hugging Face
+        env:
+          REVISION: ${{ github.event.inputs.weights_revision || 'main' }}
+        run: |
+          set -euo pipefail
+          python -m pip install --quiet "huggingface_hub>=0.34"
+          python - <<'PY'
+          import os, sys
+          from huggingface_hub import snapshot_download
+          repo = os.environ["WEIGHTS_REPO"]
+          rev = os.environ["REVISION"]
+          try:
+              path = snapshot_download(repo_id=repo, revision=rev,
+                                       local_dir="submission/isles26_algorithm/model")
+          except Exception as e:
+              sys.exit(f"could not download weights from {repo}@{rev}: {e}\n"
+                       "Publish them first with scripts/analysis_eval_02_upload_weights_hf.sh")
+          print(f"downloaded {repo}@{rev} -> {path}")
+          PY
+
+      - name: Verify weights against the published manifest
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib, json, pathlib, sys
+          root = pathlib.Path("submission/isles26_algorithm/model")
+          mf = root / "hf_manifest.json"
+          if not mf.is_file():
+              sys.exit("hf_manifest.json missing -- the weights repo is empty or incomplete. "
+                       "Run scripts/analysis_eval_02_upload_weights_hf.sh first.")
+          manifest = json.loads(mf.read_text())
+          bad = []
+          for rel, meta in manifest["files"].items():
+              f = root / rel
+              if not f.is_file():
+                  bad.append(f"{rel}: missing"); continue
+              if f.stat().st_size != meta["bytes"]:
+                  bad.append(f"{rel}: size {f.stat().st_size} != {meta['bytes']}"); continue
+              h = hashlib.sha256()
+              with f.open("rb") as fh:
+                  for chunk in iter(lambda: fh.read(1 << 20), b""):
+                      h.update(chunk)
+              if h.hexdigest() != meta["sha256"]:
+                  bad.append(f"{rel}: sha256 mismatch")
+          if bad:
+              sys.exit("weight verification FAILED:\n  " + "\n  ".join(bad))
+          n = len(manifest["files"])
+          print(f"verified {n} files, {manifest['total_bytes']/1e6:.1f} MB")
+          PY
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -58,8 +157,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # The Dockerfile runs test_geometry.py during the build. Nothing is
-      # published unless both the image build and those tests succeed.
+      # The Dockerfile re-runs test_geometry.py AND re-verifies the weight
+      # hashes during the build. Nothing is published unless both succeed.
       - name: Build and publish image
         id: build
         uses: docker/build-push-action@v7
@@ -68,17 +167,89 @@ jobs:
           file: submission/isles26_algorithm/Dockerfile
           platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Add published image to job summary
+      - name: Pull back the built image for testing
+        if: github.event_name != 'pull_request'
+        run: docker pull "$(echo '${{ steps.meta.outputs.tags }}' | head -n1)"
+
+      - name: Assert the Grand Challenge invoke label is present
+        run: |
+          set -euo pipefail
+          IMG=$(echo '${{ steps.meta.outputs.tags }}' | head -n1)
+          LABEL=$(docker inspect --format '{{ index .Config.Labels "org.grand-challenge.api-method" }}' "$IMG")
+          echo "api-method label: '$LABEL'"
+          test "$LABEL" = "invoke"
+
+      - name: End-to-end smoke test on a synthetic native-space case
+        # With the weights baked in, this is a REAL end-to-end run on CPU: it
+        # exercises the geometry round-trip, nnU-Net inference, and both output
+        # writers, and asserts the mask lands on the caller's exact grid. The
+        # input is stored in a PSR-like orientation on purpose -- an axis
+        # permutation the network never saw during training.
+        run: |
+          set -euxo pipefail
+          IMG=$(echo '${{ steps.meta.outputs.tags }}' | head -n1)
+          python -m pip install --quiet "numpy<2.1" SimpleITK==2.5.5
+          mkdir -p /tmp/in/images/t1w-brain-mri /tmp/out
+          python - <<'PY'
+          import numpy as np, SimpleITK as sitk
+          rng = np.random.default_rng(0)
+          vol = rng.random((64, 72, 80)).astype(np.float32) * 100
+          img = sitk.GetImageFromArray(vol)
+          img.SetSpacing((1.0, 1.0, 1.0))
+          img.SetOrigin((10.0, -5.0, 2.0))
+          img.SetDirection((0.0, 0.0, 1.0, -1.0, 0.0, 0.0, 0.0, -1.0, 0.0))
+          sitk.WriteImage(img, "/tmp/in/images/t1w-brain-mri/case.mha", useCompression=True)
+          PY
+          docker run --rm -v /tmp/in:/input:ro -v /tmp/out:/output \
+            -e ISLES26_FOLDS=0 "$IMG" 2>&1 | tee /tmp/run.log
+          grep -q "\[done\]" /tmp/run.log
+          python - <<'PY'
+          import glob, sys, SimpleITK as sitk
+          src = sitk.ReadImage("/tmp/in/images/t1w-brain-mri/case.mha")
+          outs = glob.glob("/tmp/out/images/*/*.mha")
+          assert len(outs) == 2, f"expected a mask and a soft map, got {outs}"
+          for o in outs:
+              d = sitk.ReadImage(o)
+              assert d.GetSize() == src.GetSize(), (o, d.GetSize(), src.GetSize())
+              assert d.GetSpacing() == src.GetSpacing(), o
+              assert d.GetDirection() == src.GetDirection(), o
+          print("outputs land on the input grid:", outs)
+          PY
+
+      - name: Export the Grand Challenge upload tarball
+        # GC wants a `docker save` gzip, not a registry reference.
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          IMG=$(echo '${{ steps.meta.outputs.tags }}' | head -n1)
+          docker save "$IMG" | gzip -c > isles26-algorithm.tar.gz
+          ls -lh isles26-algorithm.tar.gz
+
+      - uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request'
+        with:
+          name: isles26-algorithm-image
+          path: isles26-algorithm.tar.gz
+          retention-days: 30
+
+      - name: Job summary
         if: github.event_name != 'pull_request'
         env:
           DIGEST: ${{ steps.build.outputs.digest }}
         run: |
-          echo "### Published challenge container" >> "$GITHUB_STEP_SUMMARY"
-          echo '```text' >> "$GITHUB_STEP_SUMMARY"
-          echo "${REGISTRY}/${IMAGE_NAME}@${DIGEST}" >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "### Published challenge container"
+            echo '```text'
+            echo "${REGISTRY}/${IMAGE_NAME}@${DIGEST}"
+            echo '```'
+            echo "Weights: \`${WEIGHTS_REPO}\` @ \`${{ github.event.inputs.weights_revision || 'main' }}\` (verified by sha256)"
+            echo ""
+            echo "Download **isles26-algorithm-image** from the artifacts above and upload"
+            echo "\`isles26-algorithm.tar.gz\` to Grand Challenge."
+          } >> "$GITHUB_STEP_SUMMARY"
