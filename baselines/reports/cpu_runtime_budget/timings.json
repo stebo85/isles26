@@ -1,0 +1,58 @@
+[
+  {
+    "case": "ATLAS_0880",
+    "config": "5fold_tta",
+    "ok": true,
+    "total_s": 794.1,
+    "invoke_s": 771.8
+  },
+  {
+    "case": "ATLAS_0880",
+    "config": "5fold_noTTA",
+    "ok": true,
+    "total_s": 122.4,
+    "invoke_s": 117.7
+  },
+  {
+    "case": "ATLAS_0880",
+    "config": "1fold_tta",
+    "ok": true,
+    "total_s": 172.5,
+    "invoke_s": 168.1
+  },
+  {
+    "case": "ATLAS_0880",
+    "config": "1fold_noTTA",
+    "ok": true,
+    "total_s": 34.0,
+    "invoke_s": 29.6
+  },
+  {
+    "case": "ATLAS_0104",
+    "config": "5fold_tta",
+    "ok": true,
+    "total_s": 752.5,
+    "invoke_s": 747.2
+  },
+  {
+    "case": "ATLAS_0104",
+    "config": "5fold_noTTA",
+    "ok": true,
+    "total_s": 111.9,
+    "invoke_s": 107.2
+  },
+  {
+    "case": "ATLAS_0104",
+    "config": "1fold_tta",
+    "ok": true,
+    "total_s": 161.5,
+    "invoke_s": 157.1
+  },
+  {
+    "case": "ATLAS_0104",
+    "config": "1fold_noTTA",
+    "ok": true,
+    "total_s": 31.5,
+    "invoke_s": 27.2
+  }
+]

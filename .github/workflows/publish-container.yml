@@ -185,41 +185,48 @@ jobs:
           echo "api-method label: '$LABEL'"
           test "$LABEL" = "invoke"
 
-      - name: End-to-end smoke test on a synthetic native-space case
-        # With the weights baked in, this is a REAL end-to-end run on CPU: it
-        # exercises the geometry round-trip, nnU-Net inference, and both output
-        # writers, and asserts the mask lands on the caller's exact grid. The
-        # input is stored in a PSR-like orientation on purpose -- an axis
-        # permutation the network never saw during training.
+      - name: End-to-end test through the real Grand Challenge lifecycle
+        # This is the organizers' own do_test_run.sh: it starts the container as
+        # a server, polls /health until 200, provisions test/input/interf0,
+        # POSTs /invoke, and collects /output -- i.e. it exercises the exact
+        # contract Grand Challenge uses, which an ad-hoc `docker run` does not.
+        # A synthetic PSR-oriented volume is injected first: an axis permutation
+        # the network never saw in training, so a geometry regression fails here.
         run: |
           set -euxo pipefail
-          IMG=$(echo '${{ steps.meta.outputs.tags }}' | head -n1)
           python -m pip install --quiet "numpy<2.1" SimpleITK==2.5.5
-          mkdir -p /tmp/in/images/t1w-brain-mri /tmp/out
+          mkdir -p submission/isles26_algorithm/test/input/interf0/images/t1-brain-mri
           python - <<'PY'
           import numpy as np, SimpleITK as sitk
           rng = np.random.default_rng(0)
-          vol = rng.random((64, 72, 80)).astype(np.float32) * 100
+          vol = (rng.random((64, 72, 80)).astype(np.float32) * 100)
           img = sitk.GetImageFromArray(vol)
           img.SetSpacing((1.0, 1.0, 1.0))
           img.SetOrigin((10.0, -5.0, 2.0))
           img.SetDirection((0.0, 0.0, 1.0, -1.0, 0.0, 0.0, 0.0, -1.0, 0.0))
-          sitk.WriteImage(img, "/tmp/in/images/t1w-brain-mri/case.mha", useCompression=True)
+          sitk.WriteImage(img, "submission/isles26_algorithm/test/input/interf0/images/t1-brain-mri/case.mha",
+                          useCompression=True)
           PY
-          docker run --rm -v /tmp/in:/input:ro -v /tmp/out:/output \
-            -e ISLES26_FOLDS=0 "$IMG" 2>&1 | tee /tmp/run.log
-          grep -q "\[done\]" /tmp/run.log
+          cd submission/isles26_algorithm
+          # No GPU on a hosted runner: this is also the CPU-budget check, since
+          # the guidelines quote ~10 minutes on CPU.
+          time ./do_test_run.sh
+
+      - name: Verify the outputs land on the caller's grid
+        run: |
+          set -euo pipefail
           python - <<'PY'
           import glob, sys, SimpleITK as sitk
-          src = sitk.ReadImage("/tmp/in/images/t1w-brain-mri/case.mha")
-          outs = glob.glob("/tmp/out/images/*/*.mha")
-          assert len(outs) == 2, f"expected a mask and a soft map, got {outs}"
-          for o in outs:
-              d = sitk.ReadImage(o)
-              assert d.GetSize() == src.GetSize(), (o, d.GetSize(), src.GetSize())
-              assert d.GetSpacing() == src.GetSpacing(), o
-              assert d.GetDirection() == src.GetDirection(), o
-          print("outputs land on the input grid:", outs)
+          src = sitk.ReadImage("submission/isles26_algorithm/test/input/interf0/images/t1-brain-mri/case.mha")
+          for slug in ("stroke-lesion-segmentation", "lesion-probability-map"):
+              hits = glob.glob(f"submission/isles26_algorithm/test/output/**/{slug}/*.mha", recursive=True)
+              if not hits:
+                  sys.exit(f"missing required output socket: {slug}")
+              d = sitk.ReadImage(hits[0])
+              assert d.GetSize() == src.GetSize(), (slug, d.GetSize(), src.GetSize())
+              assert d.GetSpacing() == src.GetSpacing(), slug
+              assert d.GetDirection() == src.GetDirection(), slug
+              print(f"{slug}: OK {hits[0]}")
           PY
 
       - name: Export the Grand Challenge upload tarball
@@ -230,6 +237,7 @@ jobs:
           IMG=$(echo '${{ steps.meta.outputs.tags }}' | head -n1)
           docker save "$IMG" | gzip -c > isles26-algorithm.tar.gz
           ls -lh isles26-algorithm.tar.gz
+          echo "Upload this file via 'Your algorithm > Containers' on Grand Challenge."
 
       - uses: actions/upload-artifact@v4
         if: github.event_name != 'pull_request'

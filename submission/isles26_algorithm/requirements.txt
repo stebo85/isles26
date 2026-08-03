@@ -1,8 +1,7 @@
-# Pinned exactly. The checkpoints were written by nnunetv2 2.6.2 under torch
-# 2.6.0; loading them under a different nnU-Net or a different
-# dynamic-network-architectures is not guaranteed to reconstruct the same
-# network, and torch.load's weights_only semantics changed across these
-# versions. Do not float any of these.
+# Pinned exactly. The checkpoints were written by nnunetv2 2.6.2; loading them
+# under a different nnU-Net or dynamic-network-architectures is not guaranteed to
+# reconstruct the same network, and torch.load's weights_only semantics changed
+# across these versions. Do not float any of these.
 nnunetv2==2.6.2
 dynamic-network-architectures==0.4.3
 acvl-utils==0.2.6
@@ -16,3 +15,6 @@ scikit-image
 pandas
 seaborn
 tqdm
+# Grand Challenge runs the algorithm as an HTTP server; app.py needs these.
+fastapi
+uvicorn

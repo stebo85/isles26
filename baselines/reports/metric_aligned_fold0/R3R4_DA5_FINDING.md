@@ -1,4 +1,31 @@
-# R3+R4 (DA5 heavy domain/resolution augmentation): PASSES THE GATE — promoted
+# R3+R4 (DA5 heavy augmentation)
+
+> **INTERIM UPDATE (4 of 5 folds scored, n=1135): the fold-0 result does not
+> hold up.** The AVD improvement that fired the promotion gate has **reversed
+> sign**, and the Dice gain has shrunk by two thirds and is no longer
+> significant:
+>
+> | metric | fold 0 only (n=281) | folds 0-3 (n=1135) |
+> |---|---:|---:|
+> | Dice | **+0.0194** (t=+2.61) | +0.0064 (t=+1.72) |
+> | absolute volume difference | **-0.397 mL** | **+0.212 mL** (worse) |
+> | lesion-F1 (RQ) | +0.0126 | +0.0083 (t=+1.60) |
+> | PR-AUC | +0.0118 | +0.0008 (t=+0.27) |
+>
+> This is a textbook single-fold winner's curse: fold 0 happened to be the fold
+> that looked best, and 281 cases is not enough to price a 0.4 mL volume effect.
+> The gate was pre-registered and was met as written, so the promotion decision
+> was procedurally correct -- but the caution recorded below ("the AVD delta that
+> fired the gate is not individually significant, t = -1.64; do not ship the
+> fold-0 result") is exactly what happened.
+>
+> Fold 4 (317 cases) is still scoring. Final verdict pending. **Do not swap the
+> container's weights on the evidence below.**
+
+---
+
+## Original fold-0 write-up (superseded by the update above)
+
 
 Dataset507 (center-grouped) fold 0, 1000 epochs, n=281 validation cases, scored
 with the official five metrics at the shipped operating point (thr 0.35, k=20).

@@ -64,7 +64,10 @@ if [[ "$SHARD" -eq 0 ]]; then
     --out-dir "$PROB_DIR" --lesion-channel 1
   touch "$PROB_DIR/.staged"
 else
-  for _ in $(seq 1 120); do [[ -f "$PROB_DIR/.staged" ]] && break; sleep 30; done
+  # Fold 4 has 317 cases and its staging took 3h45m; a 1-hour wait timed out
+  # every other shard of that fold. Wait up to 6 hours, which is under the
+  # job walltime and comfortably above the slowest observed staging.
+  for _ in $(seq 1 720); do [[ -f "$PROB_DIR/.staged" ]] && break; sleep 30; done
   [[ -f "$PROB_DIR/.staged" ]] || { echo "[error] timed out waiting for probability staging" >&2; exit 3; }
 fi
 

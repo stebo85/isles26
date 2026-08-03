@@ -2,144 +2,84 @@
 
 Native-space T1w MRI -> binary infarct mask **and** a float32 probability map.
 
-## Why both outputs
+Structure follows the organizers' official template
+([isles26-docker-template](https://github.com/ezequieldlrosa/isles26-docker-template)).
 
-The challenge ranks on five metrics
-([ezequieldlrosa/isles26](https://github.com/ezequieldlrosa/isles26), `utils/eval_utils.py`):
+## The interface, verbatim from the template
 
-| # | metric | needs |
-|---|---|---|
-| 1 | Dice (`panoptica global_bin_dsc`) | binary mask |
-| 2 | absolute volume difference (mL) | binary mask |
-| 3 | absolute lesion count difference | binary mask |
-| 4 | lesion-wise F1 = panoptica RQ, one-to-one matching at **IoU >= 0.25** | binary mask |
-| 5 | **PR-AUC** (`precision_recall_curve` then `auc(recall, precision)`) | **soft map** |
+    inputs   /input/images/t1-brain-mri          slug: t1-brain-mri
+             /input/stroke-metadata.json         slug: stroke-metadata
+             /input/inputs.json                  system-generated, selects the interface
+    outputs  /output/images/stroke-lesion-segmentation
+             /output/images/lesion-probability-map
 
-A binary-only submission forfeits ~20% of the ranking signal, so `inference.py`
-writes both. The output socket slugs are overridable (`ISLES26_MASK_SLUG`,
-`ISLES26_PROB_SLUG`) because the organizers had not published the interface when
-this was written — see `FORUM_QUESTIONS.md`.
+Grand Challenge runs this as an **HTTP server on port 4743**, not as a batch job:
+it polls `GET /health` until 200 (~5 min budget), then calls `POST /invoke` once
+per case, expecting 201. `app.py` provides that server; `inference.py` provides
+`init_model()` (called once at startup — load weights here, not in `/invoke`) and
+`run(model)`.
+
+Both outputs are required. PR-AUC is one of five ranked metrics and is computed
+over the continuous map, so a mask-only submission silently forfeits ~20% of the
+ranking signal.
 
 ## The three things most likely to break this
 
-1. **Orientation.** The models were trained on `nib.as_closest_canonical` output
-   and nnU-Net does not reorient at inference (`transpose_forward [0,1,2]`).
-   The training release alone contains RAS 869 / LAS 575 / PSR 8 / PSL 1. A
-   mirror or permutation failure emits a *plausible-looking* mask and costs
-   ~94% of Dice (this project hit exactly that in commit `f8d88c1`).
-   `geometry.py` handles it, and `test_geometry.py` proves the round-trip is
-   exact for all 48 axis-aligned orientations and for real ATLAS cases in every
-   orientation the release contains. **Re-run it on every rebuild.**
+1. **Orientation.** Models were trained on `nib.as_closest_canonical` output and
+   nnU-Net does not reorient at inference (`transpose_forward [0,1,2]`); the
+   training release alone contains RAS 869 / LAS 575 / PSR 8 / PSL 1. A mirror or
+   permutation error emits a *plausible-looking* mask and costs ~94% of Dice —
+   this project hit exactly that in commit `f8d88c1`. `geometry.py` derives the
+   exact inverse; `test_geometry.py` proves the round-trip over all 48
+   axis-aligned orientations and runs as a Docker build step.
 2. **Empty-GT PR-AUC.** `compute_pr_auc` returns `empty_value=1.0` on a
    lesion-free ground truth only if the soft map is *perfectly constant*, else
-   `0.0`. A raw softmax is never constant, so a correct lesion-free prediction
-   would score 0.0. When our binary mask is empty we therefore emit an
-   all-zero (constant) map. Gated behind `ISLES26_FLATTEN_EMPTY=1`.
-3. **Torch/nnU-Net version skew.** The checkpoints were written by
-   `nnunetv2 2.6.2`. `requirements.txt` pins the whole stack; do not float it.
+   `0.0`. When our mask is empty we emit an all-zero map
+   (`ISLES26_FLATTEN_EMPTY=1`). Note the model is confidently wrong on lesion-free
+   scans and a confidence gate cannot fix it — see
+   `baselines/reports/qc_test_predictions/FINDING.md`.
+3. **Version skew.** Checkpoints were written by `nnunetv2 2.6.2`;
+   `requirements.txt` pins the whole stack. Do not float it.
 
-## Build
+## Build and test
 
-**Not on Sherlock** — the cluster has no `docker`/`podman`/`buildah`/`skopeo`,
-and its apptainer cannot emit the `docker save` tarball Grand Challenge needs.
+The image is built by GitHub Actions
+([`publish-container.yml`](../../.github/workflows/publish-container.yml)) — the
+cluster has no docker/podman/buildah and its apptainer cannot emit a `docker save`
+tarball. CI runs the geometry test as a gate, downloads the weights from the
+public Hugging Face release and verifies every sha256, builds, runs the
+organizers' `do_test_run.sh` through the real health-then-invoke lifecycle, and
+uploads `isles26-algorithm.tar.gz`.
 
-The image is built by **GitHub Actions**:
-[`.github/workflows/build-submission-container.yml`](../../.github/workflows/build-submission-container.yml).
-It runs the 48-orientation geometry test as a gate *before* building, verifies
-the `org.grand-challenge.api-method=invoke` label, smoke-tests the entrypoint,
-pushes to ghcr.io, and uploads `isles26-algorithm.tar.gz` as a workflow artifact
-— which is the file Grand Challenge wants. Trigger a tagged build with
-`workflow_dispatch` (input `tag`, e.g. `v1-sanity`). No GPU and no secrets beyond
-the default `GITHUB_TOKEN` are needed, because the weights ride separately in
-`model.tar.gz`.
+Locally, with `model/` populated:
 
-```bash
-# 1. stage the weights (on the cluster)
-sbatch baselines/models/nnunet_atlas_t1w/analysis_nnunet_50_export_submission_weights.sh
-#    -> work/submission_model/Dataset507_ATLASR30_CORRECTED/
-tar -czf model.tar.gz -C work/submission_model/Dataset507_ATLASR30_CORRECTED .
+    ./do_build.sh        # build
+    ./do_test_run.sh     # full server lifecycle against test/input/interf0
+    ./do_save.sh         # produce the upload tarball
 
-# 2. copy model.tar.gz + this directory to the build host, then
-docker build -t isles26-algorithm .
-docker save isles26-algorithm | gzip -c > isles26-algorithm.tar.gz
-```
-
-Upload the image and `model.tar.gz` separately: Grand Challenge mounts the
-archive at `/opt/ml/model`, which keeps the image small and lets the weights be
-swapped without a rebuild.
-
-## Publish a shareable image with GitHub Actions
-
-The workflow in `.github/workflows/publish-container.yml` builds the image on
-GitHub's runner, runs the synthetic geometry regression tests as part of the
-Docker build, and publishes it to GitHub Container Registry (GHCR). It needs no
-repository secrets: GitHub's built-in `GITHUB_TOKEN` supplies package write
-access.
-
-- A push to `main` publishes `ghcr.io/<owner>/isles26-algorithm:latest` and an
-  immutable `sha-<full-commit-sha>` tag.
-- A tag such as `v1.0.0` also publishes that version tag.
-- A pull request builds and tests the container without publishing it.
-- The workflow can also be started manually from **Actions -> Build and publish
-  challenge container -> Run workflow**.
-
-GitHub creates a new GHCR package as **private**, even when it is linked to a
-public repository. After the first successful workflow run, make it public once:
-
-1. Open the repository on GitHub and select the `isles26-algorithm` package.
-2. Open **Package settings**, scroll to **Danger Zone**, and choose **Change
-   visibility -> Public**.
-3. Confirm anonymous access from a logged-out shell:
-
-   ```bash
-   docker pull ghcr.io/<owner>/isles26-algorithm:latest
-   ```
-
-Share the digest shown in the workflow's job summary for an immutable challenge
-submission, for example:
-
-```text
-ghcr.io/<owner>/isles26-algorithm@sha256:<digest>
-```
-
-The package contains the inference code but not the model weights; continue to
-upload `model.tar.gz` separately as described above.
-
-## Test locally before every submission
-
-```bash
-# geometry only, no GPU, no weights  (8 checks incl. all 48 orientations)
-PYTHONPATH=. python test_geometry.py
-
-# end to end, needs weights
-mkdir -p /tmp/in/images/t1w-brain-mri /tmp/out
-cp <a raw native-space case>.nii.gz /tmp/in/images/t1w-brain-mri/
-docker run --rm --gpus all \
-  -v /tmp/in:/input:ro -v /tmp/out:/output \
-  -v $PWD/model_unpacked:/opt/ml/model:ro \
-  isles26-algorithm
-```
-
-The acceptance check that actually matters is not "did it run" but
-**"does the mask it produces on the RAW native-space file reproduce the Dice we
-recorded for that same case in cross-validation, to within 1e-3?"** That is the
-only test that catches a silent mirror flip, and it is what
-`analysis_nnunet_51_container_equivalence_test.sh` runs on the cluster.
+Weights are **baked into the image** rather than mounted from Grand Challenge's
+separate `model.tar.gz`: the image grows ~600 MB, but the container is
+self-contained and there is no second upload to go stale against a hard deadline.
+`model/` is gitignored; populate it from
+`https://huggingface.co/sbollmann/isles26-nnunet-d507-topk10`.
 
 ## Configuration
 
 | env var | default | notes |
 |---|---|---|
-| `ISLES26_MODEL_DIR` | `/opt/ml/model` | nnU-Net trained-model folder |
-| `ISLES26_FOLDS` | `0,1,2,3,4` | 5-fold ensemble; measured ~30 s/case with TTA |
+| `ISLES26_FOLDS` | `0,1,2,3,4` | **may be reduced** — see the CPU budget below |
 | `ISLES26_THRESHOLD` | `0.35` | selected on the center-held-out surface against all 5 official metrics |
-| `ISLES26_MIN_CC_VOXELS` | `20` | min-component pruning, 26-connectivity. Worth **+0.030 lesion-F1 (RQ)** and -0.13 lesion-count error for -0.0 Dice |
-| `ISLES26_MIN_CC_MM3` | `0` | spacing-invariant alternative to the voxel threshold (0 = use voxels) |
-| `ISLES26_DISABLE_TTA` | `0` | mirroring TTA; there is no runtime reason to disable it |
+| `ISLES26_MIN_CC_VOXELS` | `20` | 26-connectivity; worth +0.030 lesion-F1 and -0.13 count error |
+| `ISLES26_MIN_CC_MM3` | `0` | spacing-invariant alternative (0 = use voxels) |
+| `ISLES26_DISABLE_TTA` | `0` | mirroring TTA |
 | `ISLES26_FLATTEN_EMPTY` | `1` | constant soft map when the mask is empty |
-| `ISLES26_MASK_SLUG` / `ISLES26_PROB_SLUG` | see above | output socket directories |
 
-Runtime is not a constraint: measured 17 s min / 30 s median / 51 s p95 per case
-for the full 5-fold + TTA path including startup, across eight GPU generations
-(`sacct` on the `nnunet_atlas_val_predict` array). Only ~8 s of that is GPU
-compute; the rest is fixed overhead that the `/invoke` server model amortizes.
+## CPU runtime budget — unresolved
+
+The guidelines quote **~10 minutes on CPU**, and the template says the GPU is used
+"when enabled", so a GPU is not guaranteed. Our 5-fold + TTA configuration is
+~30 s/case *on a GPU* (~8 s of it GPU compute); on CPU, 5 folds x 8 mirror
+configurations may exceed the budget. `analysis_nnunet_60_cpu_runtime_budget.sh`
+measures 5-fold/1-fold x TTA-on/off on a median and a large case. **Set
+`ISLES26_FOLDS` and `ISLES26_DISABLE_TTA` from that measurement** — dropping folds
+is a real accuracy trade and should not be guessed.

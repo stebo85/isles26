@@ -1,61 +1,61 @@
-#!/usr/bin/env python3
-"""ISLES'26 submission entrypoint.
+"""ISLES'26 algorithm — nnU-Net v2 stroke lesion segmentation.
 
-Task: native-space, already skull-stripped T1w MRI -> binary ischemic infarct
-mask. The organizers' evaluator scores five metrics, and the fifth (PR-AUC) is
-computed over a CONTINUOUS map, so this algorithm emits BOTH a binary mask and a
-float32 probability map.
+Grand Challenge runs this as an HTTP server (see app.py): `init_model()` is
+called ONCE at startup, then `run(model)` once per case via POST /invoke.
+Model loading therefore belongs in `init_model()` — the /invoke call has its own
+timeout and must not be spent loading weights.
 
-Design decisions that are load-bearing -- read before changing anything:
+Interface (from the official template's inputs.json):
+
+    inputs   /input/images/t1-brain-mri        slug: t1-brain-mri
+             /input/stroke-metadata.json       slug: stroke-metadata
+    outputs  /output/images/stroke-lesion-segmentation
+             /output/images/lesion-probability-map
+
+Both outputs are required. The evaluator ranks five metrics and the fifth,
+PR-AUC, is computed over the CONTINUOUS map — a mask-only submission silently
+forfeits it.
+
+Load-bearing design decisions, read before changing anything:
 
 1. GEOMETRY. The models were trained on RAS-canonicalised volumes and nnU-Net
    does not reorient at inference (plans record transpose_forward [0,1,2]). The
-   test data is native-space with at least four storage orientations. Every case
-   is therefore reoriented into the training orientation and the prediction is
-   mapped back with the exact inverse; see geometry.py. The round-trip is
-   asserted per case because this failure mode is silent.
+   test data is native-space; the public training release alone contains RAS,
+   LAS, PSR and PSL storage orientations. Every case is reoriented into the
+   training orientation and mapped back with the exact inverse (geometry.py),
+   and the round-trip is asserted per case because this failure mode is SILENT:
+   a mirror flip still emits a well-formed mask of plausible size. It cost this
+   project 0.016 Dice against a correct 0.2576 once already.
 
 2. WE REUSE nnU-Net's OWN FILE PATH. The volume is written to a temporary
-   `*_0000.nii.gz` and fed through `predict_from_files`, which is the identical
-   code path that produced every cross-validation number in this repo. Passing
-   arrays in-process would be faster but would re-derive the axis and spacing
-   conventions by hand, and that is precisely the class of bug that has already
-   cost this project once.
+   `*_0000.nii.gz` and fed through `predict_from_files`, the identical code path
+   that produced every cross-validation number we have. Passing arrays in-process
+   would be faster but would re-derive the axis and spacing conventions by hand,
+   which is exactly the class of bug above.
 
 3. SOFT MAP EMISSION. PR-AUC is invariant to any strictly monotone transform, so
-   calibration/temperature scaling cannot move it -- do not bother. The one
-   intervention that does move it is the empty-case rule: the official
-   `compute_pr_auc` returns 1.0 on a lesion-free ground truth ONLY if the soft
-   map is perfectly constant, and 0.0 otherwise. So when the thresholded
-   prediction is empty we emit an exactly-constant (all-zero) map. This is gated
-   behind FLATTEN_SOFT_MAP_IF_EMPTY so it can be switched off if the organizers
-   say it is not intended behaviour (question posted to the challenge forum).
+   temperature scaling and Platt calibration cannot move it — do not bother. The
+   one intervention that does move it is the empty-case rule: the official
+   `compute_pr_auc` returns 1.0 on a lesion-free ground truth ONLY if the map is
+   perfectly constant, else 0.0. So when the thresholded mask is empty we emit an
+   exactly-constant map. Gated behind ISLES26_FLATTEN_EMPTY.
 
-4. ONE BAD CASE MUST NOT FAIL THE RUN. Every case is wrapped: on any exception
-   we emit an all-zero mask on the correct grid and continue. An all-zero map is
-   also constant, so a failed case still scores correctly on a lesion-free
-   ground truth rather than crashing the whole submission.
+4. ONE BAD CASE MUST NOT FAIL THE RUN. The whole handler is wrapped: on any
+   exception we emit an all-zero mask on the caller's grid and return normally.
+   An all-zero map is also constant, so a failed lesion-free case still scores
+   correctly rather than failing the submission.
 
-5. THE PREDICTOR IS BUILT ONCE. Model loading dominates per-case wall clock
-   (measured ~30 s/case end-to-end for 5 folds + TTA on Sherlock GPUs, of which
-   only ~8 s is GPU compute).
-
-Environment knobs (all optional, defaults are the shipped configuration):
-    ISLES26_MODEL_DIR        nnU-Net trained-model folder (default /opt/ml/model)
-    ISLES26_FOLDS            comma-separated folds            (default 0,1,2,3,4)
-    ISLES26_THRESHOLD        binarisation threshold           (default 0.35)
-    ISLES26_MIN_CC_VOXELS    min connected-component size     (default 20)
-    ISLES26_MIN_CC_MM3       spacing-invariant alternative    (default 0 = use voxels)
-    ISLES26_DISABLE_TTA      set to 1 to disable mirroring TTA
-    ISLES26_FLATTEN_EMPTY    1/0, soft-map flattening rule    (default 1)
-    ISLES26_INPUT_DIR        default /input
-    ISLES26_OUTPUT_DIR       default /output
-    ISLES26_MASK_SLUG        output socket dir for the mask
-    ISLES26_PROB_SLUG        output socket dir for the soft map
+5. METADATA IS PARSED BUT NOT USED. Measured post-hoc gain from conditioning on
+   chronicity was exactly 0.0000, and CHRONICITY is redundant with
+   DAYS_POST_STROKE wherever both exist. Values may be null (organizers' note),
+   and the site key is CENTER here versus SITE in the training CSVs. Parsed and
+   logged so a future variant has correct plumbing and a malformed file can never
+   break inference.
 """
 
 from __future__ import annotations
 
+import glob
 import json
 import math
 import os
@@ -66,78 +66,72 @@ import traceback
 from pathlib import Path
 
 import numpy as np
+import SimpleITK
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from geometry import (  # noqa: E402
-    InputGeometry,
     assert_roundtrip,
     from_training_orientation,
     read_image,
     to_training_orientation,
-    write_like_input,
 )
 
-# --- configuration ----------------------------------------------------------
-
-INPUT_DIR = Path(os.environ.get("ISLES26_INPUT_DIR", "/input"))
-OUTPUT_DIR = Path(os.environ.get("ISLES26_OUTPUT_DIR", "/output"))
+INPUT_PATH = Path(os.environ.get("ISLES26_INPUT_DIR", "/input"))
+OUTPUT_PATH = Path(os.environ.get("ISLES26_OUTPUT_DIR", "/output"))
 MODEL_DIR = Path(os.environ.get("ISLES26_MODEL_DIR", "/opt/ml/model"))
 
-# Grand Challenge names output sockets by slug. The organizers had not published
-# the interface when this was written (question posted to the challenge forum on
-# 2026-07-27), so the slugs are overridable and we default to the naming ISLES
-# has used in previous editions.
+# Slugs are fixed by the challenge interface; overridable only for local testing.
+INPUT_IMAGE_SLUG = os.environ.get("ISLES26_INPUT_SLUG", "t1-brain-mri")
 MASK_SLUG = os.environ.get("ISLES26_MASK_SLUG", "stroke-lesion-segmentation")
-PROB_SLUG = os.environ.get("ISLES26_PROB_SLUG", "stroke-lesion-probability-map")
+PROB_SLUG = os.environ.get("ISLES26_PROB_SLUG", "lesion-probability-map")
 
 FOLDS = tuple(int(f) for f in os.environ.get("ISLES26_FOLDS", "0,1,2,3,4").split(",") if f != "")
 
 # Operating point selected on the CENTER-HELD-OUT surface (Dataset507, n=1452)
 # against all five official metrics -- not on Dice, and not on the center-leaking
-# random-fold surface. See baselines/reports/official_metrics_d507_topk10/.
+# random-fold surface. Versus the naive default (0.50, no pruning):
+#     Dice           0.6268 -> 0.6283   (+0.0015)
+#     |lesion count| 2.0000 -> 1.8685   (-0.1315, better)
+#     lesion-F1 (RQ) 0.5491 -> 0.5791   (+0.0300, the big one)
+#     AVD mL         6.2780 -> 6.3732   (+0.0952, the only regression)
+# Rank-optimal across all five metrics on both evaluation surfaces.
 #
-# Measured against the previous default (0.50, no pruning):
-#     Dice            0.6268 -> 0.6283   (+0.0015)
-#     |lesion count|  2.0000 -> 1.8685   (-0.1315, better)
-#     lesion-F1 (RQ)  0.5491 -> 0.5791   (+0.0300, the big one)
-#     AVD mL          6.2780 -> 6.3732   (+0.0952, the only regression)
-#     PR-AUC          unchanged (threshold-free)
-# Mean rank across all five metrics: 28.29 -> 26.55 of 54 configurations, and it
-# is the rank-optimal configuration on both evaluation surfaces.
-#
-# The min-component filter is the lever nnU-Net's own postprocessing search never
-# contained: it only ever tests remove_all_but_largest_component, and only accepts
-# it on a Dice gain, so min-size pruning was never a candidate -- while two of the
-# five ranked metrics depend on it directly.
+# Min-size pruning is the lever nnU-Net's own postprocessing search never
+# contained -- it only tests remove_all_but_largest_component, and only accepts
+# it on a Dice gain, while two of the five ranked metrics depend on it directly.
 THRESHOLD = float(os.environ.get("ISLES26_THRESHOLD", "0.35"))
-# In VOXELS, because that is what was swept. Note only 783/1453 training sessions
-# are 1 mm isotropic, so this is not a constant physical volume; ISLES26_MIN_CC_MM3
-# expresses the same filter in mm^3 if a spacing-invariant rule is preferred.
 MIN_CC_VOXELS = int(os.environ.get("ISLES26_MIN_CC_VOXELS", "20"))
 MIN_CC_MM3 = float(os.environ.get("ISLES26_MIN_CC_MM3", "0"))
+
 DISABLE_TTA = os.environ.get("ISLES26_DISABLE_TTA", "0") == "1"
 FLATTEN_EMPTY = os.environ.get("ISLES26_FLATTEN_EMPTY", "1") == "1"
 CHECKPOINT = os.environ.get("ISLES26_CHECKPOINT", "checkpoint_final.pth")
 
 LESION_CHANNEL = 1  # dataset.json: {"background": 0, "lesion": 1}
-
-# The volume is compressed float32 on the caller's grid; a whole-brain T1w at
-# 0.5 mm is ~200 MB uncompressed, which is fine, but refuse anything absurd
-# rather than OOM the node.
 MAX_VOXELS = 600_000_000
 
 
-# --- model ------------------------------------------------------------------
+# --- startup ----------------------------------------------------------------
 
 
-def build_predictor():
-    """Initialise the nnU-Net predictor once, up front."""
+def init_model():
+    """Build the nnU-Net predictor once, before /health reports ready."""
     import torch
     from nnunetv2.inference.predict_from_raw_data import nnUNetPredictor
 
+    started = time.time()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("=+=" * 10, flush=True)
+    print(f"[init] torch {torch.__version__} | cuda available: {torch.cuda.is_available()}", flush=True)
+    if device.type == "cpu":
+        # Grand Challenge does not guarantee a GPU, and the guidelines quote a
+        # ~10 minute CPU budget. Give torch every core it has.
+        torch.set_num_threads(os.cpu_count() or 4)
+        print(f"[init] running on CPU with {torch.get_num_threads()} threads", flush=True)
     print(f"[init] device={device} folds={FOLDS} tta={'off' if DISABLE_TTA else 'on'}", flush=True)
+    print(f"[init] threshold={THRESHOLD} min_cc_voxels={MIN_CC_VOXELS} "
+          f"flatten_empty={FLATTEN_EMPTY}", flush=True)
 
     predictor = nnUNetPredictor(
         tile_step_size=0.5,
@@ -152,20 +146,155 @@ def build_predictor():
     predictor.initialize_from_trained_model_folder(
         str(MODEL_DIR), use_folds=FOLDS, checkpoint_name=CHECKPOINT
     )
+    print(f"[init] model ready in {time.time() - started:.1f}s", flush=True)
+    print("=+=" * 10, flush=True)
     return predictor
 
 
-# --- postprocessing ---------------------------------------------------------
+# --- dispatch ---------------------------------------------------------------
+
+
+def run(model):
+    """Called once per case by POST /invoke."""
+    interface_key = get_interface_key()
+    handler = {
+        ("stroke-metadata", "t1-brain-mri"): interf0_handler,
+    }[interface_key]
+    return handler(model)
+
+
+def get_interface_key():
+    inputs = load_json_file(location=INPUT_PATH / "inputs.json")
+    return tuple(sorted(sv["socket"]["slug"] for sv in inputs))
+
+
+# --- the case handler -------------------------------------------------------
+
+
+def interf0_handler(model):
+    started = time.time()
+    image_dir = INPUT_PATH / "images" / INPUT_IMAGE_SLUG
+    image_path = find_input_image(image_dir)
+    print(f"[case] {image_path.name}", flush=True)
+
+    metadata = load_stroke_metadata(INPUT_PATH / "stroke-metadata.json")
+    print(f"[case] metadata: {json.dumps(metadata)}", flush=True)
+
+    geom = None
+    try:
+        prob, geom = predict(model, image_path)
+
+        mask = (prob >= THRESHOLD).astype(np.uint8)
+        if MIN_CC_MM3 > 0:
+            vox_mm3 = float(np.prod(geom.sitk_image.GetSpacing()))
+            mask = min_size_filter(mask, int(math.ceil(MIN_CC_MM3 / max(vox_mm3, 1e-9))))
+        else:
+            mask = min_size_filter(mask, MIN_CC_VOXELS)
+
+        soft = prob
+        if FLATTEN_EMPTY and not mask.any():
+            # Exactly constant, so the official PR-AUC scores a lesion-free
+            # ground truth as 1.0 rather than 0.0.
+            soft = np.zeros_like(prob)
+
+        write_output(MASK_SLUG, mask, geom, np.uint8)
+        write_output(PROB_SLUG, soft, geom, np.float32)
+        print(f"[case] lesion_voxels={int(mask.sum())} in {time.time() - started:.1f}s", flush=True)
+    except Exception:  # noqa: BLE001 - one bad case must not fail the submission
+        print(f"[FAILED] {image_path.name}\n{traceback.format_exc()}", file=sys.stderr, flush=True)
+        if geom is None:
+            _, geom = read_image(str(image_path))
+        zeros = np.zeros(geom.original_shape, dtype=np.uint8)
+        write_output(MASK_SLUG, zeros, geom, np.uint8)
+        write_output(PROB_SLUG, zeros, geom, np.float32)
+        print("[fallback] wrote an empty prediction on the correct grid", flush=True)
+
+    return 0
+
+
+def predict(model, image_path: Path):
+    """Run nnU-Net and return (lesion probability on the caller's grid, geometry)."""
+    import nibabel as nib
+
+    data, geom = read_image(str(image_path))
+    if int(np.prod(geom.original_shape)) > MAX_VOXELS:
+        raise ValueError(f"{image_path}: {geom.original_shape} exceeds the supported size")
+
+    # Fail before predicting, not after, if the result could not be mapped back.
+    assert_roundtrip(data, geom)
+    canonical, canonical_affine = to_training_orientation(data, geom)
+    print(f"[case] shape={geom.original_shape} axcodes={''.join(geom.axcodes)}", flush=True)
+
+    with tempfile.TemporaryDirectory(prefix="isles26_") as tmp:
+        tmp = Path(tmp)
+        in_dir, out_dir = tmp / "in", tmp / "out"
+        in_dir.mkdir(); out_dir.mkdir()
+        nib.save(nib.Nifti1Image(canonical.astype(np.float32), canonical_affine),
+                 str(in_dir / "case_0000.nii.gz"))
+
+        model.predict_from_files(
+            [[str(in_dir / "case_0000.nii.gz")]],
+            [str(out_dir / "case")],
+            save_probabilities=True,
+            overwrite=True,
+            num_processes_preprocessing=1,
+            num_processes_segmentation_export=1,
+        )
+
+        npz_path, seg_path = out_dir / "case.npz", out_dir / "case.nii.gz"
+        if not npz_path.is_file() or not seg_path.is_file():
+            raise RuntimeError(f"nnU-Net produced no output for {image_path.name}")
+        with np.load(npz_path) as payload:
+            probs = np.asarray(payload["probabilities"])
+        seg_canonical = np.asanyarray(nib.load(str(seg_path)).dataobj)
+
+    lesion_prob = align_probabilities(probs, seg_canonical)
+    return from_training_orientation(lesion_prob, geom).astype(np.float32), geom
+
+
+def align_probabilities(probs: np.ndarray, seg: np.ndarray) -> np.ndarray:
+    """Extract the lesion channel, resolving the spatial-axis permutation against
+    the segmentation nnU-Net itself produced.
+
+    nnU-Net writes probabilities as (channel, *spatial), and the spatial order has
+    bitten this project before. Rather than assume, check every permutation
+    against the segmentation and require exactly one to agree; on a cubic volume
+    several can be consistent, so an ambiguous match is an error, not a coin flip.
+    """
+    import itertools
+
+    if probs.ndim != seg.ndim + 1:
+        raise ValueError(f"probability array {probs.shape} incompatible with seg {seg.shape}")
+
+    candidates = []
+    for perm in itertools.permutations(range(seg.ndim)):
+        moved = np.transpose(probs, axes=(0,) + tuple(a + 1 for a in perm))
+        if moved.shape[1:] != seg.shape:
+            continue
+        mismatch = float(np.mean(np.argmax(moved, axis=0) != np.rint(seg))) if seg.size else 0.0
+        candidates.append((mismatch, perm, moved))
+    if not candidates:
+        raise ValueError(f"no axis permutation maps {probs.shape} onto {seg.shape}")
+
+    candidates.sort(key=lambda c: c[0])
+    best_mismatch, _, best = candidates[0]
+    if best_mismatch > 1e-3:
+        raise ValueError(
+            f"probability/segmentation disagree on {best_mismatch:.4%} of voxels; "
+            "refusing to emit a soft map that does not match the mask")
+    ties = [c for c in candidates if abs(c[0] - best_mismatch) < 1e-12]
+    if len(ties) > 1 and seg.any():
+        raise ValueError(f"{len(ties)} axis permutations are equally consistent; ambiguous")
+    return np.asarray(best[LESION_CHANNEL], dtype=np.float32)
 
 
 def min_size_filter(mask: np.ndarray, min_voxels: int) -> np.ndarray:
     """Drop connected components below `min_voxels`, 26-connectivity.
 
-    26-connectivity is not a guess: `eval/probe_panoptica_semantics.py` measures
-    that the official evaluator's ConnectedComponentsInstanceApproximator treats
-    a corner-adjacent voxel pair as ONE instance. Filtering with a different
-    connectivity than the scorer counts with would make the two disagree about
-    what a lesion is.
+    26-connectivity is measured, not assumed: eval/probe_panoptica_semantics.py
+    shows the official scorer treats a corner-adjacent voxel pair as ONE instance.
+    Filtering with a different connectivity than the metric counts with would
+    train and score against different definitions of "a lesion".
     """
     if min_voxels <= 0:
         return mask
@@ -180,235 +309,56 @@ def min_size_filter(mask: np.ndarray, min_voxels: int) -> np.ndarray:
     return keep[lab].astype(np.uint8)
 
 
-# --- per-case ---------------------------------------------------------------
+# --- io ---------------------------------------------------------------------
 
 
-def find_input_images(input_dir: Path) -> list[Path]:
-    """Locate the input volumes.
+def find_input_image(location: Path) -> Path:
+    """Grand Challenge names the file with a UUID, so never hard-code it."""
+    files = (glob.glob(str(location / "*.mha"))
+             + glob.glob(str(location / "*.nii.gz"))
+             + glob.glob(str(location / "*.nii")))
+    if not files:
+        raise FileNotFoundError(f"no valid image file found in {location}")
+    return Path(sorted(files)[0])
 
-    Grand Challenge mounts each input socket at /input/images/<slug>/ and names
-    the file with a UUID, so the filename must never be hard-coded. We glob for
-    any supported volume under images/ and fall back to the directory root for
-    local testing.
+
+def load_json_file(*, location: Path):
+    with open(location) as f:
+        return json.loads(f.read())
+
+
+def load_stroke_metadata(location: Path) -> dict:
+    """Read the tabular covariates, tolerating absence and nulls.
+
+    Organizers' notes: the site key is CENTER here but SITE in the training CSVs,
+    and any value may be null. Inference must never depend on this file being
+    well-formed.
     """
-    exts = ("*.mha", "*.mhd", "*.nii.gz", "*.nii", "*.nrrd")
-    images_root = input_dir / "images"
-    roots = [images_root] if images_root.is_dir() else [input_dir]
-    found: list[Path] = []
-    for root in roots:
-        for ext in exts:
-            found.extend(sorted(root.rglob(ext)))
-    # De-duplicate while preserving order (*.nii matches inside *.nii.gz globs
-    # on some filesystems).
-    seen: set[str] = set()
-    unique = []
-    for p in found:
-        key = str(p.resolve())
-        if key not in seen:
-            seen.add(key)
-            unique.append(p)
-    return unique
+    try:
+        meta = load_json_file(location=location)
+    except Exception:  # noqa: BLE001 - metadata must never break inference
+        print(f"[warn] could not read {location}; continuing without metadata", flush=True)
+        return {}
+    if not isinstance(meta, dict):
+        return {}
+    return {k: meta.get(k) for k in ("CENTER", "CHRONICITY", "DAYS_POST_STROKE")}
 
 
-def read_case_metadata(input_dir: Path) -> dict:
-    """Read the tabular covariates the challenge supplies (DAYS_POST_STROKE,
-    CHRONICITY, CENTER).
+def write_output(slug: str, array: np.ndarray, geom, dtype) -> None:
+    """Write onto the caller's exact grid.
 
-    The shipped model is T1w-only and does not consume these -- a measured
-    post-hoc analysis found no gain, and CHRONICITY is fully redundant with
-    DAYS_POST_STROKE where both exist. We still parse and log them so that (a) a
-    malformed metadata file cannot crash the run, and (b) if a later submission
-    conditions on chronicity, the plumbing is already correct.
+    Copying spacing/origin/direction from the input image is what guarantees the
+    evaluator sees an identical grid; recomputing them from our own affine would
+    reintroduce floating-point drift.
     """
-    meta: dict = {}
-    for candidate in sorted(input_dir.rglob("*.json")):
-        try:
-            payload = json.loads(candidate.read_text())
-        except Exception:  # noqa: BLE001 - metadata must never break inference
-            continue
-        if isinstance(payload, dict):
-            meta.update(payload)
-    return meta
-
-
-def predict_case(predictor, image_path: Path, workdir: Path) -> tuple[np.ndarray, InputGeometry]:
-    """Run the model and return (lesion probability on the caller's grid, geometry)."""
-    import nibabel as nib
-
-    data, geom = read_image(str(image_path))
-    if int(np.prod(geom.original_shape)) > MAX_VOXELS:
-        raise ValueError(f"{image_path}: {geom.original_shape} exceeds the supported size")
-
-    # Fail before predicting, not after, if we could not map the result back.
-    assert_roundtrip(data, geom)
-
-    canonical, canonical_affine = to_training_orientation(data, geom)
-    print(
-        f"[case] {image_path.name} shape={geom.original_shape} axcodes={''.join(geom.axcodes)}",
-        flush=True,
-    )
-
-    in_dir = workdir / "nnunet_in"
-    out_dir = workdir / "nnunet_out"
-    in_dir.mkdir(parents=True, exist_ok=True)
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    # nnU-Net's channel-suffix convention; dataset.json declares one channel.
-    nib.save(
-        nib.Nifti1Image(canonical.astype(np.float32), canonical_affine),
-        str(in_dir / "case_0000.nii.gz"),
-    )
-
-    predictor.predict_from_files(
-        [[str(in_dir / "case_0000.nii.gz")]],
-        [str(out_dir / "case")],
-        save_probabilities=True,
-        overwrite=True,
-        num_processes_preprocessing=1,
-        num_processes_segmentation_export=1,
-    )
-
-    npz_path = out_dir / "case.npz"
-    seg_path = out_dir / "case.nii.gz"
-    if not npz_path.is_file() or not seg_path.is_file():
-        raise RuntimeError(f"nnU-Net produced no output for {image_path.name}")
-
-    with np.load(npz_path) as payload:
-        probs = np.asarray(payload["probabilities"])
-
-    seg_canonical = np.asanyarray(nib.load(str(seg_path)).dataobj)
-    lesion_prob = _align_probabilities(probs, seg_canonical)
-
-    # Back onto the caller's grid.
-    return from_training_orientation(lesion_prob, geom).astype(np.float32), geom
-
-
-def _align_probabilities(probs: np.ndarray, seg: np.ndarray) -> np.ndarray:
-    """Extract the lesion channel from nnU-Net's probability array, resolving the
-    spatial-axis permutation against the segmentation it was written with.
-
-    nnU-Net writes probabilities as (channel, *spatial) but the spatial axis
-    order has bitten this project before (see `npz_lesion_prob_to_nii.py`, and
-    the ensemble helper's `resolve_spatial_axes`). Rather than assume, we check
-    every permutation against the segmentation nnU-Net itself produced and
-    require exactly one to agree. On a cubic volume several permutations can be
-    consistent, so an ambiguous match is an error, not a coin flip.
-    """
-    import itertools
-
-    if probs.ndim != seg.ndim + 1:
-        raise ValueError(f"probability array {probs.shape} incompatible with seg {seg.shape}")
-
-    candidates = []
-    for perm in itertools.permutations(range(seg.ndim)):
-        moved = np.transpose(probs, axes=(0,) + tuple(a + 1 for a in perm))
-        if moved.shape[1:] != seg.shape:
-            continue
-        mismatch = float(np.mean(np.argmax(moved, axis=0) != np.rint(seg))) if seg.size else 0.0
-        candidates.append((mismatch, perm, moved))
-
-    if not candidates:
-        raise ValueError(f"no axis permutation maps {probs.shape} onto {seg.shape}")
-
-    candidates.sort(key=lambda c: c[0])
-    best_mismatch, _, best = candidates[0]
-    if best_mismatch > 1e-3:
-        raise ValueError(
-            f"probability/segmentation disagree on {best_mismatch:.4%} of voxels; "
-            "refusing to emit a soft map that does not match the mask"
-        )
-    ties = [c for c in candidates if abs(c[0] - best_mismatch) < 1e-12]
-    if len(ties) > 1 and seg.any():
-        raise ValueError(
-            f"{len(ties)} axis permutations are equally consistent; the soft map "
-            "orientation is ambiguous"
-        )
-    return np.asarray(best[LESION_CHANNEL], dtype=np.float32)
-
-
-# --- main -------------------------------------------------------------------
-
-
-def main() -> int:
-    started = time.time()
-    images = find_input_images(INPUT_DIR)
-    if not images:
-        print(f"[error] no input volumes found under {INPUT_DIR}", file=sys.stderr)
-        return 1
-
-    metadata = read_case_metadata(INPUT_DIR)
-    if metadata:
-        print(f"[init] metadata keys: {sorted(metadata)}", flush=True)
-
-    mask_dir = OUTPUT_DIR / "images" / MASK_SLUG
-    prob_dir = OUTPUT_DIR / "images" / PROB_SLUG
-    mask_dir.mkdir(parents=True, exist_ok=True)
-    prob_dir.mkdir(parents=True, exist_ok=True)
-
-    predictor = build_predictor()
-    print(f"[init] model ready in {time.time() - started:.1f}s", flush=True)
-
-    n_failed = 0
-    for image_path in images:
-        case_started = time.time()
-        out_name = image_path.name
-        for suffix in (".nii.gz", ".nii", ".mha", ".mhd", ".nrrd"):
-            if out_name.endswith(suffix):
-                out_name = out_name[: -len(suffix)]
-                break
-        out_name = f"{out_name}.mha"
-
-        geom: InputGeometry | None = None
-        try:
-            with tempfile.TemporaryDirectory(prefix="isles26_") as tmp:
-                prob, geom = predict_case(predictor, image_path, Path(tmp))
-
-            mask = (prob >= THRESHOLD).astype(np.uint8)
-            if MIN_CC_MM3 > 0:
-                vox_mm3 = float(np.prod(geom.sitk_image.GetSpacing()))
-                mask = min_size_filter(mask, int(math.ceil(MIN_CC_MM3 / max(vox_mm3, 1e-9))))
-            else:
-                mask = min_size_filter(mask, MIN_CC_VOXELS)
-
-            soft = prob
-            if FLATTEN_EMPTY and not mask.any():
-                # Exactly constant, so the official PR-AUC scores a lesion-free
-                # ground truth as 1.0 instead of 0.0.
-                soft = np.zeros_like(prob)
-
-            write_like_input(mask, geom, str(mask_dir / out_name), np.uint8)
-            write_like_input(soft, geom, str(prob_dir / out_name), np.float32)
-            print(
-                f"[ok] {image_path.name} lesion_voxels={int(mask.sum())} "
-                f"in {time.time() - case_started:.1f}s",
-                flush=True,
-            )
-        except Exception:  # noqa: BLE001 - never fail the whole submission
-            n_failed += 1
-            print(f"[FAILED] {image_path.name}\n{traceback.format_exc()}", file=sys.stderr, flush=True)
-            try:
-                if geom is None:
-                    _, geom = read_image(str(image_path))
-                zeros = np.zeros(geom.original_shape, dtype=np.uint8)
-                write_like_input(zeros, geom, str(mask_dir / out_name), np.uint8)
-                write_like_input(zeros, geom, str(prob_dir / out_name), np.float32)
-                print(f"[fallback] wrote empty prediction for {image_path.name}", flush=True)
-            except Exception:  # noqa: BLE001
-                print(
-                    f"[FATAL] could not even write a fallback for {image_path.name}\n"
-                    f"{traceback.format_exc()}",
-                    file=sys.stderr,
-                    flush=True,
-                )
-
-    elapsed = time.time() - started
-    print(
-        f"[done] {len(images)} case(s), {n_failed} failed, {elapsed:.1f}s total "
-        f"({elapsed / max(len(images), 1):.1f}s/case)",
-        flush=True,
-    )
-    return 0
+    location = OUTPUT_PATH / "images" / slug
+    location.mkdir(parents=True, exist_ok=True)
+    if tuple(array.shape) != geom.original_shape:
+        raise ValueError(f"refusing to write {slug}: shape {array.shape} != {geom.original_shape}")
+    image = SimpleITK.GetImageFromArray(np.ascontiguousarray(array.astype(dtype).transpose(2, 1, 0)))
+    image.CopyInformation(geom.sitk_image)
+    SimpleITK.WriteImage(image, str(location / "output.mha"), useCompression=True)
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(run(model=init_model()))
