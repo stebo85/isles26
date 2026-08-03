@@ -157,40 +157,39 @@ Schedule-matched against the existing fold-0 TopK10 model, scored with the
 official five metrics, gate fixed before the runs (RQ >= +0.020 or AVD <= -0.30 mL,
 Dice drop <= 0.005).
 
-| arm | Dice | AVD mL | count diff | RQ | PR-AUC | verdict |
+| arm (5-fold OOF, n=1452) | Dice | AVD mL | count diff | RQ | PR-AUC | verdict |
 |---|---:|---:|---:|---:|---:|---|
-| TopK10 (control) | 0.6605 | 6.515 | 1.157 | 0.6601 | 0.7673 | — |
-| R1+R2 blob + volume loss | 0.6664 | 6.532 | 1.342 | **0.6278** | 0.7624 | **DO NOT PROMOTE** |
-| **R3+R4 DA5 heavy augmentation** | **0.6799** | **6.118** | 1.324 | 0.6727 | 0.7791 | **PROMOTED — folds 1-4 running** |
+| **TopK10 (SHIPPED)** | 0.6283 | 6.373 | 1.869 | 0.5791 | 0.7417 | **in the container** |
+| DA5 heavy augmentation | 0.6393 | 6.421 | 1.881 | 0.5898 | 0.7441 | **NOT promoted** |
+| R1+R2 blob + volume loss (fold 0) | 0.6664 | 6.532 | 1.342 | 0.6278 | 0.7624 | NOT promoted |
 
-**R3+R4 passes the gate**, on the AVD criterion (-0.397 mL). Four of five ranked
-metrics improve; absolute lesion count difference worsens (+0.167).
-
-Be careful how this is quoted: the AVD delta that fired the gate is **not**
-individually significant (t = -1.64). What carries the decision is the Dice gain
-**+0.0194 at t = +2.61**, plus the consistent positive direction across four
-metrics. Full 5-fold out-of-fold scoring must repeat the comparison before the
-container's weights are swapped — **do not ship the fold-0 result**. Analysis:
+**DA5 improves Dice +0.0111 (t=+3.24) and RQ +0.0107 (t=+2.26) with nothing
+degraded — and was still not promoted**, because the gate fixed before the runs
+required RQ >= +0.020 or AVD <= -0.30 mL. Holding it cost ~0.011 Dice. The reason
+to hold it: on fold 0 alone this arm looked like +0.0194 Dice and **-0.397 mL
+AVD**, and the AVD claim reversed to +0.047 once the other four folds landed. A
+gate renegotiated after seeing the result is not a gate. Full analysis:
 `baselines/reports/metric_aligned_fold0/R3R4_DA5_FINDING.md`.
 
-Note that AVD moved here after resisting both post-hoc calibration (Problem 21)
-and a direct volume loss term (R1+R2). That is consistent with the diagnosis in
-Problem 22: volume error is a property of the model's domain robustness, not
-something recoverable at the output.
+R1+R2 (instance-balanced blob loss + volume term) moved its own target metric
+backwards: RQ -0.0323 at fold 0 (t=-2.75). Under one-to-one IoU>=0.25 matching an
+unmatched predicted component is penalised twice, so interventions that add
+marginal detections lose. That is now the fourth such result (MSL, DBL,
+synthetic-lesion insertion, blob loss) and should be treated as settled.
 
-**R1+R2 moved its own target metric the wrong way:** RQ -0.0323 (paired t = -2.75)
-while Dice rose an insignificant +0.0059. Weighting every instance equally
-produces more predicted components, and under one-to-one IoU >= 0.25 matching an
-unmatched component is penalised twice. Full analysis:
-`baselines/reports/metric_aligned_fold0/R1R2_blob_volume_FINDING.md`.
+## Shipped configuration
 
-That is now the fourth recall-oriented intervention to lose under the real metric
-(MSL, DBL, synthetic-lesion insertion, blob loss). Treat as settled: **adding
-marginal detections loses on this task.**
+nnU-Net v2 3d_fullres, Dice+TopK10, 1000 epochs, Dataset507 center-grouped,
+**5-fold ensemble with mirroring TTA OFF**, threshold 0.35, min connected
+component 20 voxels (26-connectivity), constant soft map when the mask is empty.
 
-The volume term also did nothing (AVD +0.017 mL, t = +0.09). With post-hoc volume
-calibration already dead (Problems 21-22), absolute volume difference is resistant
-to both post-processing and a direct loss term, and should absorb no more effort.
+TTA is off for runtime, not accuracy: measured CPU cost is 12.9 min/case with
+5-fold + TTA against a ~10 minute guideline budget, versus 2.0 min without TTA.
+Grand Challenge does not guarantee a GPU. **Consequence to carry: the quoted
+0.6283 Dice was measured WITH TTA, so real performance is slightly lower, and the
+operating point was tuned on TTA-smoothed probabilities.**
+
+Weights published at `https://huggingface.co/sbollmann/isles26-nnunet-d507-topk10`.
 
 ## Next levers (priority)
 

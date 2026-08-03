@@ -104,7 +104,25 @@ THRESHOLD = float(os.environ.get("ISLES26_THRESHOLD", "0.35"))
 MIN_CC_VOXELS = int(os.environ.get("ISLES26_MIN_CC_VOXELS", "20"))
 MIN_CC_MM3 = float(os.environ.get("ISLES26_MIN_CC_MM3", "0"))
 
-DISABLE_TTA = os.environ.get("ISLES26_DISABLE_TTA", "0") == "1"
+# TTA IS OFF BY DEFAULT, AND THAT IS A RUNTIME DECISION, NOT AN ACCURACY ONE.
+# Measured CPU cost per case (analysis_nnunet_60_cpu_runtime_budget.sh), against
+# the guidelines' ~10 minute budget, on the largest cases:
+#     5 folds + TTA   12.9 min   OVER BUDGET
+#     5 folds, no TTA  2.0 min
+#     1 fold  + TTA    2.8 min
+#     1 fold,  no TTA  0.5 min
+# Grand Challenge does not guarantee a GPU (the official template says the GPU is
+# used "when enabled"), so the CPU figure is the one that must fit. Of the two
+# affordable ways to get there, keeping the 5-fold ensemble and dropping TTA is
+# the safer trade: ensembling is the more reliable of the two effects, and it
+# leaves 5x headroom rather than 3.5x.
+#
+# CAVEAT, recorded so nobody is surprised: every out-of-fold number in this repo
+# was measured WITH TTA, and the operating point below was tuned on TTA-smoothed
+# probabilities. Shipping without TTA means the real score is slightly below the
+# quoted 0.6283 Dice, and the ideal threshold may shift a little.
+# analysis_nnunet_61_tta_ablation.sh measures exactly that gap.
+DISABLE_TTA = os.environ.get("ISLES26_DISABLE_TTA", "1") == "1"
 FLATTEN_EMPTY = os.environ.get("ISLES26_FLATTEN_EMPTY", "1") == "1"
 CHECKPOINT = os.environ.get("ISLES26_CHECKPOINT", "checkpoint_final.pth")
 

@@ -1,26 +1,52 @@
-# R3+R4 (DA5 heavy augmentation)
+# R3+R4 (DA5 heavy augmentation): NOT PROMOTED
 
-> **INTERIM UPDATE (4 of 5 folds scored, n=1135): the fold-0 result does not
-> hold up.** The AVD improvement that fired the promotion gate has **reversed
-> sign**, and the Dice gain has shrunk by two thirds and is no longer
-> significant:
->
-> | metric | fold 0 only (n=281) | folds 0-3 (n=1135) |
-> |---|---:|---:|
-> | Dice | **+0.0194** (t=+2.61) | +0.0064 (t=+1.72) |
-> | absolute volume difference | **-0.397 mL** | **+0.212 mL** (worse) |
-> | lesion-F1 (RQ) | +0.0126 | +0.0083 (t=+1.60) |
-> | PR-AUC | +0.0118 | +0.0008 (t=+0.27) |
->
-> This is a textbook single-fold winner's curse: fold 0 happened to be the fold
-> that looked best, and 281 cases is not enough to price a 0.4 mL volume effect.
-> The gate was pre-registered and was met as written, so the promotion decision
-> was procedurally correct -- but the caution recorded below ("the AVD delta that
-> fired the gate is not individually significant, t = -1.64; do not ship the
-> fold-0 result") is exactly what happened.
->
-> Fold 4 (317 cases) is still scoring. Final verdict pending. **Do not swap the
-> container's weights on the evidence below.**
+## Final result — full 5-fold out-of-fold, n=1452
+
+| metric | TopK10 (shipped) | DA5 | delta | SE | t |
+|---|---:|---:|---:|---:|---:|
+| Dice | 0.6283 | 0.6393 | **+0.0111** | 0.0034 | **+3.24** |
+| absolute volume difference (mL) | 6.3732 | 6.4205 | +0.0473 | 0.1516 | +0.31 |
+| absolute lesion count difference | 1.8685 | 1.8809 | +0.0124 | 0.0287 | +0.43 |
+| lesion-F1 (RQ) | 0.5791 | 0.5898 | **+0.0107** | 0.0047 | **+2.26** |
+| PR-AUC | 0.7417 | 0.7441 | +0.0024 | 0.0026 | +0.89 |
+
+**Gate, fixed before the runs: RQ >= +0.020 or AVD <= -0.30 mL, with Dice not
+dropping more than 0.005. Result: NOT MET. DA5 is not promoted; TopK10 ships.**
+
+## Why this was a close call, and why the gate was held anyway
+
+DA5 is, on the evidence, a slightly better model: two of five ranked metrics
+improve significantly at n=1452 and nothing degrades. It was tempting to ship it.
+
+It was not shipped because **the gate was set before the numbers were seen, and
+the decision to move it would have been taken after seeing them.** That is the
+exact failure mode this project has repeatedly paid for — the fold-0 result on
+this very arm looked like +0.0194 Dice and -0.397 mL AVD, both of which shrank or
+reversed once the other four folds landed:
+
+| metric | fold 0 (n=281) | all 5 folds (n=1452) |
+|---|---:|---:|
+| Dice | +0.0194 (t=+2.61) | +0.0111 (t=+3.24) |
+| absolute volume difference | **-0.397 mL** | **+0.047 mL** |
+| lesion-F1 (RQ) | +0.0126 | +0.0107 |
+| PR-AUC | +0.0118 | +0.0024 |
+
+The AVD criterion that fired the fold-0 promotion evaporated completely. A gate
+that can be renegotiated after the fact is not a gate.
+
+The cost of holding it is about **0.011 Dice and 0.011 RQ** — real, but small
+against the risk of a late weight swap: it would mean re-exporting, re-uploading
+596 MB, and rebuilding an as-yet-unbuilt container against a hard deadline, for a
+model whose advantage sits at the edge of what this evaluation can resolve.
+
+## If this is revisited
+
+The 5-fold DA5 weights exist under
+`work/nnunet/nnUNet_results/Dataset507_ATLASR30_CORRECTED/nnUNetTrainerDA5TopK10__nnUNetPlans__3d_fullres/`
+and can be exported with `analysis_nnunet_50_export_submission_weights.sh`
+(`TRAINER=nnUNetTrainerDA5TopK10`) and published with
+`analysis_eval_02_upload_weights_hf.sh`. Do that only with time to re-run the
+full container validation, not as a last-minute change.
 
 ---
 

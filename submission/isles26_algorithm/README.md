@@ -67,19 +67,33 @@ self-contained and there is no second upload to go stale against a hard deadline
 
 | env var | default | notes |
 |---|---|---|
-| `ISLES26_FOLDS` | `0,1,2,3,4` | **may be reduced** — see the CPU budget below |
+| `ISLES26_FOLDS` | `0,1,2,3,4` | full 5-fold ensemble; affordable once TTA is off |
 | `ISLES26_THRESHOLD` | `0.35` | selected on the center-held-out surface against all 5 official metrics |
 | `ISLES26_MIN_CC_VOXELS` | `20` | 26-connectivity; worth +0.030 lesion-F1 and -0.13 count error |
 | `ISLES26_MIN_CC_MM3` | `0` | spacing-invariant alternative (0 = use voxels) |
-| `ISLES26_DISABLE_TTA` | `0` | mirroring TTA |
+| `ISLES26_DISABLE_TTA` | **`1`** | mirroring TTA **off** — required to fit the CPU budget, see below |
 | `ISLES26_FLATTEN_EMPTY` | `1` | constant soft map when the mask is empty |
 
-## CPU runtime budget — unresolved
+## CPU runtime budget — resolved
 
-The guidelines quote **~10 minutes on CPU**, and the template says the GPU is used
-"when enabled", so a GPU is not guaranteed. Our 5-fold + TTA configuration is
-~30 s/case *on a GPU* (~8 s of it GPU compute); on CPU, 5 folds x 8 mirror
-configurations may exceed the budget. `analysis_nnunet_60_cpu_runtime_budget.sh`
-measures 5-fold/1-fold x TTA-on/off on a median and a large case. **Set
-`ISLES26_FOLDS` and `ISLES26_DISABLE_TTA` from that measurement** — dropping folds
-is a real accuracy trade and should not be guessed.
+Measured per case on CPU (8 cores), worst case of a median-sized and the largest
+volume, against the guidelines' ~10 minute budget:
+
+| configuration | per invoke | verdict |
+|---|---:|---|
+| 5 folds + TTA | **12.9 min** | **over budget** |
+| 5 folds, no TTA | 2.0 min | shipped |
+| 1 fold + TTA | 2.8 min | fits |
+| 1 fold, no TTA | 0.5 min | fits |
+
+Grand Challenge does not guarantee a GPU, so the CPU figure governs. **Shipped
+configuration: 5 folds, mirroring TTA off** — ensembling is the more reliable of
+the two effects and this leaves 5x headroom.
+
+**Honest caveat:** every out-of-fold number quoted in this repository was measured
+*with* TTA, and the operating point (threshold 0.35, min-CC 20) was tuned on
+TTA-smoothed probabilities. Shipping without TTA puts real performance slightly
+below the quoted Dice 0.6283, and the ideal threshold may shift.
+`analysis_nnunet_61_tta_ablation.sh` measures that gap directly (fold 0, same
+weights, TTA the only variable); if it shows TTA was worth more than ~0.005 Dice,
+revisit the trade in favour of 1 fold + TTA.
