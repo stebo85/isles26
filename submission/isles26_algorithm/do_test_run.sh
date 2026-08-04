@@ -133,21 +133,31 @@ setup() {
 
     # The container's listening port, and the URL the tester sidecar uses
     # to reach it (resolved by container name via Docker's embedded DNS).
-#    BASE_URL="http://${CONTAINER_NAME}:${CONTAINER_PORT}"
-    BASE_URL="http://host.docker.internal:${CONTAINER_PORT}"
+    #
+    # Do NOT use host.docker.internal here: that alias only exists on Docker
+    # Desktop (macOS/Windows). Inside a Linux container -- i.e. every CI runner
+    # -- it does not resolve, curl fails before connecting, and check_health
+    # burns all 60 attempts on "000" while the algorithm container is in fact
+    # healthy. Container-name DNS works on both platforms.
+    BASE_URL="http://${CONTAINER_NAME}:${CONTAINER_PORT}"
+
     # An isolated network that mimics the network restrictions on Grand Challenge.
     # The algorithm container has no internet access, just like in production.
     DOCKER_NETWORK_TAG="${DOCKER_IMAGE_TAG}-isolated"
-    #docker network create --internal "$DOCKER_NETWORK_TAG" > /dev/null
-    docker network create "$DOCKER_NETWORK_TAG" > /dev/null
-    
+    docker network create --internal "$DOCKER_NETWORK_TAG" > /dev/null
+
     # The tester sidecar: lives on the isolated network so it can reach the
     # algorithm container by name, and is how we issue health/invoke checks
     # without needing the host to route into that network.
+    #
+    # Pull explicitly first: the sidecar is attached to an --internal network,
+    # so it cannot fetch its own image once running, and a silent failure here
+    # would look exactly like an unhealthy algorithm container.
     TESTER_NAME="${DOCKER_IMAGE_TAG}-tester"
+    docker pull --quiet curlimages/curl:latest > /dev/null
     docker run --detach --name "$TESTER_NAME" \
         --network "$DOCKER_NETWORK_TAG" \
-        curlimages/curl:latest sleep infinity > /dev/null 2>&1
+        curlimages/curl:latest sleep infinity > /dev/null
 }
 
 cleanup() {
@@ -203,10 +213,12 @@ start_container() {
     #   --volume <vol>:/tmp                scratch space (Grand Challenge disallows writes
     #                                      elsewhere outside the mounted directories)
     #   --volume model:/opt/ml/model:ro    the (optional) model tarball
+    # Note: no -p publish. The tester sidecar reaches the container over the
+    # isolated network by name, exactly as Grand Challenge does; publishing to
+    # the host is neither needed nor possible on an --internal network.
     local docker_run_args=(
         --detach
         --name "$CONTAINER_NAME"
-        -p 4743:4743                      # <--- Add this back ONLY if step 3 is also applied
         ${GPU_ARGS:+$GPU_ARGS}
         --platform=linux/amd64
         --volume "${SCRIPT_DIR}/model":/opt/ml/model:ro
@@ -215,18 +227,6 @@ start_container() {
         --volume "$DOCKER_VOLUME_TAG":/tmp
         --network "$DOCKER_NETWORK_TAG"
     )
-
-    # local docker_run_args=(
-    #     --detach
-    #     --name "$CONTAINER_NAME"
-    #     ${GPU_ARGS:+$GPU_ARGS}
-    #     --platform=linux/amd64
-    #     --volume "${SCRIPT_DIR}/model":/opt/ml/model:ro
-    #     --volume "$STAGING_INPUT_DIR":/input:ro
-    #     --volume "$STAGING_OUTPUT_DIR":/output
-    #     --volume "$DOCKER_VOLUME_TAG":/tmp
-    #     --network "$DOCKER_NETWORK_TAG"
-    # )
 
     docker run "${docker_run_args[@]}" "$DOCKER_IMAGE_TAG" >/dev/null
 
@@ -248,6 +248,11 @@ flush_docker_log() {
 
 http_status() {
     # Issues a request from inside the tester sidecar (not the host).
+    #
+    # Note the failure encoding: on a connection or DNS error curl still prints
+    # "000" via -w AND exits non-zero, so the fallback appends a second "000".
+    # A status of "000000" therefore means "never reached the server" (bad URL,
+    # sidecar down, wrong network) -- NOT "server returned an error".
     local method="$1"
     local timeout_seconds="$2"
     local url="$3"
@@ -258,10 +263,31 @@ http_status() {
       || echo "000"
 }
 
+diagnose_unreachable() {
+    # Called once, the first time a request fails to connect. Distinguishes
+    # "the server is still booting" from "the tester can never reach it".
+    local url="$1"
+    log "Request did not reach the server -- diagnosing" warning
+
+    if ! docker inspect -f '{{.State.Running}}' "$TESTER_NAME" 2>/dev/null | grep -q true; then
+        log "  tester sidecar '${TESTER_NAME}' is NOT running" error
+        return
+    fi
+    if ! docker inspect -f '{{.State.Running}}' "$CONTAINER_NAME" 2>/dev/null | grep -q true; then
+        log "  algorithm container '${CONTAINER_NAME}' is NOT running -- logs:" error
+        flush_docker_log
+        return
+    fi
+
+    # Curl's own error text names the cause: DNS resolution vs refused connection.
+    log "  curl says: $(docker exec "$TESTER_NAME" \
+        curl -sS -o /dev/null --max-time 5 "$url" 2>&1 | tail -n1)" warning
+}
+
 check_health() {
     log "Waiting for health endpoint..."
 
-    local status
+    local status diagnosed=0
     for ((i = 1; i <= HEALTH_CHECK_MAX_ATTEMPTS; i++)); do
         status=$(http_status "GET" "$HEALTH_CHECK_TIMEOUT_SECONDS" "${BASE_URL}/health")
         log "Health check attempt $i/${HEALTH_CHECK_MAX_ATTEMPTS} returned $status"
@@ -276,6 +302,27 @@ check_health() {
             log "Health endpoint returned HTTP 302 — failing" error
             flush_docker_log
             return 1
+        fi
+
+        # A "000..." status means no connection was made at all. Diagnose once
+        # rather than repeating an uninformative code for ten minutes.
+        if [[ "$status" == 000* && "$diagnosed" -eq 0 ]]; then
+            diagnosed=1
+            diagnose_unreachable "${BASE_URL}/health"
+        fi
+
+        # If the container died, waiting out the remaining attempts tells us
+        # nothing -- its logs already hold the reason.
+        if ! docker inspect -f '{{.State.Running}}' "$CONTAINER_NAME" 2>/dev/null | grep -q true; then
+            log "Algorithm container exited before becoming healthy" error
+            flush_docker_log
+            return 1
+        fi
+
+        # Stream boot progress every ~1 min so a slow startup is visible while
+        # it happens, instead of only in a post-mortem dump.
+        if (( i % 6 == 0 )); then
+            flush_docker_log
         fi
 
         log "Retrying in ${HEALTH_CHECK_DELAY_SECONDS}s"
