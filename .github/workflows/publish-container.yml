@@ -76,10 +76,48 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Free disk space
-        # The CUDA base image plus 600 MB of weights needs headroom on a hosted runner.
+        # The CUDA base image unpacks to ~9 GB and `docker save` does NOT stream:
+        # it materialises a second full copy of the image in the daemon's tmp dir
+        # before gzip sees a byte. The export therefore needs roughly 2x the image
+        # size free at once, which a stock runner does not have on / -- that is the
+        # ENOSPC that killed the first green build at the very last step.
         run: |
-          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache/CodeQL
-          df -h /
+          set -euo pipefail
+          echo "=== before ==="; df -h / /mnt
+          # Toolchains this build never touches. hostedtoolcache goes in full:
+          # setup-python runs after this step and re-fetches the one version we
+          # need in ~20 s, which is cheaper than keeping ~10 GB of Go/Node/Ruby.
+          sudo rm -rf \
+            /opt/hostedtoolcache \
+            /usr/share/dotnet \
+            /usr/local/lib/android \
+            /usr/local/.ghcup \
+            /opt/ghc \
+            /usr/share/swift \
+            /usr/share/miniconda \
+            /usr/local/share/powershell \
+            /usr/local/share/chromium \
+            /usr/local/lib/node_modules
+          sudo apt-get clean
+          echo "=== after ==="; df -h / /mnt
+
+      - name: Give Docker the big disk
+        # Hosted runners carry a second, larger volume at /mnt while / is the
+        # crowded one. Pointing the daemon's data-root there puts BOTH the image
+        # store and the export tmp dir on the roomy disk. This must run before
+        # anything pulls or builds, since it discards the current image store.
+        run: |
+          set -euo pipefail
+          sudo systemctl stop docker.service docker.socket
+          sudo mkdir -p /mnt/docker
+          echo '{"data-root": "/mnt/docker"}' | sudo tee /etc/docker/daemon.json
+          sudo systemctl start docker.service
+          docker info --format 'docker root dir: {{.DockerRootDir}}'
+          # The old store on / is now orphaned -- several GB of prebaked images
+          # the daemon will never look at again. Reclaiming it is worth more than
+          # a prune, since a prune would only have emptied the same directory.
+          sudo rm -rf /var/lib/docker || true
+          df -h / /mnt
 
       - uses: actions/setup-python@v5
         with:
@@ -235,16 +273,29 @@ jobs:
         run: |
           set -euo pipefail
           IMG=$(echo '${{ steps.meta.outputs.tags }}' | head -n1)
-          docker save "$IMG" | gzip -c > isles26-algorithm.tar.gz
-          ls -lh isles26-algorithm.tar.gz
+          echo "=== space before export ==="; df -h / /mnt
+          # Write to /mnt, alongside the image store: the uncompressed stream is
+          # ~11 GB and / has no room for both this and the daemon's export tmp.
+          #
+          # pigz when present -- gzip is single-threaded and this is ~11 GB of
+          # mostly-incompressible CUDA .so, where -1 costs minutes less for a few
+          # hundred MB more. Grand Challenge only cares that it is a .tar.gz.
+          COMPRESS=$(command -v pigz || command -v gzip)
+          echo "compressing with: $COMPRESS"
+          # /mnt itself is root-owned; give the runner user a writable subdir.
+          sudo mkdir -p /mnt/export && sudo chown "$(id -u):$(id -g)" /mnt/export
+          docker save "$IMG" | "$COMPRESS" -1 -c > /mnt/export/isles26-algorithm.tar.gz
+          ls -lh /mnt/export/isles26-algorithm.tar.gz
+          echo "=== space after export ==="; df -h / /mnt
           echo "Upload this file via 'Your algorithm > Containers' on Grand Challenge."
 
       - uses: actions/upload-artifact@v4
         if: github.event_name != 'pull_request'
         with:
           name: isles26-algorithm-image
-          path: isles26-algorithm.tar.gz
+          path: /mnt/export/isles26-algorithm.tar.gz
           retention-days: 30
+          compression-level: 0   # already gzipped; recompressing costs minutes for nothing
 
       - name: Job summary
         if: github.event_name != 'pull_request'
