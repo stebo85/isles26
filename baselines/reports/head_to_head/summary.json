@@ -1,0 +1,27 @@
+{
+  "n": 19,
+  "threshold": 0.35,
+  "min_cc_voxels": 20,
+  "models": {
+    "ours": {
+      "mean_dice": 0.6276,
+      "median_dice": 0.7493,
+      "wins_vs_baseline": 5
+    },
+    "baseline": {
+      "mean_dice": 0.723,
+      "median_dice": 0.8,
+      "wins_vs_baseline": 0
+    },
+    "ours_same_split": {
+      "mean_dice": 0.7033,
+      "median_dice": 0.7816,
+      "wins_vs_baseline": 8
+    },
+    "da5": {
+      "mean_dice": 0.68,
+      "median_dice": 0.7961,
+      "wins_vs_baseline": 9
+    }
+  }
+}
