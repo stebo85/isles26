@@ -159,6 +159,14 @@ MIN_CC_MM3 = float(os.environ.get("ISLES26_MIN_CC_MM3", "0"))
 # (a subset of allowed_mirroring_axes) would cost ~4 min/case at 5 folds, i.e.
 # both effects inside budget. Untested -- do not ship it unmeasured.
 DISABLE_TTA = os.environ.get("ISLES26_DISABLE_TTA", "1") == "1"
+
+# Which spatial axes mirroring TTA may flip, when it is on at all. Unset means
+# "whatever the checkpoint was trained with" (all three), i.e. no behaviour
+# change. A subset costs 2^len(axes) forward passes instead of 8, which is the
+# only way to have both the 5-fold ensemble and some TTA inside the CPU budget.
+# Measured by analysis_nnunet_68/69 before any non-empty value ships.
+_axes = os.environ.get("ISLES26_MIRROR_AXES", "").strip()
+MIRROR_AXES = tuple(int(a) for a in _axes.split(",") if a.strip() != "") if _axes else None
 FLATTEN_EMPTY = os.environ.get("ISLES26_FLATTEN_EMPTY", "1") == "1"
 CHECKPOINT = os.environ.get("ISLES26_CHECKPOINT", "checkpoint_final.pth")
 
@@ -250,6 +258,12 @@ def init_model():
     predictor.initialize_from_trained_model_folder(
         str(MODEL_DIR), use_folds=FOLDS, checkpoint_name=CHECKPOINT
     )
+    if MIRROR_AXES is not None:
+        # Set AFTER initialization: the call above overwrites this attribute with
+        # the checkpoint's inference_allowed_mirroring_axes.
+        predictor.allowed_mirroring_axes = MIRROR_AXES
+    print(f"[init] mirror_axes={predictor.allowed_mirroring_axes if not DISABLE_TTA else None}",
+          flush=True)
     print(f"[init] model ready in {time.time() - started:.1f}s", flush=True)
     print("=+=" * 10, flush=True)
     return predictor
