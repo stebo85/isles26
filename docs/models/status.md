@@ -177,17 +177,41 @@ unmatched predicted component is penalised twice, so interventions that add
 marginal detections lose. That is now the fourth such result (MSL, DBL,
 synthetic-lesion insertion, blob loss) and should be treated as settled.
 
-## Shipped configuration
+## Shipped configuration — FINAL (locked 2026-08-04)
 
 nnU-Net v2 3d_fullres, Dice+TopK10, 1000 epochs, Dataset507 center-grouped,
 **5-fold ensemble with mirroring TTA OFF**, threshold 0.35, min connected
 component 20 voxels (26-connectivity), constant soft map when the mask is empty.
 
-TTA is off for runtime, not accuracy: measured CPU cost is 12.9 min/case with
-5-fold + TTA against a ~10 minute guideline budget, versus 2.0 min without TTA.
-Grand Challenge does not guarantee a GPU. **Consequence to carry: the quoted
-0.6283 Dice was measured WITH TTA, so real performance is slightly lower, and the
-operating point was tuned on TTA-smoothed probabilities.**
+Both open decisions are now closed, and neither moved the config.
+
+**TTA vs folds — trigger fired, choice held.** The container carried a
+pre-registered trigger: revisit in favour of 1 fold + TTA if TTA proved worth
+more than ~0.005 Dice. `analysis_nnunet_61` measured **+0.0141 Dice** (fold 0,
+n=281, TTA the only variable), so the revisit happened. It failed on a fact the
+trigger did not have: **1 fold + TTA is slower than 5 folds without it** —
+183.9 s vs 114.2 s on ATLAS_0001, measured through the container's own
+`inference.py` on CPU (`analysis_nnunet_66`). The alternative costs ~60% more
+wall time for a single-model prediction, and would need the 5-fold ensemble to be
+worth less than +0.0141 Dice to win. That ensemble gain is unmeasurable here
+(every case was seen by 4 of 5 members), so this is a judgement under one
+unmeasured quantity, recorded as such.
+
+**Operating point — held.** `thr0.35_k20` is rank 1 of 54 by mean rank across the
+five official metrics on the center-held-out surface (n=1452), and rank 16 of 54
+on the deployment-matched no-TTA surface (n=281) where the argmax is
+`thr0.25_k50`. Not moved: that argmax is in-sample over a 54-point grid on 281
+single-fold cases and worth 0.0030 Dice — the same construction as the retracted
+threshold-0.54 decision above. PR-AUC is threshold-invariant (0.7417 everywhere),
+so one of the five metrics cannot respond to the change at all.
+
+**Cost of shipping no-TTA**, to be carried into any leaderboard comparison:
+Dice −0.0141, lesion-F1 −0.0205, PR-AUC −0.0191, AVD +0.86 mL. **The quoted
+0.6283 Dice was measured WITH TTA — it is an optimistic bound, not a forecast.**
+
+Not tried, and the only remaining lever with time on the clock: reduced mirroring
+(subset of `allowed_mirroring_axes`), ~4 min/case at 5 folds, which would fit both
+effects inside the CPU budget. Unmeasured, so not shipped.
 
 Weights published at `https://huggingface.co/sbollmann/isles26-nnunet-d507-topk10`.
 

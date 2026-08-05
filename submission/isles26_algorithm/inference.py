@@ -95,7 +95,23 @@ FOLDS = tuple(int(f) for f in os.environ.get("ISLES26_FOLDS", "0,1,2,3,4").split
 #     |lesion count| 2.0000 -> 1.8685   (-0.1315, better)
 #     lesion-F1 (RQ) 0.5491 -> 0.5791   (+0.0300, the big one)
 #     AVD mL         6.2780 -> 6.3732   (+0.0952, the only regression)
-# Rank-optimal across all five metrics on both evaluation surfaces.
+#
+# It is rank 1 of 54 by mean rank across the five metrics on that surface. It is
+# rank 16 of 54 on the DEPLOYMENT-MATCHED surface (no-TTA probabilities, fold 0),
+# where the argmax is thr0.25_k50 -- and it stays anyway, deliberately:
+#   - that surface is n=281 and single-fold, and the "win" is an in-sample argmax
+#     over a 54-point grid worth 0.0030 Dice, which is the exact error this
+#     project already retracted once (the threshold-0.54 entry in
+#     docs/models/status.md was chosen the same way and did not survive);
+#   - the top 20 configs there span mean rank 24.9-26.8, i.e. inside the noise
+#     the table is measured with;
+#   - PR-AUC is computed over the soft map and is IDENTICAL (0.7417) at every
+#     threshold, so a threshold change cannot move one of the five metrics at all.
+# thr0.35_k50 was the serious alternative -- rank 5 on n=1452 and rank 3 on the
+# no-TTA surface, trading ~0.003 Dice for lesion-F1 -- and was rejected under the
+# same rule: the gap is smaller than the noise, so do not churn the operating
+# point in the last fortnight. Evidence:
+# baselines/reports/official_metrics_d507_topk10/ and .../tta_ablation/.
 #
 # Min-size pruning is the lever nnU-Net's own postprocessing search never
 # contained -- it only tests remove_all_but_largest_component, and only accepts
@@ -104,7 +120,8 @@ THRESHOLD = float(os.environ.get("ISLES26_THRESHOLD", "0.35"))
 MIN_CC_VOXELS = int(os.environ.get("ISLES26_MIN_CC_VOXELS", "20"))
 MIN_CC_MM3 = float(os.environ.get("ISLES26_MIN_CC_MM3", "0"))
 
-# TTA IS OFF BY DEFAULT, AND THAT IS A RUNTIME DECISION, NOT AN ACCURACY ONE.
+# TTA IS OFF BY DEFAULT. RESOLVED, NOT PROVISIONAL -- do not "restore" it.
+#
 # Measured CPU cost per case (analysis_nnunet_60_cpu_runtime_budget.sh), against
 # the guidelines' ~10 minute budget, on the largest cases:
 #     5 folds + TTA   12.9 min   OVER BUDGET
@@ -112,16 +129,35 @@ MIN_CC_MM3 = float(os.environ.get("ISLES26_MIN_CC_MM3", "0"))
 #     1 fold  + TTA    2.8 min
 #     1 fold,  no TTA  0.5 min
 # Grand Challenge does not guarantee a GPU (the official template says the GPU is
-# used "when enabled"), so the CPU figure is the one that must fit. Of the two
-# affordable ways to get there, keeping the 5-fold ensemble and dropping TTA is
-# the safer trade: ensembling is the more reliable of the two effects, and it
-# leaves 5x headroom rather than 3.5x.
+# used "when enabled"), so the CPU figure is the one that must fit. TTA or folds
+# had to go, and this file originally shipped no-TTA under a pre-registered
+# trigger: "if the ablation shows TTA was worth more than ~0.005 Dice, revisit in
+# favour of 1 fold + TTA".
 #
-# CAVEAT, recorded so nobody is surprised: every out-of-fold number in this repo
-# was measured WITH TTA, and the operating point below was tuned on TTA-smoothed
-# probabilities. Shipping without TTA means the real score is slightly below the
-# quoted 0.6283 Dice, and the ideal threshold may shift a little.
-# analysis_nnunet_61_tta_ablation.sh measures exactly that gap.
+# The ablation landed (analysis_nnunet_61, fold 0, n=281, same weights, TTA the
+# only variable) and TTA is worth +0.0141 Dice, so the trigger fired and the
+# revisit was done. It does NOT overturn the choice, for a reason the trigger did
+# not know: 1 fold + TTA is SLOWER than 5 folds without it. Measured through this
+# very file on CPU, 8 cores (analysis_nnunet_66, two real cases):
+#     ATLAS_0001   fold4+TTA 183.9s   fold4 no-TTA 32.9s   5-fold no-TTA 114.2s
+#     ATLAS_1316   fold4+TTA 129.9s   fold4 no-TTA 59.4s   5-fold no-TTA 100.1s
+# So the alternative costs ~60% more wall time to deliver a SINGLE-model
+# prediction. To win it would need the 5-fold ensemble to be worth less than
+# TTA's +0.0141 Dice, and fold-ensembling is nnU-Net's better-established effect
+# -- it also cuts variance across unseen centers, which is precisely our risk
+# (the test set spans 60+ centers and our honest surface is center-held-out).
+# The ensemble gain cannot be measured here (every case was seen by 4 of the 5
+# members -- work/nested_holdout/RESULT.md), so this is a judgement under one
+# unmeasured quantity, made explicit rather than hidden.
+#
+# WHAT IT COSTS, so nobody is surprised by the leaderboard: every out-of-fold
+# number in this repo was measured WITH TTA. Shipping without it gives up, per
+# baselines/reports/tta_ablation/, Dice -0.0141, lesion-F1 -0.0205, PR-AUC
+# -0.0191 and AVD +0.86 mL. Quote 0.6283 as an optimistic bound, not a forecast.
+#
+# NOT TRIED, and the one lever left with time on the clock: reduced mirroring
+# (a subset of allowed_mirroring_axes) would cost ~4 min/case at 5 folds, i.e.
+# both effects inside budget. Untested -- do not ship it unmeasured.
 DISABLE_TTA = os.environ.get("ISLES26_DISABLE_TTA", "1") == "1"
 FLATTEN_EMPTY = os.environ.get("ISLES26_FLATTEN_EMPTY", "1") == "1"
 CHECKPOINT = os.environ.get("ISLES26_CHECKPOINT", "checkpoint_final.pth")
@@ -131,6 +167,54 @@ MAX_VOXELS = 600_000_000
 
 
 # --- startup ----------------------------------------------------------------
+
+
+def _cgroup_cpu_quota():
+    """CPUs granted by the cgroup, or None if unlimited/unreadable.
+
+    `docker run --cpus=N` -- which is how Grand Challenge caps CPU -- sets a
+    cgroup CFS quota. It does NOT change os.cpu_count(), which keeps reporting
+    the host's core count. Reading the quota is the only way to see the real
+    allowance from inside the container.
+    """
+    try:  # cgroup v2
+        raw = Path("/sys/fs/cgroup/cpu.max").read_text().split()
+        if raw[0] != "max":
+            return max(1, int(int(raw[0]) / int(raw[1])))
+        return None
+    except Exception:  # noqa: BLE001 - absent or v1; fall through
+        pass
+    try:  # cgroup v1
+        quota = int(Path("/sys/fs/cgroup/cpu/cpu.cfs_quota_us").read_text())
+        period = int(Path("/sys/fs/cgroup/cpu/cpu.cfs_period_us").read_text())
+        if quota > 0 and period > 0:
+            return max(1, int(quota / period))
+    except Exception:  # noqa: BLE001
+        pass
+    return None
+
+
+def usable_cpus() -> int:
+    """How many threads torch may actually run without thrashing.
+
+    Measured, not theoretical (analysis_nnunet_67, same harness, one variable):
+    on a 5-CPU cgroup on a 24-core node, asking for os.cpu_count()=24 threads
+    made one real case take 240.6 s where 5 threads took 146.9 s -- a 1.6x
+    slowdown purely from oversubscription, against a ~10 minute budget, and both
+    runs emitted the identical 81668-voxel mask. Prefer an explicit override,
+    then the cpuset affinity mask, then the CFS quota, and only fall back to the
+    host core count.
+    """
+    for var in ("ISLES26_NUM_THREADS", "OMP_NUM_THREADS"):
+        value = os.environ.get(var, "")
+        if value.isdigit() and int(value) > 0:
+            return int(value)
+    try:
+        allowed = len(os.sched_getaffinity(0))
+    except AttributeError:  # not Linux
+        allowed = os.cpu_count() or 4
+    quota = _cgroup_cpu_quota()
+    return max(1, min(allowed, quota) if quota else allowed)
 
 
 def init_model():
@@ -144,9 +228,11 @@ def init_model():
     print(f"[init] torch {torch.__version__} | cuda available: {torch.cuda.is_available()}", flush=True)
     if device.type == "cpu":
         # Grand Challenge does not guarantee a GPU, and the guidelines quote a
-        # ~10 minute CPU budget. Give torch every core it has.
-        torch.set_num_threads(os.cpu_count() or 4)
-        print(f"[init] running on CPU with {torch.get_num_threads()} threads", flush=True)
+        # ~10 minute CPU budget. Give torch every core it is ALLOWED -- see
+        # usable_cpus(); os.cpu_count() reports the host and oversubscribes.
+        torch.set_num_threads(usable_cpus())
+        print(f"[init] running on CPU with {torch.get_num_threads()} threads "
+              f"(host reports {os.cpu_count()})", flush=True)
     print(f"[init] device={device} folds={FOLDS} tta={'off' if DISABLE_TTA else 'on'}", flush=True)
     print(f"[init] threshold={THRESHOLD} min_cc_voxels={MIN_CC_VOXELS} "
           f"flatten_empty={FLATTEN_EMPTY}", flush=True)
