@@ -209,9 +209,16 @@ so one of the five metrics cannot respond to the change at all.
 Dice −0.0141, lesion-F1 −0.0205, PR-AUC −0.0191, AVD +0.86 mL. **The quoted
 0.6283 Dice was measured WITH TTA — it is an optimistic bound, not a forecast.**
 
-Not tried, and the only remaining lever with time on the clock: reduced mirroring
-(subset of `allowed_mirroring_axes`), ~4 min/case at 5 folds, which would fit both
-effects inside the CPU budget. Unmeasured, so not shipped.
+**Reduced mirroring — measured, rejected, closed.** A subset of
+`allowed_mirroring_axes` costs 2^k passes instead of 8, so one axis fits the CPU
+budget at 5 folds. It does not buy enough: single axes give +0.0041 (L-R),
++0.0046 (P-A) and +0.0023 (I-S) Dice against full TTA's +0.0141, i.e. the gain is
+strongly super-additive and no single axis recovers half of it. The two-axis pair
+reaches +0.0113 but costs ~7-8 min/case, inside the ~10 min budget only if Grand
+Challenge's CPUs are no slower than ours. Absolute volume difference — a ranked
+metric — improves only under full mirroring (-0.856 mL, t=-3.46); every subset is
+marginally worse than no-TTA on it. The rule fixed before the run rejects all
+four. Report: `baselines/reports/reduced_mirroring/`.
 
 Weights published at `https://huggingface.co/sbollmann/isles26-nnunet-d507-topk10`.
 

@@ -149,9 +149,26 @@ one unmeasured quantity, stated rather than hidden.
 Every out-of-fold number in this repository was measured *with* TTA. **Quote
 Dice 0.6283 as an optimistic bound, not a forecast.**
 
-The one lever not tried: reduced mirroring (a subset of `allowed_mirroring_axes`)
-would cost roughly 4 min/case at 5 folds — both effects inside budget. It is
-unmeasured, and nothing unmeasured ships.
+### Reduced mirroring — measured, rejected
+
+A subset of `allowed_mirroring_axes` costs 2^k passes instead of 8, so one axis
+fits the budget at 5 folds. Measured on the same fold-0 surface
+(`baselines/reports/reduced_mirroring/`), it does not buy enough: the gain is
+strongly super-additive across axes, and no single axis recovers half of it.
+
+| axes | passes | est. min/case @5 folds | ΔDice vs no-TTA | ΔPR-AUC |
+|---|---:|---:|---:|---:|
+| (0,) L-R | 2 | ~4.0 | +0.0041 | +0.0080 |
+| (1,) P-A | 2 | ~4.0 | +0.0046 | +0.0045 |
+| (2,) I-S | 2 | ~4.0 | +0.0023 | +0.0058 |
+| (0,1) | 4 | ~7–8 | +0.0113 | +0.0171 |
+| (0,1,2) full | 8 | 12.9 — over budget | +0.0141 | +0.0191 |
+
+Absolute volume difference — one of the five ranked metrics — improves **only**
+under full mirroring (−0.856 mL, t=−3.46); every subset is marginally *worse*
+than no-TTA on it. The pre-registered rule (recover ≥ half the Dice gain,
+regress nothing else beyond noise, keep ≥ 2x CPU headroom) rejects all four.
+The question is closed; the container ships unchanged.
 
 ### Why the operating point did not move
 

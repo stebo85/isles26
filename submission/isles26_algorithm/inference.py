@@ -155,9 +155,20 @@ MIN_CC_MM3 = float(os.environ.get("ISLES26_MIN_CC_MM3", "0"))
 # baselines/reports/tta_ablation/, Dice -0.0141, lesion-F1 -0.0205, PR-AUC
 # -0.0191 and AVD +0.86 mL. Quote 0.6283 as an optimistic bound, not a forecast.
 #
-# NOT TRIED, and the one lever left with time on the clock: reduced mirroring
-# (a subset of allowed_mirroring_axes) would cost ~4 min/case at 5 folds, i.e.
-# both effects inside budget. Untested -- do not ship it unmeasured.
+# REDUCED MIRRORING: MEASURED AND CLOSED (analysis_nnunet_68/69/70). A subset of
+# allowed_mirroring_axes costs 2^k passes instead of 8, so one axis fits the
+# budget. It does not buy enough -- the gain is strongly super-additive across
+# axes, and no single axis recovers half of it:
+#     axes        passes  min/case@5f   dDice vs no-TTA
+#     (0,) L-R      2        ~4.0         +0.0041
+#     (1,) P-A      2        ~4.0         +0.0046
+#     (2,) I-S      2        ~4.0         +0.0023
+#     (0,1)         4        ~7-8         +0.0113
+#     (0,1,2)       8       12.9 (over)   +0.0141
+# Note AVD -- one of the five ranked metrics -- improves ONLY under full
+# mirroring (-0.856 mL, t=-3.46); every subset is slightly worse than no-TTA on
+# it. The pre-registered rule (recover >= half the Dice gain, regress nothing
+# else, keep >= 2x CPU headroom) rejects all four. Shipping no-TTA is correct.
 DISABLE_TTA = os.environ.get("ISLES26_DISABLE_TTA", "1") == "1"
 
 # Which spatial axes mirroring TTA may flip, when it is on at all. Unset means
