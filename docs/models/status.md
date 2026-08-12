@@ -206,9 +206,21 @@ mount shadowed the image layer with *identical content*. A test that provisions
 the resource under test cannot detect that the resource is missing in
 deployment. CI now empties `model/` before the end-to-end run.
 
-**2. Grand Challenge gave us No GPU and 2 CPU threads.** Every runtime figure in
-this repo is an 8-core measurement, so the CPU path is roughly 4x worse than the
-tables below: 5-fold no-TTA is ~8 min/case, not 2.0, against a ~10 minute budget.
+**2. Grand Challenge gave us No GPU and 2 CPU threads** (`ml.r7i.large`, 2 CPU /
+16 GB). Every runtime figure in this repo is an 8-core measurement, so the CPU
+path is slower — but by **2.35x, not the ~4x first assumed**. Measured on GC
+2026-08-12 on a 325x512x512 SOOP case: **235.5 s** for 5-fold no-TTA, versus
+100.1 s for the same shape on 8 cores. The workload is memory-bound rather than
+thread-starved (CPU pinned at ~97% of both threads, memory at 28% of 16 GB), so
+the CPU fallback runs at **~3.9 min against a ~10 min budget**. Applying the same
+2.35x to the reduced-mirroring table still rules out every TTA subset on CPU:
+one axis ~9.4 min, two axes ~17-19 min, full ~30 min.
+
+That first end-to-end GC run also validated the output: `CENTER=SOOP`,
+325x512x512, predicted 212403 voxels. ATLAS_1316 shares that center and exact
+shape and has a ground-truth volume of 23.501 mL, which the prediction matches
+within a few mL at any plausible spacing. Plumbing confirmed; generalization not,
+since that case is in training.
 
 **TTA is back on for the GPU path.** The no-TTA decision was correct but
 conditional — it rested on the stated assumption that "Grand Challenge does not

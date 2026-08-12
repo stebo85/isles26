@@ -169,9 +169,14 @@ MIN_CC_MM3 = float(os.environ.get("ISLES26_MIN_CC_MM3", "0"))
 #     5 folds, no TTA  2.0 min
 #     1 fold  + TTA    2.8 min
 #     1 fold,  no TTA  0.5 min
-# NOTE those are 8-core figures and GC gave us TWO threads, so the CPU path is
-# ~4x worse than this table and 5-fold no-TTA is the only arm with any margin
-# left. On the CPU fallback, treat 2.0 min as ~8 min.
+# NOTE those are 8-core figures and Grand Challenge gave us TWO (ml.r7i.large,
+# 2 CPU / 16 GB / no GPU). MEASURED on GC 2026-08-12, a 325x512x512 SOOP case:
+# 235.5 s for 5-fold no-TTA, against 100.1 s for the same shape on 8 cores. That
+# is 2.35x, not the ~4x a core count would suggest -- the workload is
+# memory-bound, not thread-starved, and CPU sat at ~97% of both threads with
+# memory at 28% of 16 GB. So the CPU fallback runs at ~3.9 min against a ~10 min
+# budget. Applying that same 2.35x to the mirroring table below still rules out
+# every TTA subset on CPU: one axis ~9.4 min, two axes ~17-19 min, full ~30 min.
 #
 # The original no-TTA choice was made under a pre-registered trigger: "if the
 # ablation shows TTA was worth more than ~0.005 Dice, revisit in favour of 1 fold
@@ -381,24 +386,55 @@ def interf0_handler(model):
 
     geom = None
     try:
-        prob, geom = predict(model, image_path)
+        prob, geom, stage = predict(model, image_path)
 
+        t0 = time.time()
         mask = (prob >= THRESHOLD).astype(np.uint8)
+        raw_voxels = int(mask.sum())
+
+        # Resolve the pruning threshold once so it can be logged in both units.
+        vox_mm3 = float(np.prod(geom.sitk_image.GetSpacing()))
         if MIN_CC_MM3 > 0:
-            vox_mm3 = float(np.prod(geom.sitk_image.GetSpacing()))
-            mask = min_size_filter(mask, int(math.ceil(MIN_CC_MM3 / max(vox_mm3, 1e-9))))
+            min_voxels = int(math.ceil(MIN_CC_MM3 / max(vox_mm3, 1e-9)))
         else:
-            mask = min_size_filter(mask, MIN_CC_VOXELS)
+            min_voxels = MIN_CC_VOXELS
+        mask, n_before, n_after = min_size_filter(mask, min_voxels)
 
         soft = prob
         if FLATTEN_EMPTY and not mask.any():
             # Exactly constant, so the official PR-AUC scores a lesion-free
             # ground truth as 1.0 rather than 0.0.
             soft = np.zeros_like(prob)
+        stage["post"] = time.time() - t0
 
+        t0 = time.time()
         write_output(MASK_SLUG, mask, geom, np.uint8)
         write_output(PROB_SLUG, soft, geom, np.float32)
-        print(f"[case] lesion_voxels={int(mask.sum())} in {time.time() - started:.1f}s", flush=True)
+        stage["write"] = time.time() - t0
+
+        # Everything below is diagnostics. The sanity phase is the only
+        # out-of-distribution signal this project will get before the deadline
+        # and each submission costs nothing, so make every case self-describing:
+        # a volume in mL can be compared against a known ground truth, whereas a
+        # raw voxel count cannot without knowing the spacing.
+        lesion_voxels = int(mask.sum())
+        print(f"[case] spacing={tuple(round(s, 4) for s in geom.sitk_image.GetSpacing())} mm "
+              f"voxel={vox_mm3:.5f} mm3", flush=True)
+        print(f"[case] lesion_voxels={lesion_voxels} volume={lesion_voxels * vox_mm3 / 1000.0:.2f} mL",
+              flush=True)
+        print(f"[case] components={n_after} (pruned {n_before - n_after} of {n_before} "
+              f"below {min_voxels} vox = {min_voxels * vox_mm3:.1f} mm3); "
+              f"thresholding kept {raw_voxels} vox before pruning", flush=True)
+        print(f"[case] soft_map max={float(prob.max()):.4f} mean={float(prob.mean()):.6f} "
+              f"frac>0.5={float((prob > 0.5).mean()):.6f} "
+              f"emitted={'flattened-constant' if soft is not prob else 'raw'}", flush=True)
+        # The line to diff between a CPU run and a GPU+TTA run.
+        print(f"[time] read+orient {stage['read']:.1f}s | network {stage['network']:.1f}s | "
+              f"invert {stage['invert']:.1f}s | post {stage['post']:.1f}s | "
+              f"write {stage['write']:.1f}s | TOTAL {time.time() - started:.1f}s "
+              f"[device={model.device.type} tta={'on' if getattr(model, 'use_mirroring', False) else 'off'} "
+              f"axes={model.allowed_mirroring_axes if getattr(model, 'use_mirroring', False) else None} "
+              f"folds={len(FOLDS)}]", flush=True)
     except Exception:  # noqa: BLE001 - one bad case must not fail the submission
         print(f"[FAILED] {image_path.name}\n{traceback.format_exc()}", file=sys.stderr, flush=True)
         if geom is None:
@@ -412,9 +448,18 @@ def interf0_handler(model):
 
 
 def predict(model, image_path: Path):
-    """Run nnU-Net and return (lesion probability on the caller's grid, geometry)."""
+    """Run nnU-Net.
+
+    Returns (lesion probability on the caller's grid, geometry, stage timings).
+    The timings exist to make the GPU-vs-CPU and TTA-on-vs-off comparison
+    readable from the Grand Challenge log alone: mirroring multiplies only the
+    network stage by 2^len(axes), so a total runtime that moves for any other
+    reason is a different problem wearing TTA's clothes.
+    """
     import nibabel as nib
 
+    stage = {}
+    t0 = time.time()
     data, geom = read_image(str(image_path))
     if int(np.prod(geom.original_shape)) > MAX_VOXELS:
         raise ValueError(f"{image_path}: {geom.original_shape} exceeds the supported size")
@@ -422,6 +467,7 @@ def predict(model, image_path: Path):
     # Fail before predicting, not after, if the result could not be mapped back.
     assert_roundtrip(data, geom)
     canonical, canonical_affine = to_training_orientation(data, geom)
+    stage["read"] = time.time() - t0
     print(f"[case] shape={geom.original_shape} axcodes={''.join(geom.axcodes)}", flush=True)
 
     with tempfile.TemporaryDirectory(prefix="isles26_") as tmp:
@@ -431,6 +477,7 @@ def predict(model, image_path: Path):
         nib.save(nib.Nifti1Image(canonical.astype(np.float32), canonical_affine),
                  str(in_dir / "case_0000.nii.gz"))
 
+        t0 = time.time()
         model.predict_from_files(
             [[str(in_dir / "case_0000.nii.gz")]],
             [str(out_dir / "case")],
@@ -439,6 +486,7 @@ def predict(model, image_path: Path):
             num_processes_preprocessing=1,
             num_processes_segmentation_export=1,
         )
+        stage["network"] = time.time() - t0
 
         npz_path, seg_path = out_dir / "case.npz", out_dir / "case.nii.gz"
         if not npz_path.is_file() or not seg_path.is_file():
@@ -447,8 +495,11 @@ def predict(model, image_path: Path):
             probs = np.asarray(payload["probabilities"])
         seg_canonical = np.asanyarray(nib.load(str(seg_path)).dataobj)
 
+    t0 = time.time()
     lesion_prob = align_probabilities(probs, seg_canonical)
-    return from_training_orientation(lesion_prob, geom).astype(np.float32), geom
+    out = from_training_orientation(lesion_prob, geom).astype(np.float32)
+    stage["invert"] = time.time() - t0
+    return out, geom, stage
 
 
 def align_probabilities(probs: np.ndarray, seg: np.ndarray) -> np.ndarray:
@@ -487,25 +538,29 @@ def align_probabilities(probs: np.ndarray, seg: np.ndarray) -> np.ndarray:
     return np.asarray(best[LESION_CHANNEL], dtype=np.float32)
 
 
-def min_size_filter(mask: np.ndarray, min_voxels: int) -> np.ndarray:
+def min_size_filter(mask: np.ndarray, min_voxels: int):
     """Drop connected components below `min_voxels`, 26-connectivity.
+
+    Returns (filtered mask, components before, components kept). The counts come
+    free from the labelling we already do -- counting them separately would mean
+    a second ndi.label pass over an ~85 M voxel volume -- and two of the five
+    ranked metrics are lesion-count sensitive, so how many components pruning
+    removed is the diagnostic most worth having per case.
 
     26-connectivity is measured, not assumed: eval/probe_panoptica_semantics.py
     shows the official scorer treats a corner-adjacent voxel pair as ONE instance.
     Filtering with a different connectivity than the metric counts with would
     train and score against different definitions of "a lesion".
     """
-    if min_voxels <= 0:
-        return mask
     from scipy import ndimage as ndi
 
     lab, n = ndi.label(mask.astype(bool), structure=np.ones((3, 3, 3), dtype=np.uint8))
-    if n == 0:
-        return mask
+    if min_voxels <= 0 or n == 0:
+        return mask, n, n
     counts = np.bincount(lab.ravel(), minlength=n + 1)
     keep = counts >= min_voxels
     keep[0] = False
-    return keep[lab].astype(np.uint8)
+    return keep[lab].astype(np.uint8), n, int(keep.sum())
 
 
 # --- io ---------------------------------------------------------------------

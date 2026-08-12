@@ -264,7 +264,33 @@ jobs:
           cd submission/isles26_algorithm
           # No GPU on a hosted runner: this is also the CPU-budget check, since
           # the guidelines quote ~10 minutes on CPU.
-          time ./do_test_run.sh
+          # Tee the log: the next step asserts against it. pipefail is set, so a
+          # do_test_run.sh failure still fails the step.
+          time ./do_test_run.sh 2>&1 | tee /tmp/e2e.log
+
+      - name: Assert the case really ran, rather than falling back
+        # inference.py catches every per-case exception and writes an all-zero
+        # mask on the correct grid, so that one bad case cannot fail a whole
+        # submission. That safety net also means the geometry check below passes
+        # on a case that crashed -- outputs exist and the grid is right, the
+        # content is just empty. Anything inside the try block (including the
+        # diagnostics) could therefore regress silently. Assert on the log.
+        run: |
+          set -euo pipefail
+          if grep -qE '^\[(FAILED|fallback)\]' /tmp/e2e.log; then
+            echo "::error::the container fell back to an empty prediction"
+            grep -A20 -E '^\[FAILED\]' /tmp/e2e.log || true
+            exit 1
+          fi
+          # The diagnostics must actually be emitted -- they are the instrument
+          # the sanity phase is read with.
+          for pattern in '^\[case\] spacing=' '^\[case\] lesion_voxels=' \
+                         '^\[case\] components=' '^\[case\] soft_map ' '^\[time\] '; do
+            grep -qE "$pattern" /tmp/e2e.log || {
+              echo "::error::missing expected log line: $pattern"; exit 1; }
+          done
+          echo "--- per-case diagnostics ---"
+          grep -E '^\[(case|time|init)\]' /tmp/e2e.log
 
       - name: Verify the outputs land on the caller's grid
         run: |
