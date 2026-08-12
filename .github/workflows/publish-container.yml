@@ -277,20 +277,27 @@ jobs:
         # diagnostics) could therefore regress silently. Assert on the log.
         run: |
           set -euo pipefail
-          if grep -qE '^\[(FAILED|fallback)\]' /tmp/e2e.log; then
+          # do_test_run.sh forwards container output via `docker logs
+          # --timestamps`, so every line arrives prefixed with an RFC3339
+          # timestamp. Strip it, or a ^-anchored pattern matches nothing and
+          # every assertion below passes vacuously.
+          sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z? ?//' /tmp/e2e.log > /tmp/e2e.clean.log
+          if grep -qE '^\[(FAILED|fallback)\]' /tmp/e2e.clean.log; then
             echo "::error::the container fell back to an empty prediction"
-            grep -A20 -E '^\[FAILED\]' /tmp/e2e.log || true
+            grep -A20 -E '^\[FAILED\]' /tmp/e2e.clean.log || true
             exit 1
           fi
           # The diagnostics must actually be emitted -- they are the instrument
-          # the sanity phase is read with.
+          # the sanity phase is read with. This doubles as the check that the
+          # timestamp stripping still works: if it silently stopped matching,
+          # these would fail rather than pass quietly.
           for pattern in '^\[case\] spacing=' '^\[case\] lesion_voxels=' \
                          '^\[case\] components=' '^\[case\] soft_map ' '^\[time\] '; do
-            grep -qE "$pattern" /tmp/e2e.log || {
+            grep -qE "$pattern" /tmp/e2e.clean.log || {
               echo "::error::missing expected log line: $pattern"; exit 1; }
           done
           echo "--- per-case diagnostics ---"
-          grep -E '^\[(case|time|init)\]' /tmp/e2e.log
+          grep -E '^\[(case|time|init)\]' /tmp/e2e.clean.log
 
       - name: Verify the outputs land on the caller's grid
         run: |
