@@ -21,6 +21,18 @@ CONTAINER_NAME="${DOCKER_IMAGE_TAG:-isles26-algorithm}_container"
 INPUT_DIR="${SCRIPT_DIR}/test/input"
 OUTPUT_DIR="${SCRIPT_DIR}/test/output"
 
+# What gets bind-mounted at /opt/ml/model, Grand Challenge's mount point for a
+# separately uploaded model tarball. The organizers' default is the local model/
+# dir, which is ALSO the Docker build context for the baked weights -- so the
+# default mount hides the image's own copy behind identical content, and a
+# container that can only find its weights at /opt/ml/model passes this test and
+# then fails on Grand Challenge (submission 0b843f9e, 2026-08-11).
+#
+# We upload no tarball, so GC mounts an EMPTY read-only dir there. Point this at
+# one to reproduce that. Overridable rather than hard-coded so the script still
+# behaves like the organizers' original for anyone who does upload a tarball.
+GC_MODEL_MOUNT_DIR="${GC_MODEL_MOUNT_DIR:-${SCRIPT_DIR}/model}"
+
 # Staging directories are bind-mounted into the container as /input and /output.
 # They start empty and are (re)provisioned with hard-linked input files right
 # before each invocation — mimicking how Grand Challenge provisions inputs.
@@ -103,7 +115,7 @@ setup() {
     log "Setup ..."
 
     # Allow the Docker user to read these on the host
-    chmod -R -f o+rX "$INPUT_DIR" "${SCRIPT_DIR}/model"
+    chmod -R -f o+rX "$INPUT_DIR" "$GC_MODEL_MOUNT_DIR"
 
     # Disable promotional logs from Docker
     export DOCKER_CLI_HINTS=false
@@ -221,7 +233,7 @@ start_container() {
         --name "$CONTAINER_NAME"
         ${GPU_ARGS:+$GPU_ARGS}
         --platform=linux/amd64
-        --volume "${SCRIPT_DIR}/model":/opt/ml/model:ro
+        --volume "$GC_MODEL_MOUNT_DIR":/opt/ml/model:ro
         --volume "$STAGING_INPUT_DIR":/input:ro
         --volume "$STAGING_OUTPUT_DIR":/output
         --volume "$DOCKER_VOLUME_TAG":/tmp

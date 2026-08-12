@@ -232,17 +232,22 @@ jobs:
         # the network never saw in training, so a geometry regression fails here.
         run: |
           set -euxo pipefail
-          # EMPTY THE HOST WEIGHTS DIR FIRST. do_test_run.sh mounts it read-only
-          # over /opt/ml/model, exactly as Grand Challenge mounts an uploaded
-          # model tarball -- and GC mounts that path even when nothing was
-          # uploaded. Leaving the real weights here makes the mount shadow the
-          # image layer with identical content, which is how submission 0b843f9e
-          # passed CI and then died on GC with
-          # `FileNotFoundError: /opt/ml/model/dataset.json`. An empty dir is the
-          # honest reproduction of the deployed condition; the container must
-          # find its weights at the baked /opt/app/model.
-          rm -rf submission/isles26_algorithm/model
-          mkdir -p submission/isles26_algorithm/model
+          # MOUNT AN EMPTY DIR AT /opt/ml/model. That is Grand Challenge's mount
+          # point for an uploaded model tarball, and GC mounts it even when
+          # nothing was uploaded. do_test_run.sh defaults to mounting the local
+          # model/ dir there, which hides the image's baked weights behind
+          # identical content -- exactly how submission 0b843f9e passed CI and
+          # then died on GC with `FileNotFoundError:
+          # /opt/ml/model/dataset.json`. The container must find its weights at
+          # the baked /opt/app/model with nothing on the mount.
+          #
+          # Note we must NOT empty model/ itself: do_test_run.sh re-runs
+          # do_build.sh, so the weights have to stay in the build context or the
+          # Dockerfile's sha256 verification correctly refuses to build.
+          # Exported in-step, not via $GITHUB_ENV: do_test_run.sh runs here, and
+          # $GITHUB_ENV only reaches subsequent steps.
+          mkdir -p /tmp/gc-empty-model-mount
+          export GC_MODEL_MOUNT_DIR=/tmp/gc-empty-model-mount
           python -m pip install --quiet "numpy<2.1" SimpleITK==2.5.5
           mkdir -p submission/isles26_algorithm/test/input/interf0/images/t1-brain-mri
           python - <<'PY'
