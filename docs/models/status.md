@@ -177,11 +177,52 @@ unmatched predicted component is penalised twice, so interventions that add
 marginal detections lose. That is now the fourth such result (MSL, DBL,
 synthetic-lesion insertion, blob loss) and should be treated as settled.
 
-## Shipped configuration — FINAL (locked 2026-08-04)
+## Shipped configuration (locked 2026-08-04, amended 2026-08-11)
 
 nnU-Net v2 3d_fullres, Dice+TopK10, 1000 epochs, Dataset507 center-grouped,
-**5-fold ensemble with mirroring TTA OFF**, threshold 0.35, min connected
-component 20 voxels (26-connectivity), constant soft map when the mask is empty.
+**5-fold ensemble, mirroring TTA ON when a GPU is present and OFF on CPU**,
+threshold 0.35, min connected component 20 voxels (26-connectivity), constant
+soft map when the mask is empty.
+
+### 2026-08-11: first real submission failed, and what it changed
+
+Submission `0b843f9e` failed the Grand Challenge health check. Two findings, both
+now fixed in `submission/isles26_algorithm/`.
+
+**1. The weights were baked to `/opt/ml/model`, which Grand Challenge overmounts.**
+That path is GC's mount point for a separately uploaded model tarball, and GC
+bind-mounts it read-only **even when no tarball was uploaded** — an empty
+directory that shadowed all 596 MB. `initialize_from_trained_model_folder` raised
+`FileNotFoundError: /opt/ml/model/dataset.json` inside the FastAPI lifespan, which
+runs *before* uvicorn binds port 4743, so the server never listened and the only
+symptom GC surfaced was "health check not passed within 300 seconds". Weights now
+live at `/opt/app/model`; `resolve_model_dir()` uses the GC mount only when it
+actually contains a model.
+
+**CI could not have caught this**, and that is the more important lesson: the
+organizers' `do_test_run.sh` mounts the host `model/` directory over
+`/opt/ml/model`, and CI had just filled that directory with the real weights. The
+mount shadowed the image layer with *identical content*. A test that provisions
+the resource under test cannot detect that the resource is missing in
+deployment. CI now empties `model/` before the end-to-end run.
+
+**2. Grand Challenge gave us No GPU and 2 CPU threads.** Every runtime figure in
+this repo is an 8-core measurement, so the CPU path is roughly 4x worse than the
+tables below: 5-fold no-TTA is ~8 min/case, not 2.0, against a ~10 minute budget.
+
+**TTA is back on for the GPU path.** The no-TTA decision was correct but
+conditional — it rested on the stated assumption that "Grand Challenge does not
+guarantee a GPU, so the CPU figure is the one that must fit". A T4 (16 GB) can be
+requested, and on GPU 5 folds *with* mirroring runs ~30 s/case. That recovers
+Dice +0.0141, lesion-F1 +0.0205, PR-AUC +0.0191 and AVD −0.86 mL — four of the
+five ranked metrics. It is wired as `device.type == "cuda"` rather than a hard
+`on`, so a job scheduled without a GPU degrades to no-TTA instead of timing out.
+**On the GPU path the quoted 0.6283 is now the schedule-matched forecast rather
+than an optimistic bound**, since every out-of-fold number here was measured with
+TTA.
+
+Requesting the T4 is a Grand Challenge algorithm *setting*, not a container
+property. If it is not set, the container silently runs the CPU fallback.
 
 Both open decisions are now closed, and neither moved the config.
 

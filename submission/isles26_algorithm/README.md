@@ -63,6 +63,18 @@ self-contained and there is no second upload to go stale against a hard deadline
 `model/` is gitignored; populate it from
 `https://huggingface.co/sbollmann/isles26-nnunet-d507-topk10`.
 
+They are baked to **`/opt/app/model`, never `/opt/ml/model`.** Grand Challenge
+bind-mounts `/opt/ml/model` read-only for an uploaded model tarball, and it does
+so **even when no tarball exists** — an empty directory that shadows whatever the
+image put there. Submission `0b843f9e` (2026-08-11) failed exactly this way:
+`FileNotFoundError: /opt/ml/model/dataset.json` was raised inside the FastAPI
+lifespan, so uvicorn never bound port 4743 and the only thing Grand Challenge
+reported was a health-check timeout. `resolve_model_dir()` now prefers the mount
+when it genuinely holds a model and falls back to the image copy otherwise, so
+both deployment styles work. Note `do_test_run.sh` mounts the host `model/` dir
+over that path, so a *populated* local `model/` hides this class of bug — CI
+empties it before the end-to-end test for that reason.
+
 ## Configuration
 
 | env var | default | notes |
@@ -71,7 +83,7 @@ self-contained and there is no second upload to go stale against a hard deadline
 | `ISLES26_THRESHOLD` | `0.35` | selected on the center-held-out surface against all 5 official metrics |
 | `ISLES26_MIN_CC_VOXELS` | `20` | 26-connectivity; worth +0.030 lesion-F1 and -0.13 count error |
 | `ISLES26_MIN_CC_MM3` | `0` | spacing-invariant alternative (0 = use voxels) |
-| `ISLES26_DISABLE_TTA` | **`1`** | mirroring TTA **off** — required to fit the CPU budget, see below |
+| `ISLES26_DISABLE_TTA` | unset = **auto** | mirroring TTA **on with CUDA, off on CPU**; `1` forces off, `0` forces on |
 | `ISLES26_FLATTEN_EMPTY` | `1` | constant soft map when the mask is empty |
 | `ISLES26_NUM_THREADS` | unset | overrides the cgroup-derived CPU thread count (see below) |
 

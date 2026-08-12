@@ -79,7 +79,32 @@ from geometry import (  # noqa: E402
 
 INPUT_PATH = Path(os.environ.get("ISLES26_INPUT_DIR", "/input"))
 OUTPUT_PATH = Path(os.environ.get("ISLES26_OUTPUT_DIR", "/output"))
-MODEL_DIR = Path(os.environ.get("ISLES26_MODEL_DIR", "/opt/ml/model"))
+
+# Where the weights are. /opt/ml/model is Grand Challenge's mount point for a
+# SEPARATELY uploaded model tarball; GC bind-mounts it read-only even when no
+# tarball was uploaded, so it is an EMPTY directory that shadows anything the
+# image baked there. We bake to /opt/app/model instead and use the mount only
+# when it really carries a model, which supports both deployment styles.
+#
+# This is not hypothetical: submission 0b843f9e (2026-08-11) died here. The
+# lookup failed inside the FastAPI lifespan, so uvicorn never bound port 4743 and
+# the only symptom Grand Challenge surfaced was "health check not passed within
+# 300 seconds" -- the actual FileNotFoundError was three screens up in the log.
+GC_MODEL_MOUNT = Path("/opt/ml/model")
+BAKED_MODEL_DIR = Path(__file__).resolve().parent / "model"
+
+
+def resolve_model_dir() -> Path:
+    """Explicit override, else GC's tarball mount if populated, else the image."""
+    override = os.environ.get("ISLES26_MODEL_DIR", "")
+    if override:
+        return Path(override)
+    if (GC_MODEL_MOUNT / "dataset.json").is_file():
+        return GC_MODEL_MOUNT
+    return BAKED_MODEL_DIR
+
+
+MODEL_DIR = resolve_model_dir()
 
 # Slugs are fixed by the challenge interface; overridable only for local testing.
 INPUT_IMAGE_SLUG = os.environ.get("ISLES26_INPUT_SLUG", "t1-brain-mri")
@@ -120,25 +145,43 @@ THRESHOLD = float(os.environ.get("ISLES26_THRESHOLD", "0.35"))
 MIN_CC_VOXELS = int(os.environ.get("ISLES26_MIN_CC_VOXELS", "20"))
 MIN_CC_MM3 = float(os.environ.get("ISLES26_MIN_CC_MM3", "0"))
 
-# TTA IS OFF BY DEFAULT. RESOLVED, NOT PROVISIONAL -- do not "restore" it.
+# TTA FOLLOWS THE DEVICE: on when CUDA is present, off on CPU. Unset means auto;
+# ISLES26_DISABLE_TTA=0/1 forces it either way.
+#
+# This reverses the previous "TTA is off, resolved, do not restore it" default,
+# and the reason is a changed premise rather than a changed mind. That decision
+# rested on one stated assumption -- "Grand Challenge does not guarantee a GPU, so
+# the CPU figure is the one that must fit". The algorithm can in fact be
+# configured to request a T4 (16 GB), and on GPU a 5-fold ensemble WITH mirroring
+# TTA runs in roughly 30 s/case against a ~10 minute budget. When the binding
+# constraint disappears, so does the conclusion it forced.
+#
+# It stays automatic rather than simply on, because the first real submission
+# (0b843f9e, 2026-08-11) was scheduled with "Requested GPU: No GPU" and reported
+# `cuda available: False`. If the GPU request is ever absent, unavailable, or
+# silently dropped, unconditional TTA would put 5 folds + 8 mirror passes on CPU
+# at 12.9 min/case and time the job out. Degrading to no-TTA costs 0.0141 Dice;
+# timing out costs the submission.
 #
 # Measured CPU cost per case (analysis_nnunet_60_cpu_runtime_budget.sh), against
-# the guidelines' ~10 minute budget, on the largest cases:
+# the guidelines' ~10 minute budget, on the largest cases, 8 cores:
 #     5 folds + TTA   12.9 min   OVER BUDGET
 #     5 folds, no TTA  2.0 min
 #     1 fold  + TTA    2.8 min
 #     1 fold,  no TTA  0.5 min
-# Grand Challenge does not guarantee a GPU (the official template says the GPU is
-# used "when enabled"), so the CPU figure is the one that must fit. TTA or folds
-# had to go, and this file originally shipped no-TTA under a pre-registered
-# trigger: "if the ablation shows TTA was worth more than ~0.005 Dice, revisit in
-# favour of 1 fold + TTA".
+# NOTE those are 8-core figures and GC gave us TWO threads, so the CPU path is
+# ~4x worse than this table and 5-fold no-TTA is the only arm with any margin
+# left. On the CPU fallback, treat 2.0 min as ~8 min.
+#
+# The original no-TTA choice was made under a pre-registered trigger: "if the
+# ablation shows TTA was worth more than ~0.005 Dice, revisit in favour of 1 fold
+# + TTA".
 #
 # The ablation landed (analysis_nnunet_61, fold 0, n=281, same weights, TTA the
 # only variable) and TTA is worth +0.0141 Dice, so the trigger fired and the
-# revisit was done. It does NOT overturn the choice, for a reason the trigger did
-# not know: 1 fold + TTA is SLOWER than 5 folds without it. Measured through this
-# very file on CPU, 8 cores (analysis_nnunet_66, two real cases):
+# revisit was done. It did NOT overturn the choice at the time, for a reason the
+# trigger did not know: 1 fold + TTA is SLOWER than 5 folds without it. Measured
+# through this very file on CPU, 8 cores (analysis_nnunet_66, two real cases):
 #     ATLAS_0001   fold4+TTA 183.9s   fold4 no-TTA 32.9s   5-fold no-TTA 114.2s
 #     ATLAS_1316   fold4+TTA 129.9s   fold4 no-TTA 59.4s   5-fold no-TTA 100.1s
 # So the alternative costs ~60% more wall time to deliver a SINGLE-model
@@ -150,10 +193,11 @@ MIN_CC_MM3 = float(os.environ.get("ISLES26_MIN_CC_MM3", "0"))
 # members -- work/nested_holdout/RESULT.md), so this is a judgement under one
 # unmeasured quantity, made explicit rather than hidden.
 #
-# WHAT IT COSTS, so nobody is surprised by the leaderboard: every out-of-fold
-# number in this repo was measured WITH TTA. Shipping without it gives up, per
-# baselines/reports/tta_ablation/, Dice -0.0141, lesion-F1 -0.0205, PR-AUC
-# -0.0191 and AVD +0.86 mL. Quote 0.6283 as an optimistic bound, not a forecast.
+# WHAT IT IS WORTH, per baselines/reports/tta_ablation/: TTA buys Dice +0.0141,
+# lesion-F1 +0.0205, PR-AUC +0.0191 and AVD -0.86 mL -- four of the five ranked
+# metrics, and PR-AUC is the one no threshold change can touch. Every out-of-fold
+# number in this repo was measured WITH TTA, so on the GPU path 0.6283 is the
+# matched forecast; on the CPU fallback it is an optimistic bound.
 #
 # REDUCED MIRRORING: MEASURED AND CLOSED (analysis_nnunet_68/69/70). A subset of
 # allowed_mirroring_axes costs 2^k passes instead of 8, so one axis fits the
@@ -168,8 +212,14 @@ MIN_CC_MM3 = float(os.environ.get("ISLES26_MIN_CC_MM3", "0"))
 # Note AVD -- one of the five ranked metrics -- improves ONLY under full
 # mirroring (-0.856 mL, t=-3.46); every subset is slightly worse than no-TTA on
 # it. The pre-registered rule (recover >= half the Dice gain, regress nothing
-# else, keep >= 2x CPU headroom) rejects all four. Shipping no-TTA is correct.
-DISABLE_TTA = os.environ.get("ISLES26_DISABLE_TTA", "1") == "1"
+# else, keep >= 2x CPU headroom) rejects all four. That analysis was a search for
+# a TTA subset affordable ON CPU; it is moot on the GPU path, where full
+# mirroring fits and is strictly better. It still governs the CPU fallback, where
+# the answer remains no-TTA.
+#
+# "" / unset -> auto (on iff CUDA), "1" -> force off, "0" -> force on.
+_disable_tta = os.environ.get("ISLES26_DISABLE_TTA", "").strip()
+DISABLE_TTA = None if _disable_tta == "" else _disable_tta == "1"
 
 # Which spatial axes mirroring TTA may flip, when it is on at all. Unset means
 # "whatever the checkpoint was trained with" (all three), i.e. no behaviour
@@ -252,14 +302,34 @@ def init_model():
         torch.set_num_threads(usable_cpus())
         print(f"[init] running on CPU with {torch.get_num_threads()} threads "
               f"(host reports {os.cpu_count()})", flush=True)
-    print(f"[init] device={device} folds={FOLDS} tta={'off' if DISABLE_TTA else 'on'}", flush=True)
+    # TTA is affordable on GPU (~30 s/case at 5 folds) and not on CPU (12.9 min at
+    # 8 cores, worse at the 2 threads Grand Challenge actually gave us).
+    use_tta = (device.type == "cuda") if DISABLE_TTA is None else not DISABLE_TTA
+    tta_source = "auto" if DISABLE_TTA is None else "ISLES26_DISABLE_TTA"
+    if use_tta and device.type == "cpu":
+        print("[warn] TTA forced ON without a GPU: expect ~13 min/case at 8 cores "
+              "and far worse at 2. This will likely exceed the runtime budget.",
+              flush=True)
+    print(f"[init] device={device} folds={FOLDS} "
+          f"tta={'on' if use_tta else 'off'} ({tta_source})", flush=True)
+    # Say where the weights came from, and say it BEFORE the load. When this goes
+    # wrong Grand Challenge shows only a health-check timeout, so the log has to
+    # be self-explanatory without a debugger.
+    print(f"[init] model_dir={MODEL_DIR} (gc_mount_populated="
+          f"{(GC_MODEL_MOUNT / 'dataset.json').is_file()})", flush=True)
+    if not (MODEL_DIR / "dataset.json").is_file():
+        raise FileNotFoundError(
+            f"no nnU-Net model at {MODEL_DIR}: dataset.json is missing. "
+            f"Weights are baked at {BAKED_MODEL_DIR}; {GC_MODEL_MOUNT} is Grand "
+            "Challenge's read-only tarball mount and is empty unless a model was "
+            "uploaded. Set ISLES26_MODEL_DIR to override.")
     print(f"[init] threshold={THRESHOLD} min_cc_voxels={MIN_CC_VOXELS} "
           f"flatten_empty={FLATTEN_EMPTY}", flush=True)
 
     predictor = nnUNetPredictor(
         tile_step_size=0.5,
         use_gaussian=True,
-        use_mirroring=not DISABLE_TTA,
+        use_mirroring=use_tta,
         perform_everything_on_device=device.type == "cuda",
         device=device,
         verbose=False,
@@ -273,7 +343,7 @@ def init_model():
         # Set AFTER initialization: the call above overwrites this attribute with
         # the checkpoint's inference_allowed_mirroring_axes.
         predictor.allowed_mirroring_axes = MIRROR_AXES
-    print(f"[init] mirror_axes={predictor.allowed_mirroring_axes if not DISABLE_TTA else None}",
+    print(f"[init] mirror_axes={predictor.allowed_mirroring_axes if use_tta else None}",
           flush=True)
     print(f"[init] model ready in {time.time() - started:.1f}s", flush=True)
     print("=+=" * 10, flush=True)

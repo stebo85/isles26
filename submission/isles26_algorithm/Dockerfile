@@ -56,17 +56,26 @@ COPY --chown=user:user app.py inference.py geometry.py test_geometry.py /opt/app
 # model.tar.gz. The image grows ~600 MB, but the container is self-contained and
 # there is no second upload to go stale against a hard deadline.
 #
+# THEY MUST NOT LIVE AT /opt/ml/model. That path is Grand Challenge's mount point
+# for a separately uploaded model tarball, and GC bind-mounts it read-only even
+# when no tarball exists -- an EMPTY directory that shadows whatever the image
+# put there. Baking to that path cost submission 0b843f9e (2026-08-11):
+# `FileNotFoundError: /opt/ml/model/dataset.json` inside the FastAPI lifespan, so
+# uvicorn never bound the port and GC reported only a health-check timeout.
+# inference.py prefers the mount when it actually carries a model and falls back
+# here otherwise, so both deployment styles work.
+#
 # `model/` is NOT in git. CI populates it from the public Hugging Face release
 # and verifies every sha256 before this build; a local build must do the same or
 # the COPY fails loudly rather than producing a weightless container.
-COPY --chown=user:user model/ /opt/ml/model/
+COPY --chown=user:user model/ /opt/app/model/
 
 # Verify the weights are what we published. A truncated or stale download yields
 # a container that starts, segments, and returns plausible nonsense -- the same
 # silent-failure class as a mirror flip.
 RUN python - <<'PY'
 import hashlib, json, pathlib, sys
-root = pathlib.Path("/opt/ml/model")
+root = pathlib.Path("/opt/app/model")
 mf = root / "hf_manifest.json"
 if not mf.is_file():
     sys.exit("hf_manifest.json missing from the weights: refusing to build")
